@@ -1,0 +1,29 @@
+{
+  "server": {
+    "host": "0.0.0.0",
+    "port": 9010
+  },
+  "models": {
+    "sam": {
+      "model_type": "vit_b",
+      "checkpoint": "models/sam_vit_b_01ec64.pth"
+    },
+    "sam2": {
+      "model_id": "facebook/sam2.1-hiera-small",
+      "checkpoint": "",
+      "config": ""
+    },
+    "sam3": {
+      "checkpoint": ""
+    },
+    "yolo11_detect": {
+      "weights": "yolo11n.pt"
+    },
+    "yolo11_seg": {
+      "weights": "yolo11n-seg.pt"
+    },
+    "yolo_world": {
+      "weights": "yolov8s-world.pt"
+    }
+  }
+}

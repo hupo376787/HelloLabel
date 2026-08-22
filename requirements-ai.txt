@@ -1,0 +1,8 @@
+# HelloLabel AI dependencies. Install only with HelloLabel\.venv\Scripts\python.exe -m pip.
+# Git/GitHub is intentionally not required: this avoids git TLS/proxy failures on Windows.
+# PyTorch is installed separately by install_ai.bat to select CUDA/CPU correctly.
+ultralytics-opencv-headless>=8.3
+huggingface_hub>=0.28
+segment-anything-py==1.0.1
+RF-SAM-2==1.0.3
+sam3==0.1.4

@@ -1,0 +1,213 @@
+name: Build Desktop Installers
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hellolabel-desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-x64:
+    name: Windows x64
+    runs-on: windows-2025
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install base Python dependencies
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+          .\.venv\Scripts\python.exe -m pip install -r requirements.txt pyinstaller
+
+      - name: Freeze base backend (no AI)
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\python.exe -m PyInstaller desktop\hellolabel-server.spec --noconfirm --clean --workpath desktop\backend-build --distpath desktop\backend-dist
+
+      - name: Install Electron dependencies
+        working-directory: desktop
+        shell: pwsh
+        run: npm install --no-audit --no-fund
+
+      - name: Build Windows installers
+        working-directory: desktop
+        shell: pwsh
+        run: npm run dist:win -- --publish never
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: HelloLabel-Windows-x64
+          path: dist/desktop/*
+          if-no-files-found: error
+
+  macos-arm64:
+    name: macOS Apple Silicon
+    runs-on: macos-26
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install base Python dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt pyinstaller
+
+      - name: Freeze base backend (no AI)
+        run: |
+          .venv/bin/python -m PyInstaller desktop/hellolabel-server.spec --noconfirm --clean --workpath desktop/backend-build --distpath desktop/backend-dist
+
+      - name: Install Electron dependencies
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Build macOS arm64 packages
+        working-directory: desktop
+        run: npx electron-builder --mac --arm64 --publish never
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: HelloLabel-macOS-arm64
+          path: dist/desktop/*
+          if-no-files-found: error
+
+  macos-x64:
+    name: macOS Intel
+    runs-on: macos-26-intel
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install base Python dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt pyinstaller
+
+      - name: Freeze base backend (no AI)
+        run: |
+          .venv/bin/python -m PyInstaller desktop/hellolabel-server.spec --noconfirm --clean --workpath desktop/backend-build --distpath desktop/backend-dist
+
+      - name: Install Electron dependencies
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Build macOS x64 packages
+        working-directory: desktop
+        run: npx electron-builder --mac --x64 --publish never
+
+      - name: Upload macOS Intel artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: HelloLabel-macOS-x64
+          path: dist/desktop/*
+          if-no-files-found: error
+
+  linux-x64:
+    name: Linux x64
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install base Python dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt pyinstaller
+
+      - name: Freeze base backend (no AI)
+        run: |
+          .venv/bin/python -m PyInstaller desktop/hellolabel-server.spec --noconfirm --clean --workpath desktop/backend-build --distpath desktop/backend-dist
+
+      - name: Install Electron dependencies
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+
+      - name: Build Linux packages
+        working-directory: desktop
+        run: npm run dist:linux -- --publish never
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: HelloLabel-Linux-x64
+          path: dist/desktop/*
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [windows-x64, macos-arm64, macos-x64, linux-x64]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          pattern: HelloLabel-*
+          path: release-assets
+
+      - name: Create release and upload installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if ! gh release view "$TAG" >/dev/null 2>&1; then
+            gh release create "$TAG" --title "HelloLabel $TAG" --generate-notes
+          fi
+          find release-assets -type f ! -name '*.blockmap' ! -name 'latest*.yml' -print0 | while IFS= read -r -d '' file; do
+            gh release upload "$TAG" "$file" --clobber
+          done
