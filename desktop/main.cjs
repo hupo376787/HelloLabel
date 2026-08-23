@@ -10,6 +10,8 @@ const AI_READY_MARKER = '.hellolabel-ai-ready.json';
 let backend = null;
 let backendMode = 'base';
 let mainWindow = null;
+let closePromptActive = false;
+let allowQuitWithoutPrompt = false;
 
 function desktopLog(message) {
   try {
@@ -223,6 +225,55 @@ async function startBackendWithFallback() {
   }
 }
 
+function quitDialogOptions() {
+  const zh = (app.getLocale() || '').toLowerCase().startsWith('zh');
+  return zh
+    ? {
+        type: 'question',
+        title: '退出 HelloLabel',
+        message: '确定要退出 HelloLabel 吗？',
+        detail: '为防止误操作，请确认是否关闭当前桌面应用。',
+        buttons: ['取消', '退出'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true
+      }
+    : {
+        type: 'question',
+        title: 'Quit HelloLabel',
+        message: 'Are you sure you want to quit HelloLabel?',
+        detail: 'Please confirm before closing the desktop application.',
+        buttons: ['Cancel', 'Quit'],
+        defaultId: 0,
+        cancelId: 0,
+        noLink: true
+      };
+}
+
+async function requestUserQuit() {
+  if (allowQuitWithoutPrompt || closePromptActive) return;
+  closePromptActive = true;
+  try {
+    const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
+    const result = parent
+      ? await dialog.showMessageBox(parent, quitDialogOptions())
+      : await dialog.showMessageBox(quitDialogOptions());
+    if (result.response === 1) {
+      allowQuitWithoutPrompt = true;
+      app.quit();
+    }
+  } catch (err) {
+    desktopLog(`Quit confirmation failed: ${err?.stack || err}`);
+  } finally {
+    closePromptActive = false;
+  }
+}
+
+function quitWithoutPrompt() {
+  allowQuitWithoutPrompt = true;
+  app.quit();
+}
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1500,
@@ -244,6 +295,11 @@ async function createWindow() {
   mainWindow.setMenuBarVisibility(false);
   mainWindow.once('ready-to-show', () => {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+  });
+  mainWindow.on('close', event => {
+    if (allowQuitWithoutPrompt) return;
+    event.preventDefault();
+    void requestUserQuit();
   });
   mainWindow.on('closed', () => { mainWindow = null; });
 
@@ -352,11 +408,14 @@ function launchAiInstaller() {
     return { ok: false, message: err?.message || String(err) };
   }
 
-  setTimeout(() => app.quit(), 900);
+  setTimeout(() => quitWithoutPrompt(), 900);
   return { ok: true, willExit: true, packaged: app.isPackaged };
 }
 
-ipcMain.handle('hellolabel:quit', () => app.quit());
+ipcMain.handle('hellolabel:quit', () => {
+  void requestUserQuit();
+  return { ok: true, confirmation: true };
+});
 ipcMain.handle('hellolabel:install-ai', () => launchAiInstaller());
 ipcMain.handle('hellolabel:runtime-info', () => ({
   packaged: app.isPackaged,
@@ -380,18 +439,26 @@ app.whenReady().then(async () => {
       'HelloLabel failed to start',
       `${err?.message || String(err)}${logPath ? `\n\nLog: ${logPath}` : ''}`
     );
-    app.quit();
+    quitWithoutPrompt();
   }
   app.on('activate', async () => {
     if (BrowserWindow.getAllWindows().length === 0) await createWindow();
   });
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', event => {
+  if (!allowQuitWithoutPrompt) {
+    event.preventDefault();
+    void requestUserQuit();
+    return;
+  }
   app.isQuitting = true;
   stopBackend();
 });
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
+  if (process.platform !== 'darwin') {
+    allowQuitWithoutPrompt = true;
+    app.quit();
+  }
 });
