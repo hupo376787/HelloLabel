@@ -103,11 +103,13 @@ def prepare(uv: Path) -> None:
     shutil.copytree(managed_root, RUNTIME_PYTHON_DIR, symlinks=True)
     py = runtime_python(RUNTIME_PYTHON_DIR)
 
-    # Keep pip inside the shipped runtime because the desktop AI installer must be
-    # able to install packages without a system Python or system pip.
+    # This is a private copy bundled inside HelloLabel, not the user's system Python.
+    # uv-managed standalone runtimes are marked EXTERNALLY-MANAGED, so explicitly
+    # allow package installation into this copied runtime.
     log("Installing pip and HelloLabel base dependencies into the bundled runtime...")
     run([
-        str(uv), "pip", "install", "--python", str(py), "--system", "--strict",
+        str(uv), "pip", "install", "--python", str(py), "--system",
+        "--break-system-packages", "--strict",
         "pip", "-r", str(ROOT / "requirements.txt"),
     ], env=uv_env)
 
