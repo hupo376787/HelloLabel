@@ -1,9 +1,15 @@
 {
   "name": "hellolabel-desktop",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "HelloLabel desktop shell",
   "main": "main.cjs",
   "private": true,
+  "homepage": "https://github.com/hupo376787/HelloLabel",
+  "author": {
+    "name": "HelloLabel Contributors",
+    "email": "noreply@github.com"
+  },
+  "desktopName": "hellolabel.desktop",
   "scripts": {
     "start": "electron .",
     "dist:win": "electron-builder --win --x64",
@@ -68,7 +74,8 @@
         "deb"
       ],
       "category": "Graphics",
-      "icon": "build/icons"
+      "icon": "build/icons",
+      "syncDesktopName": true
     }
   }
 }
