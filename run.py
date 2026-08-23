@@ -10,7 +10,15 @@ import uvicorn
 
 
 def resource_root() -> Path:
-    """Return the project/resource directory in source and PyInstaller builds."""
+    """Return the HelloLabel application resource directory.
+
+    Packaged Electron builds launch the bundled CPython with HELLOLABEL_APP_DIR
+    pointing at resources/runtime/app. Source mode falls back to this file's
+    directory; legacy PyInstaller builds are still understood for compatibility.
+    """
+    desktop_app_dir = os.environ.get("HELLOLABEL_APP_DIR", "").strip()
+    if desktop_app_dir:
+        return Path(desktop_app_dir).resolve()
     if getattr(sys, "frozen", False):
         return Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
     return Path(__file__).resolve().parent
@@ -32,8 +40,10 @@ def load_server_config() -> dict:
 def parse_args() -> argparse.Namespace:
     server = load_server_config()
     parser = argparse.ArgumentParser(description="HelloLabel local web server")
-    parser.add_argument("--host", default=os.environ.get("LABELIT_HOST", str(server.get("host", "127.0.0.1"))))
-    parser.add_argument("--port", type=int, default=int(os.environ.get("LABELIT_PORT", server.get("port", 9010))))
+    host_env = os.environ.get("HELLOLABEL_HOST") or os.environ.get("LABELIT_HOST")
+    port_env = os.environ.get("HELLOLABEL_PORT") or os.environ.get("LABELIT_PORT")
+    parser.add_argument("--host", default=host_env or str(server.get("host", "127.0.0.1")))
+    parser.add_argument("--port", type=int, default=int(port_env or server.get("port", 9010)))
     return parser.parse_args()
 
 

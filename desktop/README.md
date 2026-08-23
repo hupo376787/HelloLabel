@@ -1,82 +1,124 @@
 # HelloLabel Desktop
 
-HelloLabel keeps the existing FastAPI + WebGL2 web UI and adds an Electron desktop shell.
-The shell starts the local HelloLabel backend on `127.0.0.1:9010`, waits for `/api/health`, then opens the app in an Electron `BrowserWindow`.
+HelloLabel keeps the FastAPI + WebGL2 UI and wraps it with Electron for Windows, macOS and Linux.
 
-## Why this layout
+## Runtime architecture
 
-- The annotation UI remains one HTML/CSS/JavaScript codebase.
-- Electron embeds Chromium, so the same rendering and File System Access behavior is available on Windows, macOS and Linux.
-- The Python backend is frozen with PyInstaller and bundled as an Electron extra resource.
-- The Electron shell and Python backend are independent processes. Closing HelloLabel stops the backend.
+Release installers do **not** use a PyInstaller backend anymore. Instead each native build bundles a relocatable CPython 3.12 runtime under Electron `resources/runtime/python` and the HelloLabel Python/web sources under `resources/runtime/app`.
 
-## Development desktop mode (Windows)
+```text
+HelloLabel installation
+└─ resources/
+   └─ runtime/
+      ├─ python/       bundled CPython 3.12 + base requirements
+      ├─ app/          run.py, web_api.py, static/, ai/, config
+      └─ runtime-manifest.json
+```
 
-1. Run `start_web.bat` once so `.venv` exists, then close the web server.
+The installed user does not need Python, pip or a virtual environment on the system.
+
+At runtime Electron launches the bundled interpreter with `PYTHONNOUSERSITE=1`, so unrelated user/system Python packages cannot leak into HelloLabel.
+
+## Writable desktop data
+
+The installation directory is treated as read-only. Models, caches and the optional AI runtime live under Electron's per-user HelloLabel data directory:
+
+```text
+HelloLabel userData/
+├─ ai-runtime/
+├─ models/
+├─ cache/
+│  ├─ pip/
+│  ├─ huggingface/
+│  └─ torch/
+├─ config/
+│  └─ ultralytics/
+└─ data/
+```
+
+## Desktop AI installation
+
+Release installers intentionally contain **no AI frameworks or model weights**. Choosing **AI → Install AI** performs this handoff:
+
+1. Electron stops the running HelloLabel Python backend.
+2. The installer launches with the bundled base Python, not a system Python.
+3. `desktop_ai_installer.py` copies the bundled Python runtime to `userData/ai-runtime`.
+4. PyTorch, YOLO, SAM and SAM2 are installed into that private runtime. SAM3 is attempted only on supported NVIDIA/CUDA Windows/Linux environments.
+5. A `.hellolabel-ai-ready.json` marker is written after verification.
+6. On the next launch Electron automatically chooses `ai-runtime`.
+7. If the AI runtime cannot start, HelloLabel falls back to the bundled base runtime so manual annotation remains available.
+
+Source/Web mode still uses the project `.venv` and `install_ai.bat` / `install_ai.sh`; that is intentionally separate from packaged desktop behavior.
+
+## Development desktop mode
+
+On Windows:
+
+1. Run `start_web.bat` once so the source `.venv` exists, then close the web server.
 2. Install Node.js 22.12+.
 3. Run `desktop/start_desktop_dev.bat`.
 
-## Build Windows
+Development mode uses the source `.venv`; only release installers use the bundled desktop runtime.
 
-Run:
+## Local builds
+
+Build machines need Python 3.12 and Node.js because they create the installer. End users do not.
+
+### Windows
 
 ```bat
 desktop\build_windows.bat
 ```
 
-Output is written to `dist/desktop/` (NSIS installer and portable build).
+Produces NSIS + portable packages in `dist/desktop/`.
 
-## Build macOS
-
-On a Mac:
+### macOS
 
 ```bash
-chmod +x desktop/build_macos.sh
 ./desktop/build_macos.sh
 ```
 
-The build uses the current Mac architecture. Build Intel on an Intel Mac and Apple Silicon on an Apple Silicon Mac, or configure a dedicated universal build pipeline with matching Python backends for both architectures.
+Produces DMG + ZIP for the current Mac architecture.
 
-## Build Linux
-
-On Linux:
+### Linux
 
 ```bash
-chmod +x desktop/build_linux.sh
 ./desktop/build_linux.sh
 ```
 
-Output includes AppImage and deb packages.
+Produces AppImage + DEB.
 
-## AI in desktop builds
-
-Current desktop release builds are **base-editor only**. AI is intentionally excluded from the PyInstaller sidecar even when the local `.venv` already has Torch, Ultralytics, SAM, SAM2 or SAM3 installed. Model weights under `models/` are not bundled either. This keeps GitHub Actions and local installers smaller and deterministic.
-
-The source/Web edition can still install AI with `install_ai.bat` / `install_ai.sh`. A future desktop-specific downloadable AI runtime can be added without changing the annotation UI.
+All local build scripts create `desktop/.build-venv`, install `uv`, prepare the self-contained CPython in `desktop/runtime`, then run electron-builder. Generated runtime/build folders are ignored by Git.
 
 ## GitHub Actions
 
-`.github/workflows/desktop-build.yml` builds installers without AI on native GitHub-hosted runners:
+`.github/workflows/desktop-build.yml` is **tag-only**:
 
-- `windows-2025` -> Windows x64 NSIS + portable
-- `macos-26` -> macOS Apple Silicon DMG + ZIP
-- `macos-26-intel` -> macOS Intel x64 DMG + ZIP
-- `ubuntu-24.04` -> Linux x64 AppImage + DEB
+```yaml
+on:
+  push:
+    tags:
+      - "v*"
+```
 
-The workflow is intentionally **tag-only**. It runs only when a Git tag matching `v*` is pushed (for example `v0.2.5`). Branch pushes, pull requests, and manual `workflow_dispatch` do not build desktop installers. A matching tag build also creates/updates the corresponding GitHub Release and uploads the generated installers.
+Only a pushed tag such as `v0.2.14` triggers native builds for:
+
+- Windows x64
+- macOS Apple Silicon
+- macOS Intel x64
+- Linux x64
+
+Normal branch pushes, PRs and manual dispatch do not build installers. CI prepares only the base runtime and does not install AI.
 
 ## Application icon
 
-`desktop/build/icon-master.png` is the master icon with transparent pixels outside the rounded-square tile. Platform files are generated from it:
+Platform icons remain under `desktop/build/`:
 
-- Windows: `desktop/build/icon.ico`
-- macOS: `desktop/build/icon.icns`
-- Linux: `desktop/build/icons/*.png`
-- Electron window/fallback: `desktop/build/icon.png`
+- Windows: `icon.ico`
+- macOS: `icon.icns`
+- Linux: `icons/*.png`
+- Electron window fallback: `icon.png`
 
+## Electron builder
 
-## Electron builder version
-
-HelloLabel pins `electron-builder` to stable `26.15.3`. Do not change it to `27.0.0`: as of the v0.2.5 build, npm has no stable `electron-builder@27.0.0` package (v27 is pre-release).
-
-If a previous failed install left npm metadata in the desktop folder, delete `desktop/node_modules` and `desktop/package-lock.json`, then run `build_windows.bat` again.
+HelloLabel pins `electron-builder` to stable `26.15.3`.

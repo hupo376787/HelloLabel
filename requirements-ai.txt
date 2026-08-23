@@ -1,6 +1,9 @@
-# HelloLabel AI dependencies. Install only with HelloLabel\.venv\Scripts\python.exe -m pip.
-# Git/GitHub is intentionally not required: this avoids git TLS/proxy failures on Windows.
-# PyTorch is installed separately by install_ai.bat to select CUDA/CPU correctly.
+# HelloLabel AI dependencies.
+# Source/Web mode installs these only into HelloLabel's local .venv.
+# Packaged desktop mode installs them only into the private userData/ai-runtime copy
+# of HelloLabel's bundled CPython. System Python/system pip are never modified.
+# Git/GitHub is intentionally not required: this avoids git TLS/proxy failures.
+# PyTorch is installed separately so the installer can select CUDA/CPU/native builds.
 ultralytics-opencv-headless>=8.3
 huggingface_hub>=0.28
 segment-anything-py==1.0.1

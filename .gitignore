@@ -12,3 +12,6 @@ desktop/backend-dist/
 dist/
 /weights
 *.pt
+desktop/.build-venv/
+desktop/.runtime-python-download/
+desktop/runtime/

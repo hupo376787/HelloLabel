@@ -22,7 +22,16 @@ from PIL import Image
 
 from ai import ModelManager
 
-BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent)) if getattr(sys, "frozen", False) else Path(__file__).resolve().parent
+_desktop_app_dir = os.environ.get("HELLOLABEL_APP_DIR", "").strip()
+if _desktop_app_dir:
+    BASE_DIR = Path(_desktop_app_dir).resolve()
+elif getattr(sys, "frozen", False):
+    BASE_DIR = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent))
+else:
+    BASE_DIR = Path(__file__).resolve().parent
+
+DATA_DIR = Path(os.environ.get("HELLOLABEL_DATA_DIR", str(BASE_DIR))).resolve()
+MODEL_DIR = Path(os.environ.get("HELLOLABEL_MODEL_DIR", str(DATA_DIR / "models"))).resolve()
 STATIC_DIR = BASE_DIR / "static"
 CONFIG_PATH = BASE_DIR / "config.json"
 
@@ -34,7 +43,7 @@ def load_config() -> dict[str, Any]:
 
 
 CONFIG = load_config()
-MODEL_MANAGER = ModelManager(BASE_DIR, CONFIG)
+MODEL_MANAGER = ModelManager(BASE_DIR, CONFIG, model_dir=MODEL_DIR)
 
 _AI_IMAGE_CACHE: "OrderedDict[str, bytes]" = OrderedDict()
 _AI_IMAGE_CACHE_BYTES = 0
@@ -77,7 +86,7 @@ async def _resolve_ai_image(file: UploadFile | None, image_token: str) -> tuple[
         raise HTTPException(status_code=410, detail="AI image cache expired; resend the image")
     return data, image_token
 
-app = FastAPI(title="HelloLabel", version="0.2.12")
+app = FastAPI(title="HelloLabel", version="0.2.14")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -93,7 +102,7 @@ def favicon() -> FileResponse:
 
 @app.get("/api/health")
 def health() -> dict[str, Any]:
-    return {"ok": True, "app": "HelloLabel", "version": "0.2.12"}
+    return {"ok": True, "app": "HelloLabel", "version": "0.2.14"}
 
 
 @app.get("/api/models")

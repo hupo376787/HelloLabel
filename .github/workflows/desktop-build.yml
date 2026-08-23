@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up build Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -30,17 +30,13 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install base Python dependencies
+      - name: Install runtime builder
         shell: pwsh
-        run: |
-          python -m venv .venv
-          .\.venv\Scripts\python.exe -m pip install --upgrade pip
-          .\.venv\Scripts\python.exe -m pip install -r requirements.txt pyinstaller
+        run: python -m pip install --upgrade uv
 
-      - name: Freeze base backend (no AI)
+      - name: Prepare bundled Python runtime (base editor only)
         shell: pwsh
-        run: |
-          .\.venv\Scripts\python.exe -m PyInstaller desktop\hellolabel-server.spec --noconfirm --clean --workpath desktop\backend-build --distpath desktop\backend-dist
+        run: python desktop/prepare_runtime.py --uv "$(Get-Command uv).Source"
 
       - name: Install Electron dependencies
         working-directory: desktop
@@ -56,7 +52,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HelloLabel-Windows-x64
-          path: dist/desktop/*
+          path: |
+            dist/desktop/*.exe
           if-no-files-found: error
 
   macos-arm64:
@@ -68,7 +65,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up build Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -78,15 +75,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install base Python dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt pyinstaller
+      - name: Install runtime builder
+        run: python -m pip install --upgrade uv
 
-      - name: Freeze base backend (no AI)
-        run: |
-          .venv/bin/python -m PyInstaller desktop/hellolabel-server.spec --noconfirm --clean --workpath desktop/backend-build --distpath desktop/backend-dist
+      - name: Prepare bundled Python runtime (base editor only)
+        run: python desktop/prepare_runtime.py --uv "$(command -v uv)"
 
       - name: Install Electron dependencies
         working-directory: desktop
@@ -100,7 +93,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HelloLabel-macOS-arm64
-          path: dist/desktop/*
+          path: |
+            dist/desktop/*.dmg
+            dist/desktop/*.zip
           if-no-files-found: error
 
   macos-x64:
@@ -112,7 +107,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up build Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -122,15 +117,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install base Python dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt pyinstaller
+      - name: Install runtime builder
+        run: python -m pip install --upgrade uv
 
-      - name: Freeze base backend (no AI)
-        run: |
-          .venv/bin/python -m PyInstaller desktop/hellolabel-server.spec --noconfirm --clean --workpath desktop/backend-build --distpath desktop/backend-dist
+      - name: Prepare bundled Python runtime (base editor only)
+        run: python desktop/prepare_runtime.py --uv "$(command -v uv)"
 
       - name: Install Electron dependencies
         working-directory: desktop
@@ -144,7 +135,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HelloLabel-macOS-x64
-          path: dist/desktop/*
+          path: |
+            dist/desktop/*.dmg
+            dist/desktop/*.zip
           if-no-files-found: error
 
   linux-x64:
@@ -154,7 +147,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python 3.12
+      - name: Set up build Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -164,15 +157,11 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install base Python dependencies
-        run: |
-          python -m venv .venv
-          .venv/bin/python -m pip install --upgrade pip
-          .venv/bin/python -m pip install -r requirements.txt pyinstaller
+      - name: Install runtime builder
+        run: python -m pip install --upgrade uv
 
-      - name: Freeze base backend (no AI)
-        run: |
-          .venv/bin/python -m PyInstaller desktop/hellolabel-server.spec --noconfirm --clean --workpath desktop/backend-build --distpath desktop/backend-dist
+      - name: Prepare bundled Python runtime (base editor only)
+        run: python desktop/prepare_runtime.py --uv "$(command -v uv)"
 
       - name: Install Electron dependencies
         working-directory: desktop
@@ -186,7 +175,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: HelloLabel-Linux-x64
-          path: dist/desktop/*
+          path: |
+            dist/desktop/*.AppImage
+            dist/desktop/*.deb
           if-no-files-found: error
 
   release:
@@ -208,6 +199,6 @@ jobs:
           if ! gh release view "$TAG" >/dev/null 2>&1; then
             gh release create "$TAG" --title "HelloLabel $TAG" --generate-notes
           fi
-          find release-assets -type f ! -name '*.blockmap' ! -name 'latest*.yml' -print0 | while IFS= read -r -d '' file; do
+          find release-assets -type f -print0 | while IFS= read -r -d '' file; do
             gh release upload "$TAG" "$file" --clobber
           done

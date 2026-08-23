@@ -4,9 +4,11 @@ const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 
-const PORT = Number(process.env.LABELIT_PORT || 9010);
+const PORT = Number(process.env.HELLOLABEL_PORT || process.env.LABELIT_PORT || 9010);
 const HOST = '127.0.0.1';
+const AI_READY_MARKER = '.hellolabel-ai-ready.json';
 let backend = null;
+let backendMode = 'base';
 let mainWindow = null;
 
 function projectRoot() {
@@ -18,49 +20,132 @@ function devPython() {
   const candidates = process.platform === 'win32'
     ? [path.join(root, '.venv', 'Scripts', 'python.exe')]
     : [path.join(root, '.venv', 'bin', 'python3'), path.join(root, '.venv', 'bin', 'python')];
-  const envPython = process.env.LABELIT_PYTHON;
+  const envPython = process.env.HELLOLABEL_PYTHON || process.env.LABELIT_PYTHON;
   if (envPython) candidates.unshift(envPython);
   return candidates.find(p => fs.existsSync(p)) || (process.platform === 'win32' ? 'python' : 'python3');
 }
 
-function backendCommand() {
+function pythonFromRuntime(runtimeRoot) {
+  const candidates = process.platform === 'win32'
+    ? [path.join(runtimeRoot, 'python.exe'), path.join(runtimeRoot, 'python3.exe')]
+    : [
+        path.join(runtimeRoot, 'bin', 'python3.12'),
+        path.join(runtimeRoot, 'bin', 'python3'),
+        path.join(runtimeRoot, 'bin', 'python')
+      ];
+  return candidates.find(p => fs.existsSync(p)) || null;
+}
+
+function packagedPaths() {
+  const userData = app.getPath('userData');
+  const dataDir = path.join(userData, 'data');
+  const modelsDir = path.join(userData, 'models');
+  const cacheDir = path.join(userData, 'cache');
+  const configDir = path.join(userData, 'config');
+  const appDir = path.join(process.resourcesPath, 'runtime', 'app');
+  const baseRuntime = path.join(process.resourcesPath, 'runtime', 'python');
+  const aiRuntime = path.join(userData, 'ai-runtime');
+  return { userData, dataDir, modelsDir, cacheDir, configDir, appDir, baseRuntime, aiRuntime };
+}
+
+function ensurePackagedDirectories(paths) {
+  for (const dir of [paths.dataDir, paths.modelsDir, paths.cacheDir, paths.configDir]) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+  fs.mkdirSync(path.join(paths.cacheDir, 'pip'), { recursive: true });
+  fs.mkdirSync(path.join(paths.cacheDir, 'huggingface'), { recursive: true });
+  fs.mkdirSync(path.join(paths.cacheDir, 'torch'), { recursive: true });
+  fs.mkdirSync(path.join(paths.configDir, 'ultralytics'), { recursive: true });
+}
+
+function aiRuntimeReady(runtimeRoot) {
+  const marker = path.join(runtimeRoot, AI_READY_MARKER);
+  const python = pythonFromRuntime(runtimeRoot);
+  if (!python || !fs.existsSync(marker)) return false;
+  try {
+    const data = JSON.parse(fs.readFileSync(marker, 'utf8'));
+    return data && data.schema === 1 && data.product === 'HelloLabel';
+  } catch {
+    return false;
+  }
+}
+
+function backendCommand({ forceBase = false } = {}) {
   if (app.isPackaged) {
-    const exe = process.platform === 'win32' ? 'HelloLabelServer.exe' : 'HelloLabelServer';
+    const paths = packagedPaths();
+    ensurePackagedDirectories(paths);
+    const useAi = !forceBase && aiRuntimeReady(paths.aiRuntime);
+    const runtimeRoot = useAi ? paths.aiRuntime : paths.baseRuntime;
+    const python = pythonFromRuntime(runtimeRoot);
+    if (!python) throw new Error(`HelloLabel bundled Python runtime is missing: ${runtimeRoot}`);
+
     return {
-      command: path.join(process.resourcesPath, 'backend', exe),
-      args: ['--host', HOST, '--port', String(PORT)],
-      cwd: path.join(process.resourcesPath, 'backend')
+      command: python,
+      args: [path.join(paths.appDir, 'run.py'), '--host', HOST, '--port', String(PORT)],
+      cwd: paths.modelsDir,
+      mode: useAi ? 'ai' : 'base',
+      env: {
+        ...process.env,
+        HELLOLABEL_DESKTOP: '1',
+        HELLOLABEL_HOST: HOST,
+        HELLOLABEL_PORT: String(PORT),
+        HELLOLABEL_APP_DIR: paths.appDir,
+        HELLOLABEL_DATA_DIR: paths.dataDir,
+        HELLOLABEL_MODEL_DIR: paths.modelsDir,
+        HF_HOME: path.join(paths.cacheDir, 'huggingface'),
+        TORCH_HOME: path.join(paths.cacheDir, 'torch'),
+        YOLO_CONFIG_DIR: path.join(paths.configDir, 'ultralytics'),
+        PIP_CACHE_DIR: path.join(paths.cacheDir, 'pip'),
+        PYTHONNOUSERSITE: '1',
+        PYTHONDONTWRITEBYTECODE: '1'
+      }
     };
   }
+
   return {
     command: devPython(),
     args: [path.join(projectRoot(), 'run.py'), '--host', HOST, '--port', String(PORT)],
-    cwd: projectRoot()
+    cwd: projectRoot(),
+    mode: 'source',
+    env: {
+      ...process.env,
+      HELLOLABEL_DESKTOP: '1',
+      HELLOLABEL_HOST: HOST,
+      HELLOLABEL_PORT: String(PORT),
+      LABELIT_DESKTOP: '1',
+      LABELIT_HOST: HOST,
+      LABELIT_PORT: String(PORT)
+    }
   };
 }
 
-function startBackend() {
-  const spec = backendCommand();
+function startBackend(options = {}) {
+  const spec = backendCommand(options);
+  backendMode = spec.mode;
   backend = spawn(spec.command, spec.args, {
     cwd: spec.cwd,
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, LABELIT_DESKTOP: '1', LABELIT_HOST: HOST, LABELIT_PORT: String(PORT) }
+    env: spec.env
   });
-  backend.stdout?.on('data', d => console.log(`[HelloLabel] ${String(d).trimEnd()}`));
-  backend.stderr?.on('data', d => console.error(`[HelloLabel] ${String(d).trimEnd()}`));
+  backend.stdout?.on('data', d => console.log(`[HelloLabel:${backendMode}] ${String(d).trimEnd()}`));
+  backend.stderr?.on('data', d => console.error(`[HelloLabel:${backendMode}] ${String(d).trimEnd()}`));
   backend.on('exit', code => {
-    if (!app.isQuitting && code !== 0) {
-      console.error(`HelloLabel backend exited with code ${code}`);
+    if (!app.isQuitting && code !== 0 && code !== null) {
+      console.error(`HelloLabel ${backendMode} backend exited with code ${code}`);
     }
   });
+  return backendMode;
 }
 
 function stopBackend() {
-  if (!backend || backend.killed) return;
+  if (!backend || backend.killed) {
+    backend = null;
+    return;
+  }
   try {
     if (process.platform === 'win32') {
-      spawn('taskkill', ['/pid', String(backend.pid), '/t', '/f'], { windowsHide: true });
+      spawn('taskkill', ['/pid', String(backend.pid), '/t', '/f'], { windowsHide: true, stdio: 'ignore' });
     } else {
       backend.kill('SIGTERM');
     }
@@ -88,6 +173,24 @@ function waitForServer(timeoutMs = 30000) {
   });
 }
 
+async function startBackendWithFallback() {
+  const mode = startBackend();
+  try {
+    await waitForServer(mode === 'ai' ? 45000 : 30000);
+    return;
+  } catch (err) {
+    if (app.isPackaged && mode === 'ai') {
+      console.error('AI runtime backend failed to start; falling back to the bundled base runtime.', err);
+      stopBackend();
+      await new Promise(resolve => setTimeout(resolve, 900));
+      startBackend({ forceBase: true });
+      await waitForServer(30000);
+      return;
+    }
+    throw err;
+  }
+}
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1500,
@@ -112,67 +215,117 @@ async function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
+function shellQuote(value) {
+  return `'${String(value).replace(/'/g, `'"'"'`)}'`;
+}
 
-function launchAiInstaller() {
-  if (app.isPackaged) {
-    return { ok: false, message: 'Runtime AI installation is only available from the HelloLabel source tree.' };
+function winQuote(value) {
+  return `"${String(value).replace(/"/g, '""')}"`;
+}
+
+function spawnVisibleCommand(command, args, cwd) {
+  if (process.platform === 'win32') {
+    const commandLine = [command, ...args].map(winQuote).join(' ');
+    const child = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/k', commandLine], {
+      cwd,
+      detached: true,
+      windowsHide: false,
+      stdio: 'ignore'
+    });
+    child.unref();
+    return;
   }
+
+  const line = [command, ...args].map(shellQuote).join(' ');
+  if (process.platform === 'darwin') {
+    const child = spawn('osascript', ['-e', `tell application "Terminal" to do script ${JSON.stringify(`cd ${shellQuote(cwd)} && ${line}`)}`], {
+      detached: true,
+      stdio: 'ignore'
+    });
+    child.unref();
+    return;
+  }
+
+  const terminals = [
+    ['x-terminal-emulator', ['-e', 'bash', '-lc', line]],
+    ['gnome-terminal', ['--', 'bash', '-lc', line]],
+    ['konsole', ['-e', 'bash', '-lc', line]]
+  ];
+  for (const [terminal, terminalArgs] of terminals) {
+    try {
+      const child = spawn(terminal, terminalArgs, { cwd, detached: true, stdio: 'ignore' });
+      child.unref();
+      return;
+    } catch {}
+  }
+  const child = spawn('bash', ['-lc', line], { cwd, detached: true, stdio: 'ignore' });
+  child.unref();
+}
+
+function launchSourceAiInstaller() {
   const root = projectRoot();
-  const winScript = path.join(root, 'install_ai.bat');
-  const shScript = path.join(root, 'install_ai.sh');
+  stopBackend();
+  if (process.platform === 'win32') {
+    const script = path.join(root, 'install_ai.bat');
+    if (!fs.existsSync(script)) throw new Error('install_ai.bat was not found.');
+    const child = spawn(process.env.ComSpec || 'cmd.exe', ['/d', '/k', `call "${script}"`], {
+      cwd: root, detached: true, windowsHide: false, stdio: 'ignore'
+    });
+    child.unref();
+  } else {
+    const script = path.join(root, 'install_ai.sh');
+    if (!fs.existsSync(script)) throw new Error('install_ai.sh was not found.');
+    spawnVisibleCommand('bash', [script], root);
+  }
+}
+
+function launchPackagedAiInstaller() {
+  const paths = packagedPaths();
+  ensurePackagedDirectories(paths);
+  const basePython = pythonFromRuntime(paths.baseRuntime);
+  const installer = path.join(paths.appDir, 'desktop_ai_installer.py');
+  if (!basePython) throw new Error('The bundled HelloLabel Python runtime is missing.');
+  if (!fs.existsSync(installer)) throw new Error('The desktop AI installer is missing from this build.');
 
   stopBackend();
+  const args = [
+    installer,
+    '--base-runtime', paths.baseRuntime,
+    '--target-runtime', paths.aiRuntime,
+    '--app-dir', paths.appDir,
+    '--cache-dir', paths.cacheDir,
+    '--config-dir', paths.configDir,
+    '--interactive'
+  ];
+  spawnVisibleCommand(basePython, args, paths.userData);
+}
 
+function launchAiInstaller() {
   try {
-    if (process.platform === 'win32') {
-      if (!fs.existsSync(winScript)) throw new Error('install_ai.bat was not found.');
-      const psQuote = (value) => `'${String(value).replace(/'/g, "''")}'`;
-      const cmdLine = `call "${winScript}"`;
-      const ps = `Start-Process -FilePath $env:ComSpec -ArgumentList @('/d','/c',${psQuote(cmdLine)}) -WorkingDirectory ${psQuote(root)}`;
-      const child = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], { detached: true, windowsHide: true, stdio: 'ignore' });
-      child.unref();
-    } else if (process.platform === 'darwin') {
-      if (!fs.existsSync(shScript)) throw new Error('install_ai.sh was not found.');
-      const command = `sleep 2; cd ${JSON.stringify(root)} && bash ./install_ai.sh`;
-      const child = spawn('osascript', ['-e', `tell application "Terminal" to do script ${JSON.stringify(command)}`], { detached: true, stdio: 'ignore' });
-      child.unref();
-    } else {
-      if (!fs.existsSync(shScript)) throw new Error('install_ai.sh was not found.');
-      const terminals = [
-        ['x-terminal-emulator', ['-e', 'bash', '-lc', `sleep 2; bash ${JSON.stringify(shScript)}`]],
-        ['gnome-terminal', ['--', 'bash', '-lc', `sleep 2; bash ${JSON.stringify(shScript)}`]],
-        ['konsole', ['-e', 'bash', '-lc', `sleep 2; bash ${JSON.stringify(shScript)}`]]
-      ];
-      let launched = false;
-      for (const [command, args] of terminals) {
-        try {
-          const child = spawn(command, args, { cwd: root, detached: true, stdio: 'ignore' });
-          child.unref();
-          launched = true;
-          break;
-        } catch {}
-      }
-      if (!launched) {
-        const child = spawn('bash', ['-lc', `sleep 2; bash ${JSON.stringify(shScript)}`], { cwd: root, detached: true, stdio: 'ignore' });
-        child.unref();
-      }
-    }
+    if (app.isPackaged) launchPackagedAiInstaller();
+    else launchSourceAiInstaller();
   } catch (err) {
-    startBackend();
+    if (!backend) {
+      try { startBackend(); } catch {}
+    }
     return { ok: false, message: err?.message || String(err) };
   }
 
-  setTimeout(() => app.quit(), 700);
-  return { ok: true, willExit: true };
+  setTimeout(() => app.quit(), 900);
+  return { ok: true, willExit: true, packaged: app.isPackaged };
 }
 
 ipcMain.handle('hellolabel:quit', () => app.quit());
 ipcMain.handle('hellolabel:install-ai', () => launchAiInstaller());
+ipcMain.handle('hellolabel:runtime-info', () => ({
+  packaged: app.isPackaged,
+  backendMode,
+  aiReady: app.isPackaged ? aiRuntimeReady(packagedPaths().aiRuntime) : false
+}));
 
 app.whenReady().then(async () => {
   try {
-    startBackend();
-    await waitForServer();
+    await startBackendWithFallback();
     await createWindow();
   } catch (err) {
     console.error(err);

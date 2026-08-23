@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import hashlib
 import json
+import os
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -32,8 +33,9 @@ class ModelManager:
     intentionally imported lazily, so the base editor can start without AI packages.
     """
 
-    def __init__(self, base_dir: Path, config: dict[str, Any]):
+    def __init__(self, base_dir: Path, config: dict[str, Any], model_dir: Path | None = None):
         self.base_dir = base_dir
+        self.model_dir = (model_dir or (base_dir / "models")).resolve()
         self.config = config
         self.models_cfg = config.get("models", {})
         self._models: dict[str, Any] = {}
@@ -105,9 +107,21 @@ class ModelManager:
         if not value:
             return None
         path = Path(value)
-        if not path.is_absolute():
-            path = self.base_dir / path
-        return path
+        if path.is_absolute():
+            return path
+
+        # Desktop packages live under Program Files / an app bundle and are not a
+        # suitable place for downloaded model weights. Resolve model-relative
+        # paths into HELLOLABEL_MODEL_DIR while source mode keeps the historical
+        # project-relative behavior.
+        desktop_model_dir = os.environ.get("HELLOLABEL_MODEL_DIR", "").strip()
+        if desktop_model_dir:
+            parts = path.parts
+            if parts and parts[0].lower() == "models":
+                return self.model_dir.joinpath(*parts[1:])
+            if len(parts) == 1:
+                return self.model_dir / path
+        return self.base_dir / path
 
     @staticmethod
     def decode_image(data: bytes) -> tuple[np.ndarray, np.ndarray]:

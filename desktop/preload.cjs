@@ -4,5 +4,6 @@ contextBridge.exposeInMainWorld('helloLabelDesktop', {
   isDesktop: true,
   platform: process.platform,
   quit: () => ipcRenderer.invoke('hellolabel:quit'),
-  installAI: () => ipcRenderer.invoke('hellolabel:install-ai')
+  installAI: () => ipcRenderer.invoke('hellolabel:install-ai'),
+  runtimeInfo: () => ipcRenderer.invoke('hellolabel:runtime-info')
 });
