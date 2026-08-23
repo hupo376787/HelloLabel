@@ -2,7 +2,7 @@
 
 [English](README.md) | **简体中文**
 
-HelloLabel 是一个独立的、仿 Labelme 的高性能网页标注程序。它只做图像标注和 AI 辅助标注，不包含细胞球分析、直径分布、报告等业务逻辑。
+HelloLabel 是一个独立的、仿 Labelme 的高性能网页标注程序，专注于图像标注和 AI 辅助标注。
 
 ## 截图
 
@@ -206,7 +206,7 @@ Ultralytics 会在第一次使用时按其机制获取缺失权重，也可以�
 install_ai.bat
 ```
 
-AI 安装脚本和 `start_web.bat` 使用**同一个 HelloLabel `.venv`**。所有安装命令都显式通过 `.venv\Scripts\python.exe -m pip` 执行，不调用系统 `pip`，因此不会污染 Cellpose、其他项目或系统 Python。
+AI 安装脚本和 `start_web.bat` 使用**同一个 HelloLabel `.venv`**。所有安装命令都显式通过 `.venv\Scripts\python.exe -m pip` 执行，不调用系统 `pip`，因此不会污染其他项目或系统 Python。
 
 如果 `.venv` 尚不存在，`install_ai.bat` 也会先创建它并安装基础依赖。AI 安装前请先关闭正在运行的 HelloLabel；脚本会检测 9010 端口，避免 Windows 锁住 `cv2.pyd` 导致 `[WinError 5] 拒绝访问`。
 
@@ -259,7 +259,7 @@ HelloLabel/
 
 HelloLabel 的 `desktop/` 目录包含 Electron 桌面壳。正式桌面安装包会携带**独立 CPython 3.12 Runtime**，因此普通用户安装后**不需要另外安装 Python、pip、venv 或 PyInstaller**。
 
-- Windows：`desktop\build_windows.bat` → NSIS 安装版 + Portable 便携版
+- Windows：`desktop\\build_windows.bat` → NSIS 安装版 + Portable 便携版
 - macOS：`desktop/build_macos.sh` → DMG + ZIP
 - Linux：`desktop/build_linux.sh` → AppImage + DEB
 
