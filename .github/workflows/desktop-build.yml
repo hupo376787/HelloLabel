@@ -18,15 +18,15 @@ jobs:
     runs-on: windows-2025
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up build Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
@@ -51,7 +51,7 @@ jobs:
         run: npm run dist:win -- --publish never
 
       - name: Upload Windows artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: HelloLabel-Windows-x64
           path: |
@@ -65,15 +65,15 @@ jobs:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up build Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
@@ -92,7 +92,7 @@ jobs:
         run: npx electron-builder --mac --arm64 --publish never
 
       - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: HelloLabel-macOS-arm64
           path: |
@@ -107,15 +107,15 @@ jobs:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up build Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
@@ -134,7 +134,7 @@ jobs:
         run: npx electron-builder --mac --x64 --publish never
 
       - name: Upload macOS Intel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: HelloLabel-macOS-x64
           path: |
@@ -147,15 +147,15 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up build Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
 
       - name: Set up Node.js 22
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "22"
 
@@ -174,7 +174,7 @@ jobs:
         run: npm run dist:linux -- --publish never
 
       - name: Upload Linux artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: HelloLabel-Linux-x64
           path: |
@@ -188,7 +188,20 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Download installers
-        uses: actions/download-artifact@v4
+        id: download-installers
+        continue-on-error: true
+        uses: actions/download-artifact@v6
+        with:
+          pattern: HelloLabel-*
+          path: release-assets
+
+      - name: Clean partial artifact download before retry
+        if: steps.download-installers.outcome == 'failure'
+        run: rm -rf release-assets
+
+      - name: Retry download installers
+        if: steps.download-installers.outcome == 'failure'
+        uses: actions/download-artifact@v6
         with:
           pattern: HelloLabel-*
           path: release-assets
