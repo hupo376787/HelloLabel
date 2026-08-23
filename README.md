@@ -4,6 +4,18 @@
 
 HelloLabel is an independent, high-performance image annotation application inspired by Labelme. It focuses on image annotation and AI-assisted annotation only; it does not include spheroid analysis, diameter distribution, reporting, or other unrelated workflows.
 
+## Screenshots
+
+![](/screenshots/1.jpg)
+![](/screenshots/2.jpg)
+![](/screenshots/3.jpg)
+
+## Demo Video
+
+[![HelloLabel demo video](https://img.youtube.com/vi/gQxBUNJIDA4/hqdefault.jpg)](https://youtu.be/gQxBUNJIDA4)
+
+[Watch on YouTube](https://youtu.be/gQxBUNJIDA4)
+
 ## Features
 
 - Manual tools: Pointer, Brush, Polygon, Rectangle, Oriented Rectangle, Circle, Point, Line, and Polyline.
@@ -251,7 +263,7 @@ HelloLabel userData/
 
 The repository contains `.github/workflows/desktop-build.yml`. The workflow is triggered **only when a Git tag matching `v*` is pushed**. Normal branch pushes, pull requests, and manual `workflow_dispatch` do not build installers.
 
-A tag such as `v0.2.14` builds:
+A tag such as `v1.1.2` builds:
 
 - Windows x64: NSIS + Portable
 - macOS Apple Silicon: DMG + ZIP
