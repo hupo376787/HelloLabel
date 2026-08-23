@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-HelloLabel is an independent, high-performance image annotation application inspired by Labelme. It focuses on image annotation and AI-assisted annotation only; it does not include spheroid analysis, diameter distribution, reporting, or other unrelated workflows.
+HelloLabel is an independent, high-performance image annotation application inspired by Labelme. It focuses on image annotation and AI-assisted annotation.
 
 ## Screenshots
 
