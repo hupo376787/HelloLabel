@@ -1,6 +1,6 @@
 {
   "name": "hellolabel-desktop",
-  "version": "0.2.14",
+  "version": "1.1.0",
   "description": "HelloLabel desktop shell",
   "main": "main.cjs",
   "private": true,
@@ -68,8 +68,7 @@
         "deb"
       ],
       "category": "Graphics",
-      "icon": "build/icons",
-      "desktopName": "hellolabel.desktop"
+      "icon": "build/icons"
     }
   }
 }
