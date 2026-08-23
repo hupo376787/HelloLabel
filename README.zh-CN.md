@@ -4,6 +4,18 @@
 
 HelloLabel 是一个独立的、仿 Labelme 的高性能网页标注程序。它只做图像标注和 AI 辅助标注，不包含细胞球分析、直径分布、报告等业务逻辑。
 
+## 截图
+
+![](/screenshots/1.jpg)
+![](/screenshots/2.jpg)
+![](/screenshots/3.jpg)
+
+## 演示视频
+
+[![HelloLabel 演示视频](https://img.youtube.com/vi/gQxBUNJIDA4/hqdefault.jpg)](https://youtu.be/gQxBUNJIDA4)
+
+[在 YouTube 上观看](https://youtu.be/gQxBUNJIDA4)
+
 ## 功能
 
 - 手工工具：指针、画笔、多边形、矩形、有向矩形、圆形、点、直线、折线。
@@ -270,7 +282,7 @@ HelloLabel userData/
 
 仓库包含 `.github/workflows/desktop-build.yml`。该 Workflow **只在推送匹配 `v*` 的 Git Tag 时触发**，不会因普通分支 push、Pull Request 或手动 `workflow_dispatch` 而构建。
 
-推送例如 `v0.2.14` 后，会分别生成：
+推送例如 `v1.1.2` 后，会分别生成：
 
 - Windows x64：NSIS + Portable
 - macOS Apple Silicon：DMG + ZIP
@@ -288,4 +300,3 @@ Workflow 会为各平台准备对应架构的独立 CPython 3.12，只安装 `re
 源码/Web 模式继续使用项目自己的 `.venv`：`start_web.bat` / `start_web.sh` 会在服务完整退出后接力执行 `install_ai.bat` / `install_ai.sh`。
 
 正式桌面安装版则完全不同：**不要求系统 Python**。点击 **AI → 安装 AI** 后，Electron 会调用安装包自带的 CPython，在 HelloLabel 用户数据目录中创建独立 `ai-runtime`，并把 Torch、YOLO、SAM、SAM2（以及满足条件时的 SAM3）安装到这个私有 Runtime。安装完成后重新启动 HelloLabel 即可。
-
