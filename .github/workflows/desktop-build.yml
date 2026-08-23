@@ -196,11 +196,12 @@ jobs:
       - name: Create release and upload installers
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ github.ref_name }}
         run: |
-          if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --title "HelloLabel $TAG" --generate-notes
+          if ! gh release view "$TAG" --repo "$GH_REPO" >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GH_REPO" --title "HelloLabel $TAG" --generate-notes
           fi
           find release-assets -type f -print0 | while IFS= read -r -d '' file; do
-            gh release upload "$TAG" "$file" --clobber
+            gh release upload "$TAG" "$file" --repo "$GH_REPO" --clobber
           done
