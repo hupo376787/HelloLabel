@@ -36,7 +36,9 @@ jobs:
 
       - name: Prepare bundled Python runtime (base editor only)
         shell: pwsh
-        run: python desktop/prepare_runtime.py --uv "$(Get-Command uv).Source"
+        run: |
+          $uv = (Get-Command uv).Source
+          python desktop/prepare_runtime.py --uv "$uv"
 
       - name: Install Electron dependencies
         working-directory: desktop
