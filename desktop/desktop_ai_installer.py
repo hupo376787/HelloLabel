@@ -98,6 +98,10 @@ def install(args: argparse.Namespace) -> None:
         "PYTHONNOUSERSITE": "1",
         "PYTHONDONTWRITEBYTECODE": "1",
         "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+        # The AI runtime is a private copy of HelloLabel's bundled uv-managed
+        # interpreter. It is intentionally modified in place, never the user's
+        # system Python, so allow pip to write through the EXTERNALLY-MANAGED marker.
+        "PIP_BREAK_SYSTEM_PACKAGES": "1",
         "PIP_CACHE_DIR": str(Path(args.cache_dir).resolve() / "pip"),
         "HF_HOME": str(Path(args.cache_dir).resolve() / "huggingface"),
         "TORCH_HOME": str(Path(args.cache_dir).resolve() / "torch"),
