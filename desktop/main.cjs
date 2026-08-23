@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme, dialog } = require('electron');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -10,6 +10,23 @@ const AI_READY_MARKER = '.hellolabel-ai-ready.json';
 let backend = null;
 let backendMode = 'base';
 let mainWindow = null;
+
+function desktopLog(message) {
+  try {
+    const dir = app.getPath('userData');
+    fs.mkdirSync(dir, { recursive: true });
+    const line = `[${new Date().toISOString()}] ${String(message)}\n`;
+    fs.appendFileSync(path.join(dir, 'hellolabel-desktop.log'), line, 'utf8');
+  } catch {}
+}
+
+function desktopLogPath() {
+  try {
+    return path.join(app.getPath('userData'), 'hellolabel-desktop.log');
+  } catch {
+    return '';
+  }
+}
 
 function projectRoot() {
   return path.resolve(__dirname, '..');
@@ -128,11 +145,26 @@ function startBackend(options = {}) {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: spec.env
   });
-  backend.stdout?.on('data', d => console.log(`[HelloLabel:${backendMode}] ${String(d).trimEnd()}`));
-  backend.stderr?.on('data', d => console.error(`[HelloLabel:${backendMode}] ${String(d).trimEnd()}`));
+  backend.stdout?.on('data', d => {
+    const msg = `[HelloLabel:${backendMode}] ${String(d).trimEnd()}`;
+    console.log(msg);
+    desktopLog(msg);
+  });
+  backend.stderr?.on('data', d => {
+    const msg = `[HelloLabel:${backendMode}] ${String(d).trimEnd()}`;
+    console.error(msg);
+    desktopLog(msg);
+  });
+  backend.on('error', err => {
+    const msg = `HelloLabel ${backendMode} backend spawn error: ${err?.stack || err}`;
+    console.error(msg);
+    desktopLog(msg);
+  });
   backend.on('exit', code => {
+    const msg = `HelloLabel ${backendMode} backend exited with code ${code}`;
+    desktopLog(msg);
     if (!app.isQuitting && code !== 0 && code !== null) {
-      console.error(`HelloLabel ${backendMode} backend exited with code ${code}`);
+      console.error(msg);
     }
   });
   return backendMode;
@@ -210,9 +242,18 @@ async function createWindow() {
   });
 
   mainWindow.setMenuBarVisibility(false);
-  await mainWindow.loadURL(`http://${HOST}:${PORT}/`);
-  mainWindow.once('ready-to-show', () => mainWindow?.show());
+  mainWindow.once('ready-to-show', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
+
+  await mainWindow.loadURL(`http://${HOST}:${PORT}/`);
+
+  // ready-to-show may fire before loadURL() resolves. If that happened, the
+  // one-shot event would otherwise be missed and the packaged window stays hidden.
+  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+    mainWindow.show();
+  }
 }
 
 function shellQuote(value) {
@@ -324,12 +365,21 @@ ipcMain.handle('hellolabel:runtime-info', () => ({
 }));
 
 app.whenReady().then(async () => {
+  desktopLog(`HelloLabel desktop starting. packaged=${app.isPackaged} resources=${process.resourcesPath}`);
   try {
     await startBackendWithFallback();
     await createWindow();
+    desktopLog('Main window created and shown.');
   } catch (err) {
+    const details = err?.stack || err?.message || String(err);
     console.error(err);
+    desktopLog(`Startup failed: ${details}`);
     stopBackend();
+    const logPath = desktopLogPath();
+    dialog.showErrorBox(
+      'HelloLabel failed to start',
+      `${err?.message || String(err)}${logPath ? `\n\nLog: ${logPath}` : ''}`
+    );
     app.quit();
   }
   app.on('activate', async () => {
