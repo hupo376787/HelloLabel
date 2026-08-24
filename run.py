@@ -57,13 +57,17 @@ def install_ui_extensions(app) -> None:
     except Exception:
         return
 
-    style = '<link rel="stylesheet" href="/static/theme-workspace.css?v=hellolabel-v130">'
+    style = '<link rel="stylesheet" href="/static/theme-workspace.css?v=hellolabel-v131">'
     if style not in index_html:
         index_html = index_html.replace("</head>", f"  {style}\n</head>")
 
-    script = '<script src="/static/hover.js?v=hellolabel-hover-v1"></script>'
-    if script not in index_html:
-        index_html = index_html.replace("</body>", f"  {script}\n</body>")
+    scripts = [
+        '<script src="/static/hover.js?v=hellolabel-hover-v1"></script>',
+        '<script src="/static/workspace-ui.js?v=hellolabel-workspace-v1"></script>',
+    ]
+    for script in scripts:
+        if script not in index_html:
+            index_html = index_html.replace("</body>", f"  {script}\n</body>")
 
     @app.middleware("http")
     async def serve_extended_index(request, call_next):
