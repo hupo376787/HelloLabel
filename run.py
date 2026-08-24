@@ -47,11 +47,33 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def install_ui_extensions(app) -> None:
+    """Add small UI extensions without delaying the lightweight API startup."""
+    from fastapi.responses import HTMLResponse
+
+    index_path = BASE_DIR / "static" / "index.html"
+    try:
+        index_html = index_path.read_text(encoding="utf-8")
+    except Exception:
+        return
+
+    script = '<script src="/static/hover.js?v=hellolabel-hover-v1"></script>'
+    if script not in index_html:
+        index_html = index_html.replace("</body>", f"  {script}\n</body>")
+
+    @app.middleware("http")
+    async def serve_extended_index(request, call_next):
+        if request.method == "GET" and request.url.path == "/":
+            return HTMLResponse(index_html, headers={"Cache-Control": "no-cache"})
+        return await call_next(request)
+
+
 def main() -> None:
     args = parse_args()
     # Import after resolving resource paths so a frozen executable can load data.
     from web_api import app
 
+    install_ui_extensions(app)
     uvicorn.run(app, host=args.host, port=args.port, reload=False, log_level="info")
 
 
