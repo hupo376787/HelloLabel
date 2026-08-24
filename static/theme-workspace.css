@@ -12,8 +12,52 @@
 
 .empty-state h2 {
   color: var(--text);
+  text-shadow: none;
 }
 
 .empty-state p {
   color: var(--muted);
+  text-shadow: none;
+}
+
+/* Be explicit here instead of relying only on inherited colors. Some Chromium
+   theme transitions can briefly leave the empty-state text with the previous
+   theme's computed color while the workspace background has already changed. */
+:root[data-theme="light"] .workspace-wrap {
+  background: #eef1f5;
+  color: #17202d;
+}
+
+:root[data-theme="light"] .empty-state h2 {
+  color: #17202d !important;
+}
+
+:root[data-theme="light"] .empty-state p {
+  color: #5f6b7a !important;
+}
+
+:root[data-theme="dark"] .workspace-wrap {
+  background: #0f1116;
+  color: #edf2f7;
+}
+
+:root[data-theme="dark"] .empty-state h2 {
+  color: #edf2f7 !important;
+}
+
+:root[data-theme="dark"] .empty-state p {
+  color: #98a2b3 !important;
+}
+
+.empty-state .empty-logo {
+  cursor: pointer;
+  outline: none;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+}
+
+.empty-state .empty-logo:hover,
+.empty-state .empty-logo:focus-visible {
+  transform: translateY(-2px) scale(1.025);
+  box-shadow: 0 16px 38px rgba(0,0,0,.18), 0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent);
+  filter: brightness(1.03);
 }
