@@ -49,7 +49,12 @@
       return;
     }
 
-    const p = clampImagePoint(screenToImage(clientX, clientY));
+    const p = screenToImage(clientX, clientY);
+    if (p[0] < 0 || p[1] < 0 || p[0] > state.width || p[1] > state.height) {
+      clearHover();
+      return;
+    }
+
     const hit = findShapeAt(p[0], p[1]);
     if (!hit) {
       clearHover();
