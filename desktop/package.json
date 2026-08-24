@@ -49,7 +49,7 @@
     "win": {
       "target": [
         "nsis",
-        "portable"
+        "zip"
       ],
       "icon": "build/icon.ico"
     },
