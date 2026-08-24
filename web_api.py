@@ -13,14 +13,9 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
-import cv2
-import numpy as np
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
-from PIL import Image
-
-from ai import ModelManager
 
 _desktop_app_dir = os.environ.get("HELLOLABEL_APP_DIR", "").strip()
 if _desktop_app_dir:
@@ -43,13 +38,34 @@ def load_config() -> dict[str, Any]:
 
 
 CONFIG = load_config()
-MODEL_MANAGER = ModelManager(BASE_DIR, CONFIG, model_dir=MODEL_DIR)
+_MODEL_MANAGER: Any | None = None
+_MODEL_MANAGER_LOCK = threading.Lock()
+
+
+def _get_model_manager() -> Any:
+    """Create the AI manager only when model status/inference is actually used.
+
+    Importing the AI module also imports OpenCV/NumPy/Pillow. Deferring that work
+    keeps the lightweight health/static server available much earlier during
+    packaged desktop startup.
+    """
+    global _MODEL_MANAGER
+    if _MODEL_MANAGER is not None:
+        return _MODEL_MANAGER
+    with _MODEL_MANAGER_LOCK:
+        if _MODEL_MANAGER is None:
+            from ai import ModelManager
+
+            _MODEL_MANAGER = ModelManager(BASE_DIR, CONFIG, model_dir=MODEL_DIR)
+    return _MODEL_MANAGER
+
 
 _AI_IMAGE_CACHE: "OrderedDict[str, bytes]" = OrderedDict()
 _AI_IMAGE_CACHE_BYTES = 0
 _AI_IMAGE_CACHE_LOCK = threading.RLock()
 _AI_IMAGE_CACHE_MAX_ITEMS = 4
 _AI_IMAGE_CACHE_MAX_BYTES = 256 * 1024 * 1024
+
 
 def _cache_ai_image(data: bytes) -> str:
     global _AI_IMAGE_CACHE_BYTES
@@ -66,6 +82,7 @@ def _cache_ai_image(data: bytes) -> str:
             _AI_IMAGE_CACHE_BYTES -= len(removed)
     return token
 
+
 def _cached_ai_image(token: str) -> bytes | None:
     if not token:
         return None
@@ -74,6 +91,7 @@ def _cached_ai_image(token: str) -> bytes | None:
         if data is not None:
             _AI_IMAGE_CACHE.move_to_end(token)
         return data
+
 
 async def _resolve_ai_image(file: UploadFile | None, image_token: str) -> tuple[bytes, str]:
     if file is not None:
@@ -85,6 +103,7 @@ async def _resolve_ai_image(file: UploadFile | None, image_token: str) -> tuple[
     if data is None:
         raise HTTPException(status_code=410, detail="AI image cache expired; resend the image")
     return data, image_token
+
 
 app = FastAPI(title="HelloLabel", version="0.2.14")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
@@ -107,7 +126,7 @@ def health() -> dict[str, Any]:
 
 @app.get("/api/models")
 def models() -> dict[str, Any]:
-    return {"models": MODEL_MANAGER.statuses()}
+    return {"models": _get_model_manager().statuses()}
 
 
 def _launch_source_ai_installer() -> None:
@@ -200,7 +219,14 @@ def install_ai(background_tasks: BackgroundTasks) -> dict[str, Any]:
     return {"ok": True, "message": "AI installer launched; HelloLabel will stop safely.", "handoff": False}
 
 
-def _decode_preview(data: bytes) -> tuple[np.ndarray, int, int]:
+def _decode_preview(data: bytes) -> tuple[Any, int, int]:
+    # OpenCV/NumPy/Pillow are relatively expensive to import from a bundled
+    # runtime on Windows (especially with real-time antivirus scanning). Import
+    # them on the first image operation instead of blocking desktop startup.
+    import cv2
+    import numpy as np
+    from PIL import Image
+
     arr = np.frombuffer(data, np.uint8)
     bgr = cv2.imdecode(arr, cv2.IMREAD_UNCHANGED)
     if bgr is None:
@@ -257,7 +283,7 @@ async def ai_sam(
             raise ValueError("points and point_labels length mismatch")
         if not point_values and not box_value:
             raise ValueError("Add at least one point or box prompt")
-        result = MODEL_MANAGER.predict_sam(
+        result = _get_model_manager().predict_sam(
             model_id=model,
             image_bytes=image_bytes,
             points=point_values,
@@ -285,7 +311,7 @@ async def ai_yolo(
     try:
         image_bytes, resolved_token = await _resolve_ai_image(file, image_token)
         classes = [x.strip() for x in text.replace("，", ",").split(",") if x.strip()]
-        shapes = MODEL_MANAGER.predict_yolo(
+        shapes = _get_model_manager().predict_yolo(
             model_id=model,
             image_bytes=image_bytes,
             text_classes=classes,
