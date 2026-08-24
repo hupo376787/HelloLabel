@@ -7,9 +7,11 @@ const path = require('node:path');
 const PORT = Number(process.env.HELLOLABEL_PORT || process.env.LABELIT_PORT || 9010);
 const HOST = '127.0.0.1';
 const AI_READY_MARKER = '.hellolabel-ai-ready.json';
+const STARTUP_STARTED_AT = Date.now();
 let backend = null;
 let backendMode = 'base';
 let mainWindow = null;
+let splashWindow = null;
 let closePromptActive = false;
 let allowQuitWithoutPrompt = false;
 
@@ -116,7 +118,8 @@ function backendCommand({ forceBase = false } = {}) {
         YOLO_CONFIG_DIR: path.join(paths.configDir, 'ultralytics'),
         PIP_CACHE_DIR: path.join(paths.cacheDir, 'pip'),
         PYTHONNOUSERSITE: '1',
-        PYTHONDONTWRITEBYTECODE: '1'
+        PYTHONDONTWRITEBYTECODE: '1',
+        PYTHONUNBUFFERED: '1'
       }
     };
   }
@@ -133,7 +136,8 @@ function backendCommand({ forceBase = false } = {}) {
       HELLOLABEL_PORT: String(PORT),
       LABELIT_DESKTOP: '1',
       LABELIT_HOST: HOST,
-      LABELIT_PORT: String(PORT)
+      LABELIT_PORT: String(PORT),
+      PYTHONUNBUFFERED: '1'
     }
   };
 }
@@ -147,6 +151,7 @@ function startBackend(options = {}) {
     stdio: ['ignore', 'pipe', 'pipe'],
     env: spec.env
   });
+  desktopLog(`Starting ${backendMode} backend: ${spec.command}`);
   backend.stdout?.on('data', d => {
     const msg = `[HelloLabel:${backendMode}] ${String(d).trimEnd()}`;
     console.log(msg);
@@ -187,38 +192,200 @@ function stopBackend() {
   backend = null;
 }
 
-function waitForServer(timeoutMs = 30000) {
+function waitForServer(timeoutMs = 30000, processRef = backend) {
   const started = Date.now();
   return new Promise((resolve, reject) => {
-    const probe = () => {
-      const req = http.get({ hostname: HOST, port: PORT, path: '/api/health', timeout: 1200 }, res => {
+    let settled = false;
+
+    const cleanup = () => {
+      processRef?.removeListener('exit', onBackendExit);
+      processRef?.removeListener('error', onBackendError);
+    };
+
+    const finishResolve = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+
+    const finishReject = err => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(err);
+    };
+
+    const onBackendExit = code => {
+      finishReject(new Error(`HelloLabel ${backendMode} backend exited before becoming ready (code ${code}).`));
+    };
+
+    const onBackendError = err => {
+      finishReject(new Error(`HelloLabel ${backendMode} backend failed to start: ${err?.message || err}`));
+    };
+
+    function retry() {
+      if (settled) return;
+      if (Date.now() - started > timeoutMs) {
+        finishReject(new Error('HelloLabel backend did not start in time.'));
+        return;
+      }
+      setTimeout(probe, 200);
+    }
+
+    function probe() {
+      if (settled) return;
+      const req = http.get({ hostname: HOST, port: PORT, path: '/api/health', timeout: 1000 }, res => {
         res.resume();
-        if (res.statusCode === 200) return resolve();
+        if (res.statusCode === 200) {
+          finishResolve();
+          return;
+        }
         retry();
       });
       req.on('timeout', () => req.destroy());
       req.on('error', retry);
-    };
-    const retry = () => {
-      if (Date.now() - started > timeoutMs) return reject(new Error('HelloLabel backend did not start in time.'));
-      setTimeout(probe, 250);
-    };
+    }
+
+    processRef?.once('exit', onBackendExit);
+    processRef?.once('error', onBackendError);
     probe();
   });
 }
 
+function isChineseLocale() {
+  return (app.getLocale() || '').toLowerCase().startsWith('zh');
+}
+
+function startupText() {
+  return isChineseLocale()
+    ? {
+        starting: '正在启动 HelloLabel…',
+        service: '正在启动本地服务…',
+        fallback: 'AI 环境启动失败，正在切换基础环境…',
+        interface: '正在加载标注界面…'
+      }
+    : {
+        starting: 'Starting HelloLabel…',
+        service: 'Starting local service…',
+        fallback: 'AI runtime failed; switching to base runtime…',
+        interface: 'Loading annotation workspace…'
+      };
+}
+
+function splashIconDataUrl() {
+  try {
+    const iconPath = path.join(__dirname, 'build', 'icon.png');
+    const data = fs.readFileSync(iconPath).toString('base64');
+    return `data:image/png;base64,${data}`;
+  } catch {
+    return '';
+  }
+}
+
+async function createSplashWindow() {
+  if (splashWindow && !splashWindow.isDestroyed()) return;
+  const dark = nativeTheme.shouldUseDarkColors;
+  const copy = startupText();
+  const iconData = splashIconDataUrl();
+  const bg = dark ? '#151820' : '#f7f9fc';
+  const card = dark ? '#1d222c' : '#ffffff';
+  const text = dark ? '#f5f7fb' : '#20242c';
+  const muted = dark ? '#aab2c0' : '#77808f';
+  const line = dark ? '#303745' : '#e5e9f0';
+  const accent = '#63c7ea';
+  const html = `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  * { box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: ${bg}; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body { display: grid; place-items: center; user-select: none; }
+  .card { width: 100%; height: 100%; background: ${card}; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px 42px 28px; border: 1px solid ${line}; -webkit-app-region: drag; }
+  .logo { width: 92px; height: 92px; object-fit: contain; border-radius: 22px; margin-bottom: 14px; }
+  .fallback-logo { width: 82px; height: 82px; border-radius: 24px; margin-bottom: 18px; display: grid; place-items: center; font-weight: 700; font-size: 36px; color: ${accent}; background: ${dark ? '#242a35' : '#f0f7fb'}; }
+  h1 { margin: 0; font-size: 29px; line-height: 1.2; font-weight: 650; letter-spacing: .2px; color: ${text}; }
+  .subtitle { margin-top: 6px; color: ${muted}; font-size: 13px; letter-spacing: .2px; }
+  .progress { width: 250px; height: 4px; margin-top: 27px; border-radius: 99px; overflow: hidden; background: ${dark ? '#2d3440' : '#e9edf3'}; }
+  .progress::after { content: ''; display: block; width: 42%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #67d5e7, #9d91ff); animation: move 1.1s ease-in-out infinite; }
+  #status { margin-top: 11px; min-height: 18px; color: ${muted}; font-size: 12px; }
+  @keyframes move { 0% { transform: translateX(-115%); } 100% { transform: translateX(340%); } }
+</style>
+</head>
+<body>
+  <div class="card">
+    ${iconData ? `<img class="logo" src="${iconData}" alt="HelloLabel">` : '<div class="fallback-logo">H</div>'}
+    <h1>HelloLabel</h1>
+    <div class="subtitle">Image Annotation</div>
+    <div class="progress"></div>
+    <div id="status">${copy.starting}</div>
+  </div>
+</body>
+</html>`;
+
+  splashWindow = new BrowserWindow({
+    width: 500,
+    height: 310,
+    show: false,
+    frame: false,
+    resizable: false,
+    movable: true,
+    minimizable: false,
+    maximizable: false,
+    fullscreenable: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    center: true,
+    backgroundColor: bg,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true
+    }
+  });
+
+  splashWindow.once('ready-to-show', () => {
+    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.show();
+  });
+  splashWindow.on('closed', () => { splashWindow = null; });
+  await splashWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  if (splashWindow && !splashWindow.isDestroyed() && !splashWindow.isVisible()) splashWindow.show();
+}
+
+function setSplashStatus(message) {
+  if (!splashWindow || splashWindow.isDestroyed()) return;
+  const js = `(() => { const el = document.getElementById('status'); if (el) el.textContent = ${JSON.stringify(String(message))}; })()`;
+  splashWindow.webContents.executeJavaScript(js, true).catch(() => {});
+}
+
+function closeSplashWindow() {
+  if (!splashWindow || splashWindow.isDestroyed()) {
+    splashWindow = null;
+    return;
+  }
+  splashWindow.destroy();
+  splashWindow = null;
+}
+
 async function startBackendWithFallback() {
   const mode = startBackend();
+  const processRef = backend;
   try {
-    await waitForServer(mode === 'ai' ? 45000 : 30000);
+    await waitForServer(mode === 'ai' ? 45000 : 30000, processRef);
+    desktopLog(`${mode} backend ready after ${Date.now() - STARTUP_STARTED_AT} ms.`);
     return;
   } catch (err) {
     if (app.isPackaged && mode === 'ai') {
       console.error('AI runtime backend failed to start; falling back to the bundled base runtime.', err);
+      desktopLog(`AI backend startup failed; falling back immediately: ${err?.stack || err}`);
+      setSplashStatus(startupText().fallback);
       stopBackend();
-      await new Promise(resolve => setTimeout(resolve, 900));
+      await new Promise(resolve => setTimeout(resolve, 500));
       startBackend({ forceBase: true });
-      await waitForServer(30000);
+      await waitForServer(30000, backend);
+      desktopLog(`Base fallback backend ready after ${Date.now() - STARTUP_STARTED_AT} ms.`);
       return;
     }
     throw err;
@@ -226,7 +393,7 @@ async function startBackendWithFallback() {
 }
 
 function quitDialogOptions() {
-  const zh = (app.getLocale() || '').toLowerCase().startsWith('zh');
+  const zh = isChineseLocale();
   return zh
     ? {
         type: 'question',
@@ -271,6 +438,7 @@ async function requestUserQuit() {
 
 function quitWithoutPrompt() {
   allowQuitWithoutPrompt = true;
+  closeSplashWindow();
   app.quit();
 }
 
@@ -426,14 +594,24 @@ ipcMain.handle('hellolabel:runtime-info', () => ({
 app.whenReady().then(async () => {
   desktopLog(`HelloLabel desktop starting. packaged=${app.isPackaged} resources=${process.resourcesPath}`);
   try {
+    try {
+      await createSplashWindow();
+    } catch (splashErr) {
+      desktopLog(`Splash window failed: ${splashErr?.stack || splashErr}`);
+    }
+
+    setSplashStatus(startupText().service);
     await startBackendWithFallback();
+    setSplashStatus(startupText().interface);
     await createWindow();
-    desktopLog('Main window created and shown.');
+    closeSplashWindow();
+    desktopLog(`Main window created and shown after ${Date.now() - STARTUP_STARTED_AT} ms.`);
   } catch (err) {
     const details = err?.stack || err?.message || String(err);
     console.error(err);
     desktopLog(`Startup failed: ${details}`);
     stopBackend();
+    closeSplashWindow();
     const logPath = desktopLogPath();
     dialog.showErrorBox(
       'HelloLabel failed to start',
@@ -453,6 +631,7 @@ app.on('before-quit', event => {
     return;
   }
   app.isQuitting = true;
+  closeSplashWindow();
   stopBackend();
 });
 
