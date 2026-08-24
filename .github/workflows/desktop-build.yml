@@ -56,6 +56,7 @@ jobs:
           name: HelloLabel-Windows-x64
           path: |
             dist/desktop/*.exe
+            dist/desktop/*.zip
           if-no-files-found: error
 
   macos-arm64:
