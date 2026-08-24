@@ -1,0 +1,19 @@
+/* Theme-aware workspace background.
+   Keep the empty drawing area and its foreground text consistent with the active HelloLabel theme. */
+.workspace-wrap {
+  background: var(--bg);
+  color: var(--text);
+  transition: background-color .18s ease, color .18s ease;
+}
+
+.empty-state {
+  color: var(--muted);
+}
+
+.empty-state h2 {
+  color: var(--text);
+}
+
+.empty-state p {
+  color: var(--muted);
+}
