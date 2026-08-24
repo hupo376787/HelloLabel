@@ -5,6 +5,12 @@
   const openFolderButton = document.getElementById("openFolderBtn");
   if (!logo || !openFolderButton) return;
 
+  const syncLabel = () => {
+    const label = openFolderButton.getAttribute("title") || openFolderButton.getAttribute("aria-label") || "Open folder";
+    logo.setAttribute("aria-label", label);
+    logo.setAttribute("title", label);
+  };
+
   const openFolder = () => {
     if (openFolderButton.disabled) return;
     openFolderButton.click();
@@ -12,8 +18,7 @@
 
   logo.setAttribute("role", "button");
   logo.setAttribute("tabindex", "0");
-  logo.setAttribute("aria-label", "Open image folder");
-  logo.setAttribute("title", "Open image folder");
+  syncLabel();
 
   logo.addEventListener("click", openFolder);
   logo.addEventListener("keydown", event => {
@@ -21,5 +26,10 @@
       event.preventDefault();
       openFolder();
     }
+  });
+
+  new MutationObserver(syncLabel).observe(openFolderButton, {
+    attributes: true,
+    attributeFilter: ["title", "aria-label"]
   });
 })();
