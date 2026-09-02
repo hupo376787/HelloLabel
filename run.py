@@ -64,6 +64,7 @@ def install_ui_extensions(app) -> None:
     scripts = [
         '<script src="/static/hover.js?v=hellolabel-hover-v1"></script>',
         '<script src="/static/workspace-ui.js?v=hellolabel-workspace-v1"></script>',
+        '<script src="/static/instance-delete.js?v=hellolabel-instance-delete-v1"></script>',
     ]
     for script in scripts:
         if script not in index_html:
