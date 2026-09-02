@@ -8,16 +8,17 @@ contextBridge.exposeInMainWorld('helloLabelDesktop', {
   runtimeInfo: () => ipcRenderer.invoke('hellolabel:runtime-info')
 });
 
-// Electron can leave keyboard focus associated with the startup splash after the
-// splash is destroyed, especially on Windows. Mouse buttons still work in that
-// state, but native text controls may not receive a caret/keyboard input. Keep
-// editable controls explicitly outside any draggable region and repair focus only
-// when the browser's normal click-to-focus did not succeed.
+// Windows can finish activating the Electron BrowserWindow a few milliseconds
+// after the renderer has already processed the click. If an input is focused too
+// early, the later native-window activation can put focus back on <body>, which
+// looks like a completely dead text box. Repair the editable focus *after* the
+// activation/click sequence instead of trying to force window.focus() synchronously.
 window.addEventListener('DOMContentLoaded', () => {
   const style = document.createElement('style');
   style.textContent = `
     input, textarea, select, [contenteditable="true"] {
       -webkit-app-region: no-drag !important;
+      pointer-events: auto !important;
     }
     input[type="text"], input[type="search"], input[type="number"],
     input:not([type]), textarea, [contenteditable="true"] {
@@ -27,34 +28,69 @@ window.addEventListener('DOMContentLoaded', () => {
   `;
   document.head.appendChild(style);
 
-  const editableFromEvent = event => {
-    const target = event.target;
+  let pendingEditable = null;
+  let focusSequence = 0;
+
+  const editableFromTarget = target => {
     if (!(target instanceof Element)) return null;
     const editable = target.closest('input, textarea, select, [contenteditable="true"]');
     if (!editable || editable.disabled || editable.getAttribute('aria-disabled') === 'true') return null;
     return editable;
   };
 
+  const focusEditable = editable => {
+    if (!editable || !editable.isConnected || editable.disabled) return false;
+    try {
+      editable.focus({ preventScroll: true });
+      return document.activeElement === editable;
+    } catch {
+      return false;
+    }
+  };
+
+  const scheduleFocusRepair = editable => {
+    if (!editable) return;
+    pendingEditable = editable;
+    const seq = ++focusSequence;
+
+    // Run after Chromium's normal click focus, then once more after the native
+    // Windows activation/focus hand-off has settled. The second pass is important
+    // when the main window was shown immediately after the startup splash.
+    setTimeout(() => {
+      if (seq !== focusSequence || !pendingEditable?.isConnected) return;
+      focusEditable(pendingEditable);
+    }, 0);
+    setTimeout(() => {
+      if (seq !== focusSequence || !pendingEditable?.isConnected) return;
+      focusEditable(pendingEditable);
+    }, 80);
+  };
+
   document.addEventListener('pointerdown', event => {
-    if (!editableFromEvent(event)) return;
-    // Bring the Electron renderer back to the foreground before Chromium performs
-    // its native input-focus handling for this pointer event.
-    try { window.focus(); } catch {}
+    const editable = editableFromTarget(event.target);
+    if (editable) scheduleFocusRepair(editable);
+  }, true);
+
+  document.addEventListener('mousedown', event => {
+    const editable = editableFromTarget(event.target);
+    if (editable) scheduleFocusRepair(editable);
   }, true);
 
   document.addEventListener('click', event => {
-    const editable = editableFromEvent(event);
-    if (!editable || document.activeElement === editable) return;
-    try {
-      window.focus();
-      editable.focus({ preventScroll: true });
-    } catch {}
+    const editable = editableFromTarget(event.target);
+    if (editable) scheduleFocusRepair(editable);
   }, true);
 
-  // Also restore renderer focus after the splash hand-off and when returning to
-  // the application from another window.
-  try { window.focus(); } catch {}
+  document.addEventListener('focusin', event => {
+    const editable = editableFromTarget(event.target);
+    if (editable) pendingEditable = editable;
+  }, true);
+
+  window.addEventListener('focus', () => {
+    if (pendingEditable?.isConnected) scheduleFocusRepair(pendingEditable);
+  });
+
   window.addEventListener('pageshow', () => {
-    try { window.focus(); } catch {}
+    if (pendingEditable?.isConnected) scheduleFocusRepair(pendingEditable);
   });
 });
