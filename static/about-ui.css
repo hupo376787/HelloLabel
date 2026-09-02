@@ -1,0 +1,249 @@
+.about-modal-card {
+  width: min(760px, calc(100vw - 48px));
+  max-width: 760px;
+}
+
+.shortcuts-modal-card {
+  width: min(880px, calc(100vw - 48px));
+  max-width: 880px;
+}
+
+.about-dialog,
+.shortcuts-dialog {
+  color: var(--text);
+}
+
+.about-hero {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.about-logo-wrap {
+  min-height: 150px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: linear-gradient(145deg, var(--panel2), var(--panel));
+}
+
+.about-logo {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+  border-radius: 24px;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, .16));
+}
+
+.about-main {
+  min-width: 0;
+}
+
+.about-product-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.about-product {
+  font-size: 28px;
+  line-height: 1.1;
+  font-weight: 750;
+  letter-spacing: .2px;
+}
+
+.about-tagline {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.about-version-badge {
+  flex: 0 0 auto;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, var(--accent) 38%, var(--line));
+  border-radius: 999px;
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.about-description {
+  margin: 16px 0 12px;
+  color: var(--text);
+  line-height: 1.65;
+}
+
+.about-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 18px;
+}
+
+.about-tags span {
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel2);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.about-meta-grid {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  column-gap: 18px;
+  row-gap: 10px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+
+.about-meta-label {
+  color: var(--muted);
+  font-size: 12px;
+  padding-top: 2px;
+}
+
+.about-meta-value {
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.about-author {
+  font-weight: 700;
+}
+
+.about-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.about-link:hover,
+.about-link:focus-visible {
+  text-decoration: underline;
+}
+
+.about-footer {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.shortcuts-modal-card .modal-body {
+  max-height: min(72vh, 700px);
+  overflow: auto;
+}
+
+.shortcut-callout {
+  margin-bottom: 16px;
+  padding: 11px 13px;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line));
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--panel));
+  color: var(--text);
+  line-height: 1.55;
+  font-size: 13px;
+}
+
+.shortcut-sections {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.shortcut-section {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+}
+
+.shortcut-section h3 {
+  margin: 0;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel2);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.shortcut-table {
+  display: grid;
+}
+
+.shortcut-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 9px 11px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+}
+
+.shortcut-row:last-child {
+  border-bottom: 0;
+}
+
+.shortcut-key {
+  min-width: 0;
+}
+
+.shortcut-key kbd {
+  display: inline-block;
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--panel2);
+  color: var(--text);
+  font: 650 11px/1.35 "Segoe UI", "Microsoft YaHei UI", sans-serif;
+  white-space: normal;
+}
+
+.shortcut-description {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+@media (max-width: 760px) {
+  .about-modal-card,
+  .shortcuts-modal-card {
+    width: calc(100vw - 24px);
+  }
+
+  .about-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .about-logo-wrap {
+    min-height: 118px;
+  }
+
+  .about-logo {
+    width: 88px;
+    height: 88px;
+  }
+
+  .shortcut-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .shortcut-row {
+    grid-template-columns: 112px minmax(0, 1fr);
+  }
+}
