@@ -57,9 +57,13 @@ def install_ui_extensions(app) -> None:
     except Exception:
         return
 
-    style = '<link rel="stylesheet" href="/static/theme-workspace.css?v=hellolabel-v132">'
-    if style not in index_html:
-        index_html = index_html.replace("</head>", f"  {style}\n</head>")
+    styles = [
+        '<link rel="stylesheet" href="/static/theme-workspace.css?v=hellolabel-v132">',
+        '<link rel="stylesheet" href="/static/about-ui.css?v=hellolabel-about-v1">',
+    ]
+    for style in styles:
+        if style not in index_html:
+            index_html = index_html.replace("</head>", f"  {style}\n</head>")
 
     scripts = [
         '<script src="/static/global-labels.js?v=hellolabel-global-labels-v2"></script>',
@@ -68,6 +72,7 @@ def install_ui_extensions(app) -> None:
         '<script src="/static/instance-delete.js?v=hellolabel-instance-delete-v1"></script>',
         '<script src="/static/drawing-undo.js?v=hellolabel-drawing-undo-v3"></script>',
         '<script src="/static/geometry-edit.js?v=hellolabel-geometry-edit-v2"></script>',
+        '<script src="/static/about-ui.js?v=hellolabel-about-v1"></script>',
     ]
     for script in scripts:
         if script not in index_html:
