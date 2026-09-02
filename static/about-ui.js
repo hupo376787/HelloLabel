@@ -121,7 +121,8 @@
           ["Wheel", "Zoom the image around the pointer."],
           ["Middle-drag", "Pan the image."],
           ["Space + drag", "Pan the image with the left mouse button."],
-          ["Hover shape", "Temporarily highlights the annotation without changing selection."],
+          ["Hover shape / row", "Temporarily highlights the annotation without changing selection."],
+          ["Ctrl/Cmd + click", "Add or remove a canvas shape from the current multi-selection."],
           ["Edge + click", "Polygon/polyline edges snap under the pointer; click once to insert a new movable vertex."],
           ["Right-click while drawing", "Polygon/polyline: remove the last point, one point per click, all the way to zero."],
           ["Right-click completed shape", "Polygon, polyline, rectangle, oriented rectangle, circle or line: reopen it in drawing mode. Esc restores the original shape."],
@@ -131,13 +132,13 @@
       {
         title: "General commands",
         rows: [
-          ["Ctrl+O", "Open an image folder."],
-          ["Ctrl+S", "Save the current Labelme JSON."],
-          ["Ctrl+Z", "Undo the last completed edit. While drawing a polygon/polyline, point rollback is right-click only."],
-          ["Ctrl+Y / Ctrl+Shift+Z", "Redo."],
-          ["Delete / Backspace", "In Pointer mode, delete the selected instance."],
+          ["Ctrl/Cmd+O", "Open an image folder."],
+          ["Ctrl/Cmd+S", "Save the current Labelme JSON."],
+          ["Ctrl/Cmd+Z", "Undo the last completed edit. While drawing a polygon/polyline, point rollback is right-click only."],
+          ["Ctrl/Cmd+Y / Ctrl/Cmd+Shift+Z", "Redo."],
+          ["Delete / Backspace", "If a polygon/polyline control point is active, remove that vertex when valid; otherwise delete the selected instance(s)."],
           ["Enter", "Finish the current sequence drawing; in SAM mode, accept the current result."],
-          ["Esc", "Cancel the current drawing or AI interaction. If a completed shape was reopened, restore the original." ]
+          ["Esc", "Cancel the current drawing or AI interaction. If a completed shape was reopened, restore the original."]
         ]
       },
       {
@@ -174,7 +175,8 @@
           ["鼠标滚轮", "以鼠标位置为中心缩放图片视图。"],
           ["鼠标中键拖动", "平移图片视图。"],
           ["Space + 拖动", "按住空格键后用左键拖动，平移图片视图。"],
-          ["鼠标悬停实例", "临时高亮实例，不改变当前选中状态。"],
+          ["悬停实例 / 列表行", "临时高亮对应实例，不改变当前选中状态。"],
+          ["Ctrl/Cmd + 单击", "在画布上将实例加入或移出当前多选。"],
           ["边线吸附 + 单击", "多边形/折线边缘会自动吸附；单击一次插入一个新的可移动角点。"],
           ["绘制中右键", "多边形/折线每右击一次回撤最后一个点，可以一直回撤到 0 个点。"],
           ["完成图形后右键", "多边形、折线、矩形、有向矩形、圆形、直线可重新进入绘制状态；此时按 Esc 恢复原图形。"],
@@ -184,11 +186,11 @@
       {
         title: "通用操作",
         rows: [
-          ["Ctrl+O", "打开图片文件夹。"],
-          ["Ctrl+S", "保存当前图片的 Labelme JSON。"],
-          ["Ctrl+Z", "撤销上一次已经完成的操作。正在绘制多边形/折线时，单点回撤只使用鼠标右键。"],
-          ["Ctrl+Y / Ctrl+Shift+Z", "重做。"],
-          ["Delete / Backspace", "指针模式下删除当前选中的实例。"],
+          ["Ctrl/Cmd+O", "打开图片文件夹。"],
+          ["Ctrl/Cmd+S", "保存当前图片的 Labelme JSON。"],
+          ["Ctrl/Cmd+Z", "撤销上一次已经完成的操作。正在绘制多边形/折线时，单点回撤只使用鼠标右键。"],
+          ["Ctrl/Cmd+Y / Ctrl/Cmd+Shift+Z", "重做。"],
+          ["Delete / Backspace", "当前激活的是多边形/折线角点时优先删除该角点（满足最小点数时）；否则删除选中的实例。"],
           ["Enter", "完成当前序列绘制；SAM 模式下接受当前分割结果。"],
           ["Esc", "取消当前绘制或 AI 交互；如果刚用右键重新打开了已完成图形，则恢复原图形。"]
         ]
