@@ -35,8 +35,19 @@
   const viewport = document.getElementById("viewport");
   if (!viewport) return;
 
-  // Point rollback is deliberately mouse-only: right-click removes one vertex.
-  // Ctrl/Cmd+Z remains the application's normal history undo shortcut.
+  // While an unfinished polygon/polyline exists, Ctrl/Cmd+Z is intentionally
+  // ignored. Single-point rollback is mouse-right-click only, so the normal
+  // history stack cannot accidentally undo an older completed annotation while
+  // the user is still placing vertices.
+  window.addEventListener("keydown", event => {
+    if (!activeSequenceDrawing()) return;
+    if (!(event.ctrlKey || event.metaKey) || event.shiftKey || String(event.key).toLowerCase() !== "z") return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation();
+  }, true);
+
+  // Right-click removes exactly one vertex from an unfinished polygon/polyline.
   viewport.addEventListener("pointerdown", event => {
     if (event.button !== 2 || !activeSequenceDrawing()) return;
     if (undoDrawingPoint()) {
