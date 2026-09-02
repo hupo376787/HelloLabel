@@ -62,6 +62,7 @@ def install_ui_extensions(app) -> None:
         index_html = index_html.replace("</head>", f"  {style}\n</head>")
 
     scripts = [
+        '<script src="/static/global-labels.js?v=hellolabel-global-labels-v1"></script>',
         '<script src="/static/hover.js?v=hellolabel-hover-v1"></script>',
         '<script src="/static/workspace-ui.js?v=hellolabel-workspace-v1"></script>',
         '<script src="/static/instance-delete.js?v=hellolabel-instance-delete-v1"></script>',
