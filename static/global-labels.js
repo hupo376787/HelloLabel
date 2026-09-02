@@ -14,7 +14,8 @@
     for (const [rawName, rawMeta] of Object.entries(source)) {
       const name = String(rawName || "").trim();
       if (!name) continue;
-      const color = validColor(rawMeta?.color) ? rawMeta.color : stableColor(name);
+      const rawColor = typeof rawMeta === "string" ? rawMeta : rawMeta?.color;
+      const color = validColor(rawColor) ? rawColor : stableColor(name);
       out[name] = { color };
     }
     return out;
@@ -36,7 +37,7 @@
 
   function persistGlobalLabels() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ schema: 1, labels: globalLabels }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ schema: 1, product: "HelloLabel", type: "label-library", labels: globalLabels }));
       hasStoredLabels = true;
     } catch {}
   }
@@ -82,25 +83,20 @@
     }
   }
 
+  // Keep Labelme/HelloLabel metadata inside each image JSON independent from the
+  // application-level library. Global add/rename/delete/import operations must
+  // never rewrite existing annotation JSON files or mutate their shape labels.
   const originalEnsureHelloLabel = ensureHelloLabel;
   ensureHelloLabel = function() {
-    if (!state.data) return;
-
-    // The original normalizer also repairs legacy metadata and runtime IDs. Once
-    // application-wide labels are attached, give it a temporary label map so its
-    // per-image "discover shape labels" behavior cannot mutate the global list.
-    const alreadyGlobal = state.data?.hellolabel?.labels === globalLabels;
-    if (alreadyGlobal) {
-      state.data.hellolabel.labels = {};
-      originalEnsureHelloLabel();
-    } else {
-      originalEnsureHelloLabel();
-    }
-    state.data.hellolabel.labels = globalLabels;
+    return originalEnsureHelloLabel();
   };
 
   labelColor = function(label) {
-    return globalLabels[String(label)]?.color || stableColor(String(label || ""));
+    const name = String(label || "");
+    const globalColor = globalLabels[name]?.color;
+    if (validColor(globalColor)) return globalColor;
+    const imageColor = state.data?.hellolabel?.labels?.[name]?.color;
+    return validColor(imageColor) ? imageColor : stableColor(name);
   };
 
   const originalRefreshFolderEntries = refreshFolderEntries;
@@ -192,7 +188,6 @@
     persistGlobalLabels();
     renderLabelList();
     if (state.data) {
-      ensureHelloLabel();
       buildRenderCache();
       buildLabelAtlas();
       renderSelectedOverlay();
@@ -257,113 +252,228 @@
       setStatus(t("labelAdded", { name }));
     }
     state.activeLabel = name;
-    if (state.data) ensureHelloLabel();
     renderLabelList();
   };
 
+  // Rename only the software-level label definition. Existing shapes in the
+  // current image and all historical JSON files keep their original label text.
   renameLabel = async function(oldName) {
     if (!globalLabels[oldName]) return;
-    const usage = currentUsage();
-    const count = usage.get(oldName) || 0;
-    const newName = await promptText(t("renameLabel"), t("renameSyncHint", { count }), oldName);
+    const newName = await promptText(t("renameLabel"), state.language === "en"
+      ? "Rename this application label. Existing annotation JSON files and instances will not be changed."
+      : "重命名软件级标签。已有标注 JSON 和实例不会被修改。", oldName);
     if (!newName || newName === oldName) return;
 
     const exists = !!globalLabels[newName];
-    const message = exists
-      ? t("renameExistingMsg", { newName: escapeHtml(newName), oldName: escapeHtml(oldName), count })
-      : t("renameMsg", { oldName: escapeHtml(oldName), newName: escapeHtml(newName), count });
+    const message = state.language === "en"
+      ? (exists
+          ? `Label “${escapeHtml(newName)}” already exists. Merge the library entries only? Existing annotation JSON files will remain unchanged.`
+          : `Rename library label “${escapeHtml(oldName)}” to “${escapeHtml(newName)}”? Existing annotation JSON files will remain unchanged.`)
+      : (exists
+          ? `标签“${escapeHtml(newName)}”已经存在。仅合并软件标签库中的定义吗？已有标注 JSON 不会修改。`
+          : `将软件标签“${escapeHtml(oldName)}”重命名为“${escapeHtml(newName)}”？已有标注 JSON 不会修改。`);
     if (!await confirmModal(t("confirmRename"), message, exists ? t("mergeRename") : t("renameAction"))) return;
 
-    if (count > 0 && state.data) pushHistory();
     const oldColor = globalLabels[oldName]?.color || stableColor(oldName);
     if (!exists) globalLabels[newName] = { color: oldColor };
     delete globalLabels[oldName];
-    if (state.data) {
-      for (const shape of state.data.shapes) if (shape.label === oldName) shape.label = newName;
-      ensureHelloLabel();
-    }
     if (state.activeLabel === oldName) state.activeLabel = newName;
     persistGlobalLabels();
-
-    if (count > 0 && state.data) {
-      markDirty(t("renameSynced"));
-      renderAll();
-    } else {
-      renderLabelList();
-      if (state.data) {
-        buildRenderCache();
-        buildLabelAtlas();
-        scheduleViewportRender();
-      }
-      setStatus(t("renameSynced"));
+    renderLabelList();
+    if (state.data) {
+      buildRenderCache();
+      buildLabelAtlas();
+      renderSelectedOverlay();
+      scheduleViewportRender();
     }
+    setStatus(state.language === "en"
+      ? `Renamed application label to “${newName}”. Annotation JSON was not changed.`
+      : `已将软件标签重命名为“${newName}”，已有标注 JSON 未修改。`);
   };
 
+  // Delete only the software-level definition. Do not replace/delete any existing
+  // instances, and do not mark the current image dirty.
   deleteLabel = async function(name) {
     if (!globalLabels[name]) return;
-    const usage = currentUsage();
-    const count = usage.get(name) || 0;
-
-    if (count === 0) {
-      if (!await confirmModal(t("deleteLabel"), t("deleteLabelConfirm", { name: escapeHtml(name) }), t("deleteAction"), true)) return;
-      delete globalLabels[name];
-      if (state.activeLabel === name) state.activeLabel = null;
-      persistGlobalLabels();
-      if (state.data) ensureHelloLabel();
-      renderLabelList();
-      setStatus(t("labelDeleted", { name }));
-      return;
-    }
-
-    const alternatives = Object.keys(globalLabels).filter(label => label !== name);
-    const body = `<div class="danger-note">${t("labelInUse", { name: escapeHtml(name), count })}</div><label>${escapeHtml(t("replacementLabel"))}<select id="replacementLabel"><option value="">${escapeHtml(t("choosePlaceholder"))}</option>${alternatives.map(label => `<option value="${escapeHtml(label)}">${escapeHtml(label)}</option>`).join("")}</select></label><label style="display:block;margin-top:10px">${escapeHtml(t("newReplacement"))}<input id="replacementNew" type="text" placeholder="${escapeHtml(t("newLabelName"))}" /></label><label style="display:flex;gap:7px;align-items:center;margin-top:12px;color:var(--danger)"><input id="deleteAssociated" type="checkbox" /> ${escapeHtml(t("deleteAssociated", { count }))}</label>`;
-    const result = await showModal({
-      title: t("deleteLabel"),
-      body,
-      buttons: [
-        { label: t("cancel"), value: null },
-        { label: t("execute"), value: "ok", className: "primary" }
-      ]
-    });
-    if (result !== "ok") return;
-
-    const remove = !!$("deleteAssociated")?.checked;
-    const replacement = String($("replacementNew")?.value || "").trim() || String($("replacementLabel")?.value || "");
-    if (!remove && !replacement) {
-      alert(t("chooseReplacement"));
-      return;
-    }
-
-    pushHistory();
-    if (remove) {
-      const oldIds = [...shapeIds()];
-      for (let index = state.data.shapes.length - 1; index >= 0; index--) {
-        if (state.data.shapes[index].label !== name) continue;
-        const id = oldIds[index];
-        state.data.shapes.splice(index, 1);
-        state.runtimeIds.splice(index, 1);
-        delete state.runtimeMeta[id];
-      }
-    } else {
-      if (!globalLabels[replacement]) globalLabels[replacement] = { color: stableColor(replacement) };
-      for (const shape of state.data.shapes) if (shape.label === name) shape.label = replacement;
-    }
+    const message = state.language === "en"
+      ? `Delete application label “${escapeHtml(name)}”? Existing annotation JSON files and instances will not be changed.`
+      : `删除软件标签“${escapeHtml(name)}”？已有标注 JSON 和实例不会被修改。`;
+    if (!await confirmModal(t("deleteLabel"), message, t("deleteAction"), true)) return;
 
     delete globalLabels[name];
-    if (state.activeLabel === name) state.activeLabel = remove ? null : replacement;
+    if (state.activeLabel === name) state.activeLabel = null;
     persistGlobalLabels();
-    ensureHelloLabel();
-    clearSelection();
-    markDirty(remove ? t("labelAndInstancesDeleted", { name, count }) : t("instancesReplaced", { count, replacement }));
-    renderAll();
+    renderLabelList();
+    if (state.data) {
+      buildRenderCache();
+      buildLabelAtlas();
+      renderSelectedOverlay();
+      scheduleViewportRender();
+    }
+    setStatus(state.language === "en"
+      ? `Deleted application label “${name}”. Annotation JSON was not changed.`
+      : `已删除软件标签“${name}”，已有标注 JSON 未修改。`);
   };
 
-  // New labels typed while creating a shape are added through commitGeometry.
-  // Persist the shared map whenever normal annotation changes run through markDirty.
-  const originalMarkDirty = markDirty;
-  markDirty = function(...args) {
-    persistGlobalLabels();
-    return originalMarkDirty(...args);
+  function addImportedName(target, rawName, color = null) {
+    let name = String(rawName ?? "").trim();
+    if (!name) return;
+    if ((name.startsWith('"') && name.endsWith('"')) || (name.startsWith("'") && name.endsWith("'"))) {
+      name = name.slice(1, -1).trim();
+    }
+    if (!name || target[name]) return;
+    target[name] = { color: validColor(color) ? color : stableColor(name) };
+  }
+
+  function parsePlainLabels(text) {
+    const out = {};
+    for (const token of String(text || "").replace(/^\uFEFF/, "").split(/[\r\n,]+/)) {
+      addImportedName(out, token);
+    }
+    return out;
+  }
+
+  function parseJsonLabels(data) {
+    const out = {};
+
+    if (Array.isArray(data)) {
+      for (const item of data) {
+        if (typeof item === "string") addImportedName(out, item);
+        else if (item && typeof item === "object") addImportedName(out, item.name ?? item.label, item.color);
+      }
+      return out;
+    }
+
+    if (!data || typeof data !== "object") return out;
+
+    // HelloLabel global library format:
+    // { schema: 1, product: "HelloLabel", type: "label-library", labels: { ... } }
+    if (data.labels && typeof data.labels === "object") {
+      if (Array.isArray(data.labels)) {
+        for (const item of data.labels) {
+          if (typeof item === "string") addImportedName(out, item);
+          else if (item && typeof item === "object") addImportedName(out, item.name ?? item.label, item.color);
+        }
+      } else {
+        Object.assign(out, normalizeLabels(data.labels));
+      }
+    }
+
+    // Labelme / older HelloLabel annotation JSON.
+    const extension = data.hellolabel && typeof data.hellolabel === "object"
+      ? data.hellolabel
+      : (data.labelit && typeof data.labelit === "object" ? data.labelit : null);
+    if (extension?.labels) {
+      const normalized = normalizeLabels(extension.labels);
+      for (const [name, meta] of Object.entries(normalized)) if (!out[name]) out[name] = meta;
+    }
+    if (Array.isArray(data.shapes)) {
+      for (const shape of data.shapes) {
+        const name = String(shape?.label || "").trim();
+        if (!name || out[name]) continue;
+        const color = extension?.labels?.[name]?.color;
+        addImportedName(out, name, color);
+      }
+    }
+
+    return out;
+  }
+
+  function parseLabelFile(text) {
+    const clean = String(text || "").replace(/^\uFEFF/, "").trim();
+    if (!clean) return {};
+    try {
+      const parsed = JSON.parse(clean);
+      if (typeof parsed === "string") return parsePlainLabels(parsed);
+      const labels = parseJsonLabels(parsed);
+      if (Object.keys(labels).length) return labels;
+    } catch {}
+    return parsePlainLabels(clean);
+  }
+
+  function mergeImportedLabels(imported) {
+    let added = 0;
+    let skipped = 0;
+    for (const [name, meta] of Object.entries(imported || {})) {
+      if (globalLabels[name]) {
+        skipped++;
+        continue;
+      }
+      globalLabels[name] = { color: validColor(meta?.color) ? meta.color : stableColor(name) };
+      added++;
+    }
+    if (added) persistGlobalLabels();
+    return { added, skipped, total: Object.keys(imported || {}).length };
+  }
+
+  const importInput = document.createElement("input");
+  importInput.type = "file";
+  importInput.accept = ".json,.txt,.labels,.names,application/json,text/plain";
+  importInput.hidden = true;
+  importInput.tabIndex = -1;
+  document.body.appendChild(importInput);
+
+  const importButton = document.createElement("button");
+  importButton.id = "importLabelsBtn";
+  importButton.type = "button";
+  importButton.className = "mini";
+  importButton.style.width = "30px";
+  importButton.style.minWidth = "30px";
+  importButton.style.padding = "0";
+  importButton.style.display = "inline-flex";
+  importButton.style.alignItems = "center";
+  importButton.style.justifyContent = "center";
+  importButton.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true" style="width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round"><path d="M12 3v11"/><path d="m8.5 10.5 3.5 3.5 3.5-3.5"/><path d="M5 16.5V20h14v-3.5"/></svg>';
+
+  function updateImportButtonLanguage() {
+    const label = state.language === "en" ? "Import labels" : "导入标签";
+    importButton.title = label;
+    importButton.setAttribute("aria-label", label);
+  }
+  updateImportButtonLanguage();
+
+  const headingActions = els.addLabelBtn?.parentElement;
+  if (headingActions) headingActions.insertBefore(importButton, els.addLabelBtn);
+
+  importButton.addEventListener("click", () => {
+    importInput.value = "";
+    importInput.click();
+  });
+
+  importInput.addEventListener("change", async () => {
+    const file = importInput.files?.[0];
+    if (!file) return;
+    try {
+      const imported = parseLabelFile(await file.text());
+      const count = Object.keys(imported).length;
+      if (!count) {
+        const message = state.language === "en"
+          ? "No recognizable labels were found in this file."
+          : "文件中没有识别到可导入的标签。";
+        setStatus(message, true);
+        alert(message);
+        return;
+      }
+      const result = mergeImportedLabels(imported);
+      renderLabelList();
+      const message = state.language === "en"
+        ? `Imported ${result.added} new label(s); ${result.skipped} existing label(s) were kept.`
+        : `已导入 ${result.added} 个新标签；${result.skipped} 个同名标签保留现有定义。`;
+      setStatus(message);
+    } catch (error) {
+      const message = state.language === "en"
+        ? `Failed to import labels: ${error?.message || error}`
+        : `导入标签失败：${error?.message || error}`;
+      setStatus(message, true);
+      alert(message);
+    }
+  });
+
+  const originalApplyLanguage = applyLanguage;
+  applyLanguage = function(...args) {
+    const result = originalApplyLanguage(...args);
+    updateImportButtonLanguage();
+    return result;
   };
 
   // The original click handler only permits adding labels when an image is open.
