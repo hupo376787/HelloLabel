@@ -114,6 +114,7 @@
     shape.points.splice(candidate.segmentIndex + 1, 0, clampImagePoint(candidate.point));
     markDirty(t("vertexInserted"));
     renderAll();
+    if (state.mode !== "pointer") setMode("pointer");
     selectId(candidate.id, { scroll: true });
     state.activeHandle = { index: candidate.segmentIndex + 1, kind: "point" };
     renderSelectedOverlay();
@@ -263,7 +264,7 @@
       return;
     }
 
-    if (state.mode === "pointer") {
+    if (state.mode === "pointer" || state.mode === "polygon" || state.mode === "linestrip") {
       const point = clampImagePoint(screenToImage(event.clientX, event.clientY));
       edgeSnap = findEditableEdge(point);
       if (edgeSnap) showSnapAtImage(edgeSnap.point); else clearSnap();
@@ -287,7 +288,7 @@
         return;
       }
 
-      if (!state.drawing && state.mode === "pointer") {
+      if (!state.drawing && (state.mode === "pointer" || state.mode === "polygon" || state.mode === "linestrip")) {
         const point = clampImagePoint(screenToImage(event.clientX, event.clientY));
         const candidate = findEditableEdge(point);
         if (candidate && insertSnappedVertex(candidate)) {
