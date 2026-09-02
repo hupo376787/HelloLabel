@@ -61,3 +61,17 @@
   box-shadow: 0 16px 38px rgba(0,0,0,.18), 0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent);
   filter: brightness(1.03);
 }
+
+/* Keep pointer hover continuity when moving from a first-level menu item into
+   its fly-out submenu. The base menu intentionally leaves a small visual gap;
+   this invisible bridge removes the dead zone that used to close the submenu. */
+@media (min-width: 901px) {
+  .app-submenu::before {
+    content: "";
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    left: -10px;
+    width: 12px;
+  }
+}
