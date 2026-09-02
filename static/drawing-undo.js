@@ -1,6 +1,8 @@
 "use strict";
 
 (() => {
+  let suppressNextContextMenu = false;
+
   function activeSequenceDrawing() {
     const drawing = typeof state !== "undefined" ? state?.drawing : null;
     return drawing && (drawing.type === "polygon" || drawing.type === "linestrip") ? drawing : null;
@@ -51,10 +53,11 @@
 
   // Right-click is a quick single-vertex rollback while drawing polygons or
   // polylines. Handle pointerdown so feedback is immediate and suppress the
-  // browser/Electron context menu for that click.
+  // matching contextmenu event even when that click removes the final point.
   viewport.addEventListener("pointerdown", event => {
     if (event.button !== 2 || !activeSequenceDrawing()) return;
     if (undoDrawingPoint()) {
+      suppressNextContextMenu = true;
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -62,7 +65,8 @@
   }, true);
 
   viewport.addEventListener("contextmenu", event => {
-    if (!activeSequenceDrawing()) return;
+    if (!suppressNextContextMenu && !activeSequenceDrawing()) return;
+    suppressNextContextMenu = false;
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
