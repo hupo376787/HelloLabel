@@ -1,15 +1,13 @@
-# HelloLabel models
+# Browser AI models
 
-Model files are intentionally not bundled in the source archive.
+HelloLabel 1.5 does not install or store Python/PyTorch model files in this repository or on the HelloLabel web server.
 
-Default configuration (`../config.json`):
+The Web and Desktop editions use the same browser-local AI runtime:
 
-- SAM: `models/sam_vit_b_01ec64.pth`
-- SAM2: Hugging Face model `facebook/sam2.1-hiera-small`
-- SAM3: official Hugging Face checkpoint, downloaded by the SAM3 package
-- YOLO11 Detect: `yolo11n.pt`
-- YOLO11 Seg: `yolo11n-seg.pt`
-- YOLO-World: `yolov8s-world.pt`
+- YOLO11 Detect / Seg models are downloaded by the user's Chromium browser when first used.
+- SlimSAM is downloaded by Transformers.js when first used.
+- WebGPU is preferred when available; supported runtimes fall back to CPU/WASM.
+- Browser/model caches are kept on the user's device and reused on later runs.
+- Source images and annotation JSON are read locally and are never uploaded to a HelloLabel backend.
 
-Ultralytics/Hugging Face models may download on first use. You can replace any
-entry in `config.json` with a local path/model ID without changing the frontend.
+This directory is documentation-only in v1.5. Third-party model files and runtimes remain subject to their respective upstream licenses.

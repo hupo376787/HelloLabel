@@ -53,6 +53,28 @@ const required = [
 ];
 for (const relative of required) assert(exists(relative), `required v1.5 file is missing: ${relative}`);
 
+// v1.5 is intentionally browser-only. Keeping these obsolete server/runtime files
+// in the working tree makes it too easy to accidentally reintroduce image upload,
+// Python AI, or a bundled backend during future changes.
+const forbiddenLegacy = [
+  "run.py",
+  "web_api.py",
+  "requirements.txt",
+  "requirements-ai.txt",
+  "install_ai.bat",
+  "install_ai.sh",
+  "config.json",
+  "ai/__init__.py",
+  "ai/geometry.py",
+  "ai/model_manager.py",
+  "desktop/prepare_runtime.py",
+  "desktop/desktop_ai_installer.py",
+  "desktop/hellolabel-server.spec"
+];
+for (const relative of forbiddenLegacy) {
+  assert(!exists(relative), `legacy server/runtime file must stay removed in v1.5: ${relative}`);
+}
+
 if (errors.length) {
   console.error("HelloLabel v1.5 static runtime validation failed:\n");
   for (const error of errors) console.error(` - ${error}`);
