@@ -6,8 +6,7 @@ server {
     listen [::]:80;
     server_name label.example.com;
 
-    # File System Access API requires a secure context outside localhost.
-    # Keep this redirect once HTTPS is configured.
+    # File System Access API and WebGPU should run from a secure context.
     return 301 https://$host$request_uri;
 }
 
@@ -23,27 +22,37 @@ server {
     ssl_certificate     /etc/letsencrypt/live/label.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/label.example.com/privkey.pem;
 
+    # Browser AI can use threaded WASM / SharedArrayBuffer when cross-origin
+    # isolation is enabled. External model/module requests are CORS requests.
+    add_header Cross-Origin-Opener-Policy "same-origin" always;
+    add_header Cross-Origin-Embedder-Policy "require-corp" always;
+    add_header Cross-Origin-Resource-Policy "same-origin" always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+
     location = /index.html {
         add_header Cache-Control "no-cache, must-revalidate" always;
+        add_header Cross-Origin-Opener-Policy "same-origin" always;
+        add_header Cross-Origin-Embedder-Policy "require-corp" always;
+        add_header Cross-Origin-Resource-Policy "same-origin" always;
         try_files $uri =404;
     }
 
     location = /static/app.js {
         add_header Cache-Control "no-cache, must-revalidate" always;
+        add_header Cross-Origin-Resource-Policy "same-origin" always;
         try_files $uri =404;
     }
 
     location /static/ {
         add_header Cache-Control "public, max-age=3600" always;
+        add_header Cross-Origin-Resource-Policy "same-origin" always;
         try_files $uri =404;
     }
 
     location / {
         try_files $uri $uri/ /index.html;
     }
-
-    add_header X-Content-Type-Options nosniff always;
-    add_header Referrer-Policy no-referrer always;
 
     # HelloLabel 1.5 has no /api backend. Reject accidental legacy API calls.
     location /api/ {
