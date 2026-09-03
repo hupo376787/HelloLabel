@@ -15,6 +15,7 @@ xcopy /e /i /y "static\*" "%OUT%\static\" >nul
 if errorlevel 1 goto :error
 copy /y "static\index.html" "%OUT%\index.html" >nul
 if errorlevel 1 goto :error
+if exist "%OUT%\static\index.html" del /q "%OUT%\static\index.html"
 
 > "%OUT%\VERSION.txt" echo HelloLabel 1.5.0 - browser-only static runtime
 
