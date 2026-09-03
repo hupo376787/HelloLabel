@@ -40,6 +40,8 @@ assert(samWorker.includes("onnx-community/sam2.1-hiera-tiny-ONNX"), "SAM worker 
 assert(samWorker.includes("input_boxes"), "SAM2.1 worker must preserve true box prompts");
 assert(samWorker.includes("./sam-mask-utils.js"), "SAM worker must use the tested SAM2.1 mask tensor helper");
 assert(!samWorker.includes("RawImage.fromTensor"), "SAM worker must not convert a 2D mask Tensor through RawImage.fromTensor");
+assert(samWorker.includes("disposeTensorTree") && samWorker.includes("releaseImageState"), "SAM worker must release temporary tensors and old image embeddings");
+assert(samWorker.includes("requestQueue = requestQueue.then"), "SAM worker requests must be serialized to avoid embedding/reset races");
 assert(samMaskUtils.includes("extractBestMask") && samMaskUtils.includes("tensor.data"), "SAM mask helper must extract the selected 2D Tensor directly");
 
 assert(privacyGuard.includes('url.pathname === "/api"') && privacyGuard.includes('url.pathname.startsWith("/api/")'), "privacy guard must block legacy /api calls");
