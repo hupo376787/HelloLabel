@@ -144,8 +144,8 @@
       {
         title: "Browser-local AI",
         rows: [
-          ["SAM left click", "Add a positive SlimSAM prompt point."],
-          ["SAM right click", "Add a negative SlimSAM prompt point."],
+          ["SAM left click", "Add a positive SAM2.1 Tiny prompt point."],
+          ["SAM right click", "Add a negative SAM2.1 Tiny prompt point."],
           ["SAM left-drag", "Create a box prompt."],
           ["Backspace", "Remove the last SAM prompt."],
           ["Enter", "Accept the current segmentation result."],
@@ -198,8 +198,8 @@
       {
         title: "浏览器本地 AI",
         rows: [
-          ["SAM 左键单击", "添加 SlimSAM 正样本提示点。"],
-          ["SAM 右键单击", "添加 SlimSAM 负样本提示点。"],
+          ["SAM 左键单击", "添加 SAM2.1 Tiny 正样本提示点。"],
+          ["SAM 右键单击", "添加 SAM2.1 Tiny 负样本提示点。"],
           ["SAM 左键拖动", "创建 Box Prompt。"],
           ["Backspace", "撤销最后一个 SAM 提示点或提示框。"],
           ["Enter", "接受当前分割结果。"],
