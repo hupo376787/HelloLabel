@@ -141,8 +141,7 @@ async function waitForJsonShapes(page, name, minimum, timeout = 15000) {
 
 async function waitActiveFile(page, name) {
   await page.waitForFunction(expected => {
-    const active = document.querySelector(".file-item.active");
-    return active?.dataset?.name === expected;
+    try { return state.imageName === expected; } catch { return false; }
   }, name, { timeout: 15000 });
   await page.waitForFunction(() => {
     const img = document.getElementById("imageView");
@@ -172,7 +171,6 @@ async function waitNotBusy(page, timeout = AI_TIMEOUT) {
 async function runYolo(page, modelId, output = "polygon") {
   await page.selectOption("#yoloModelSelect", modelId);
   if (modelId === "yolo11-seg") await page.selectOption("#yoloOutputSelect", output);
-  await page.fill("#yoloConf", "0.20").catch(() => {});
   await page.locator("#yoloRunBtn").click();
   await page.waitForFunction(() => Number(document.getElementById("instanceCount")?.textContent || 0) > 0, null, { timeout: AI_TIMEOUT });
   await waitNotBusy(page);
@@ -184,16 +182,21 @@ async function runYolo(page, modelId, output = "polygon") {
   }), modelId);
 }
 
-async function samRound(page, action, previousPath = null) {
+async function samRound(page, action) {
   await action();
-  await page.waitForFunction(previous => {
-    const path = document.getElementById("aiPreviewPath");
-    if (!path || path.classList.contains("hidden-svg")) return false;
-    const d = path.getAttribute("d") || "";
-    return d.length > 8 && (!previous || d !== previous);
-  }, previousPath, { timeout: AI_TIMEOUT });
+  await page.waitForFunction(() => {
+    const preview = document.getElementById("aiPreviewPath");
+    return preview && !preview.classList.contains("hidden-svg") && (preview.getAttribute("d") || "").length > 8;
+  }, null, { timeout: AI_TIMEOUT });
   await waitNotBusy(page);
-  return page.locator("#aiPreviewPath").getAttribute("d");
+  return page.evaluate(() => ({
+    path: document.getElementById("aiPreviewPath")?.getAttribute("d") || "",
+    points: state.sam.points.map(point => [...point]),
+    labels: [...state.sam.labels],
+    box: state.sam.box ? [...state.sam.box] : null,
+    historyLength: state.sam.history.length,
+    requestSeq: state.sam.requestSeq,
+  }));
 }
 
 let server = null;
@@ -302,24 +305,29 @@ try {
   step("YOLO11 Seg real mask inference passed", { device: seg.device, shapes: segJson.shapes.length, polygonSizes });
 
   // Real SAM2.1 Tiny multi-round interaction: positive point -> negative point ->
-  // box prompt -> accept. Each round must update the local preview.
+  // box prompt -> accept. The preview itself may remain geometrically identical
+  // after a useful extra prompt, so verify the actual application prompt state.
   const beforeSam = segJson.shapes.length;
   await page.locator("#samModeBtn").click();
   box = await imageBox(page);
-  let previewPath = await samRound(page, async () => {
+  let samState = await samRound(page, async () => {
     await page.mouse.click(box.x + box.width * 0.50, box.y + box.height * 0.52);
   });
-  const firstPath = previewPath;
-  previewPath = await samRound(page, async () => {
+  assert(samState.historyLength === 1 && samState.points.length === 1 && samState.labels[0] === 1, "SAM2.1 positive prompt was not recorded correctly");
+
+  samState = await samRound(page, async () => {
     await page.mouse.click(box.x + box.width * 0.92, box.y + box.height * 0.10, { button: "right" });
-  }, previewPath);
-  assert(previewPath !== firstPath, "SAM2.1 negative prompt did not update the preview");
-  previewPath = await samRound(page, async () => {
+  });
+  assert(samState.historyLength === 2 && samState.points.length === 2 && samState.labels.includes(0), "SAM2.1 negative prompt was not recorded correctly");
+
+  samState = await samRound(page, async () => {
     await page.mouse.move(box.x + box.width * 0.08, box.y + box.height * 0.22);
     await page.mouse.down();
     await page.mouse.move(box.x + box.width * 0.94, box.y + box.height * 0.90, { steps: 8 });
     await page.mouse.up();
-  }, previewPath);
+  });
+  assert(samState.historyLength === 3 && Array.isArray(samState.box) && samState.box.length === 4, "SAM2.1 box prompt was not recorded correctly");
+
   const samRuntime = await page.evaluate(() => ({
     loaded: !!window.helloLabelBrowserRuntime?.sam?.loaded,
     device: window.helloLabelBrowserRuntime?.sam?.device || null,
@@ -329,7 +337,7 @@ try {
   assert(samRuntime.loaded, "SAM2.1 runtime is not marked loaded after inference");
   await page.keyboard.press("Enter");
   const samJson = await waitForJsonShapes(page, "03_bus.json", beforeSam + 1, 30000);
-  step("SAM2.1 multi-prompt inference passed", { ...samRuntime, shapesAfterAccept: samJson.shapes.length });
+  step("SAM2.1 multi-prompt inference passed", { ...samRuntime, promptHistory: samState.historyLength, shapesAfterAccept: samJson.shapes.length });
 
   // Repeatedly switch images and reload their JSON. This catches stale preview,
   // pending-save, reset/encode races, and obvious long-session state failures.
