@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const APP_VERSION = "1.3.4";
+  const APP_VERSION = "1.4.1";
   const REPOSITORY_URL = "https://github.com/hupo376787/HelloLabel";
 
   if (typeof I18N !== "undefined") {
