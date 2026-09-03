@@ -9,7 +9,9 @@
   const scripts = [
     `/static/app-core.js?v=${VERSION}`,
     `/static/global-labels.js?v=${VERSION}`,
+    `/static/browser-capture.js?v=${VERSION}`,
     `/static/browser-runtime.js?v=${VERSION}`,
+    `/static/browser-event-rebind.js?v=${VERSION}`,
     `/static/modal-focus-fix.js?v=${VERSION}`,
     `/static/layout-fixes.js?v=${VERSION}`,
     `/static/hover.js?v=${VERSION}`,
