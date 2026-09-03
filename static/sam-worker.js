@@ -1,6 +1,6 @@
-import { env, SamModel, AutoProcessor, RawImage, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
+import { env, Sam2Model, Sam2Processor, RawImage, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
 
-const MODEL_ID = "Xenova/slimsam-77-uniform";
+const MODEL_ID = "onnx-community/sam2.1-hiera-tiny-ONNX";
 env.allowRemoteModels = true;
 env.allowLocalModels = false;
 env.useBrowserCache = true;
@@ -16,24 +16,42 @@ let imageObjectUrl = null;
 
 async function loadRuntime() {
   if (model && processor) return [model, processor];
-  if (!processorPromise) processorPromise = AutoProcessor.from_pretrained(MODEL_ID);
+  if (!processorPromise) processorPromise = Sam2Processor.from_pretrained(MODEL_ID);
   if (!modelPromise) {
     modelPromise = (async () => {
       if (self.navigator?.gpu) {
         try {
-          const webgpuModel = await SamModel.from_pretrained(MODEL_ID, { device: "webgpu", dtype: "fp32" });
+          const webgpuModel = await Sam2Model.from_pretrained(MODEL_ID, {
+            device: "webgpu",
+            dtype: {
+              vision_encoder: "fp16",
+              prompt_encoder_mask_decoder: "fp32",
+            },
+          });
           device = "webgpu";
           return webgpuModel;
         } catch (error) {
-          console.warn("SlimSAM WebGPU load failed; falling back to WASM", error);
+          console.warn("SAM2.1 WebGPU load failed; falling back to WASM", error);
         }
       }
       device = "wasm";
       try {
-        return await SamModel.from_pretrained(MODEL_ID, { device: "wasm", dtype: "q8" });
+        return await Sam2Model.from_pretrained(MODEL_ID, {
+          device: "wasm",
+          dtype: {
+            vision_encoder: "q8",
+            prompt_encoder_mask_decoder: "fp32",
+          },
+        });
       } catch (error) {
-        console.warn("SlimSAM q8 WASM load failed; falling back to default dtype", error);
-        return SamModel.from_pretrained(MODEL_ID, { device: "wasm" });
+        console.warn("SAM2.1 q8 WASM load failed; falling back to fp16/fp32", error);
+        return Sam2Model.from_pretrained(MODEL_ID, {
+          device: "wasm",
+          dtype: {
+            vision_encoder: "fp16",
+            prompt_encoder_mask_decoder: "fp32",
+          },
+        });
       }
     })();
   }
@@ -59,9 +77,7 @@ async function encodeImage(buffer, mime) {
 function bestIndex(scores) {
   if (!scores?.length) return 0;
   let best = 0;
-  for (let i = 1; i < scores.length; i++) {
-    if (Number(scores[i]) > Number(scores[best])) best = i;
-  }
+  for (let i = 1; i < scores.length; i++) if (Number(scores[i]) > Number(scores[best])) best = i;
   return best;
 }
 
@@ -69,88 +85,56 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
-// v1.5's renderer originally represented a dragged SAM box as five positive
-// prompt points (center + four inset corners). Recover the original box here so
-// existing UI code gets real SAM input_boxes semantics without uploading the
-// image or requiring a server-side predictor.
-function recoverSyntheticBox(prompts, explicitBox) {
-  if (explicitBox && [explicitBox.x1, explicitBox.y1, explicitBox.x2, explicitBox.y2].every(Number.isFinite)) {
-    return { points: prompts || [], box: explicitBox };
-  }
-  const points = Array.isArray(prompts) ? prompts.slice() : [];
-  if (points.length < 5) return { points, box: null };
-  const tail = points.slice(-5);
-  if (!tail.every(item => Number(item?.label) === 1 && Number.isFinite(item?.x) && Number.isFinite(item?.y))) {
-    return { points, box: null };
-  }
-  const [center, tl, tr, br, bl] = tail;
-  const tolerance = 0.025;
-  const approx = (a, b) => Math.abs(a - b) <= tolerance;
-  const horizontal = approx(tl.y, tr.y) && approx(bl.y, br.y);
-  const vertical = approx(tl.x, bl.x) && approx(tr.x, br.x);
-  const centered = Math.abs(center.x - (tl.x + tr.x) / 2) <= tolerance && Math.abs(center.y - (tl.y + bl.y) / 2) <= tolerance;
-  if (!horizontal || !vertical || !centered || tr.x <= tl.x || bl.y <= tl.y) {
-    return { points, box: null };
-  }
-
-  // Renderer inset is 8% on each side, leaving 84% between synthetic corners.
-  const innerW = tr.x - tl.x;
-  const innerH = bl.y - tl.y;
-  if (innerW <= 0 || innerH <= 0) return { points, box: null };
-  const fullW = innerW / 0.84;
-  const fullH = innerH / 0.84;
-  const x1 = clamp01(tl.x - fullW * 0.08);
-  const y1 = clamp01(tl.y - fullH * 0.08);
-  const x2 = clamp01(tr.x + fullW * 0.08);
-  const y2 = clamp01(bl.y + fullH * 0.08);
-  if (x2 <= x1 || y2 <= y1) return { points, box: null };
-  return {
-    points: points.slice(0, -5),
-    box: { x1, y1, x2, y2 }
-  };
-}
-
 function makePromptInputs(prompts, box) {
   const reshaped = imageInputs?.reshaped_input_sizes?.[0];
-  if (!reshaped) throw new Error("SAM resized image metadata is missing");
+  if (!reshaped) throw new Error("SAM2.1 resized image metadata is missing");
   const rh = Number(reshaped[0]);
   const rw = Number(reshaped[1]);
   const inputs = {};
-  const normalized = recoverSyntheticBox(prompts, box);
 
-  const usable = normalized.points.filter(item => Number.isFinite(item?.x) && Number.isFinite(item?.y));
+  const usable = (prompts || []).filter(item => Number.isFinite(item?.x) && Number.isFinite(item?.y));
   if (usable.length) {
-    const coords = usable.flatMap(item => [clamp01(item.x) * rw, clamp01(item.y) * rh]);
-    const labels = usable.map(item => BigInt(Number(item.label) ? 1 : 0));
-    inputs.input_points = new Tensor("float32", coords, [1, 1, usable.length, 2]);
-    inputs.input_labels = new Tensor("int64", labels, [1, 1, usable.length]);
+    inputs.input_points = new Tensor(
+      "float32",
+      usable.flatMap(item => [clamp01(item.x) * rw, clamp01(item.y) * rh]),
+      [1, 1, usable.length, 2]
+    );
+    inputs.input_labels = new Tensor(
+      "int64",
+      usable.map(item => BigInt(Number(item.label) ? 1 : 0)),
+      [1, 1, usable.length]
+    );
   }
 
-  const promptBox = normalized.box;
-  if (promptBox) {
-    const x1 = clamp01(Math.min(promptBox.x1, promptBox.x2)) * rw;
-    const y1 = clamp01(Math.min(promptBox.y1, promptBox.y2)) * rh;
-    const x2 = clamp01(Math.max(promptBox.x1, promptBox.x2)) * rw;
-    const y2 = clamp01(Math.max(promptBox.y1, promptBox.y2)) * rh;
+  if (box && [box.x1, box.y1, box.x2, box.y2].every(Number.isFinite)) {
+    const x1 = clamp01(Math.min(box.x1, box.x2)) * rw;
+    const y1 = clamp01(Math.min(box.y1, box.y2)) * rh;
+    const x2 = clamp01(Math.max(box.x1, box.x2)) * rw;
+    const y2 = clamp01(Math.max(box.y1, box.y2)) * rh;
     inputs.input_boxes = new Tensor("float32", [x1, y1, x2, y2], [1, 1, 4]);
   }
 
-  if (!inputs.input_points && !inputs.input_boxes) {
-    throw new Error("At least one SAM point or box prompt is required");
-  }
+  if (!inputs.input_points && !inputs.input_boxes) throw new Error("At least one SAM2.1 point or box prompt is required");
   return inputs;
 }
 
 async function decode(prompts, box) {
-  if (!imageInputs || !imageEmbeddings) throw new Error("SAM image embedding is not ready");
+  if (!imageInputs || !imageEmbeddings) throw new Error("SAM2.1 image embedding is not ready");
   const [m, p] = await loadRuntime();
-  const promptInputs = makePromptInputs(prompts, box);
-  const outputs = await m({ ...imageEmbeddings, ...promptInputs });
+  const outputs = await m({ ...imageEmbeddings, ...makePromptInputs(prompts, box) });
   const masks = await p.post_process_masks(outputs.pred_masks, imageInputs.original_sizes, imageInputs.reshaped_input_sizes);
   const scores = outputs.iou_scores?.data || [];
   const index = bestIndex(scores);
-  const tensor = masks?.[0]?.[index];
-  if (!tensor) throw new Error("SAM returned no usable mask");
+
+  // SAM2 masks are commonly [batch, object, candidates, H, W]. With one
+  // interactive object, masks[0][0] contains the candidate masks. Keep a fallback
+  // for exports that expose [batch, candidates, H, W].
+  const batch = masks?.[0];
+  let candidates = batch?.[0];
+  if (!candidates || candidates.dims?.length < 2) candidates = batch;
+  const tensor = candidates?.[index] || candidates?.[0] || batch?.[index] || batch?.[0];
+  if (!tensor) throw new Error("SAM2.1 returned no usable mask");
+
   const raw = RawImage.fromTensor(tensor);
   const source = raw.data instanceof Uint8Array ? raw.data : new Uint8Array(raw.data);
   const copy = new Uint8Array(source.length);
@@ -159,7 +143,7 @@ async function decode(prompts, box) {
     mask: copy.buffer,
     width: raw.width,
     height: raw.height,
-    score: Number(scores[index] || 0)
+    score: Number(scores[index] || 0),
   };
 }
 
@@ -171,26 +155,26 @@ self.onmessage = async event => {
       imageInputs = null;
       imageEmbeddings = null;
       cleanupImageUrl();
-      if (id) self.postMessage({ id, type: "reset", ok: true });
+      if (id) self.postMessage({ id, type: "reset", ok: true, model: MODEL_ID, device });
       return;
     }
     if (request.type === "warmup") {
       await loadRuntime();
-      self.postMessage({ id, type: "ready", device });
+      self.postMessage({ id, type: "ready", model: MODEL_ID, device });
       return;
     }
     if (request.type === "encode") {
       await encodeImage(request.buffer, request.mime);
-      self.postMessage({ id, type: "encoded", device });
+      self.postMessage({ id, type: "encoded", model: MODEL_ID, device });
       return;
     }
     if (request.type === "decode") {
       const result = await decode(request.prompts, request.box);
-      self.postMessage({ id, type: "decoded", device, ...result }, [result.mask]);
+      self.postMessage({ id, type: "decoded", model: MODEL_ID, device, ...result }, [result.mask]);
       return;
     }
-    throw new Error(`Unknown SAM worker request: ${request.type}`);
+    throw new Error(`Unknown SAM2.1 worker request: ${request.type}`);
   } catch (error) {
-    self.postMessage({ id, type: request.type || "error", error: error?.message || String(error), device });
+    self.postMessage({ id, type: request.type || "error", error: error?.message || String(error), model: MODEL_ID, device });
   }
 };
