@@ -1,4 +1,5 @@
 import { env, Sam2Model, Sam2Processor, RawImage, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
+import { extractBestMask } from "./sam-mask-utils.js?v=hellolabel-v150";
 
 const MODEL_ID = "onnx-community/sam2.1-hiera-tiny-ONNX";
 env.allowRemoteModels = true;
@@ -74,13 +75,6 @@ async function encodeImage(buffer, mime) {
   imageEmbeddings = await m.get_image_embeddings(imageInputs);
 }
 
-function bestIndex(scores) {
-  if (!scores?.length) return 0;
-  let best = 0;
-  for (let i = 1; i < scores.length; i++) if (Number(scores[i]) > Number(scores[best])) best = i;
-  return best;
-}
-
 function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
@@ -116,39 +110,6 @@ function makePromptInputs(prompts, box) {
 
   if (!inputs.input_points && !inputs.input_boxes) throw new Error("At least one SAM2.1 point or box prompt is required");
   return inputs;
-}
-
-function extractBestMask(masks, scores) {
-  // Transformers.js post_process_masks() returns one Tensor per image. For one
-  // interactive object the tensor shape is [1, candidates, H, W]. Numeric Tensor
-  // indexing is supported by Transformers.js and returns a lower-rank Tensor.
-  const imageMasks = masks?.[0];
-  if (!imageMasks?.dims || imageMasks.dims.length < 3) {
-    throw new Error("SAM2.1 returned an unexpected mask tensor");
-  }
-
-  const candidateMasks = imageMasks.dims.length === 4 ? imageMasks[0] : imageMasks;
-  if (!candidateMasks?.dims || candidateMasks.dims.length !== 3) {
-    throw new Error(`SAM2.1 candidate mask shape is invalid: ${JSON.stringify(candidateMasks?.dims || [])}`);
-  }
-
-  const candidateCount = Number(candidateMasks.dims[0] || 0);
-  if (!candidateCount) throw new Error("SAM2.1 returned no mask candidates");
-  const index = Math.min(bestIndex(scores), candidateCount - 1);
-  const tensor = candidateMasks[index];
-  if (!tensor?.dims || tensor.dims.length !== 2) {
-    throw new Error(`SAM2.1 selected mask shape is invalid: ${JSON.stringify(tensor?.dims || [])}`);
-  }
-
-  const height = Number(tensor.dims[0] || 0);
-  const width = Number(tensor.dims[1] || 0);
-  if (!width || !height || tensor.data?.length !== width * height) {
-    throw new Error("SAM2.1 selected mask data does not match its dimensions");
-  }
-
-  const copy = new Uint8Array(tensor.data.length);
-  for (let i = 0; i < tensor.data.length; i++) copy[i] = tensor.data[i] ? 1 : 0;
-  return { mask: copy.buffer, width, height, index };
 }
 
 async function decode(prompts, box) {
