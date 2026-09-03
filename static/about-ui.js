@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const APP_VERSION = "1.4.1";
+  const APP_VERSION = "1.5.0";
   const REPOSITORY_URL = "https://github.com/hupo376787/HelloLabel";
 
   if (typeof I18N !== "undefined") {
@@ -33,36 +33,36 @@
   function aboutHtml() {
     const en = isEnglish();
     const copy = en ? {
-      tagline: "AI-assisted high-performance image annotation",
-      description: "A Labelme-compatible annotation application with WebGL2 rendering and SAM / YOLO assisted annotation.",
+      tagline: "Local-first high-performance image annotation",
+      description: "A Labelme-compatible annotation application with WebGL2 rendering and browser-local WebGPU/WASM AI. Images and JSON stay on the user's device.",
       version: "Version",
       author: "Author",
       repo: "GitHub repository",
       format: "Annotation format",
       platform: "Platforms",
       license: "License",
-      formatValue: "Labelme JSON",
+      formatValue: "Labelme-compatible JSON",
       platformValue: "Windows · macOS · Linux · Web",
-      footer: "Local-first annotation workflow · AI components are installed on demand"
+      footer: "Static web architecture · local files · local AI · models cached on demand"
     } : {
-      tagline: "AI 辅助高性能图像标注工具",
-      description: "兼容 Labelme JSON，支持 WebGL2 高性能渲染，以及 SAM / YOLO 辅助标注。",
+      tagline: "本地优先的高性能图像标注工具",
+      description: "兼容 Labelme JSON，支持 WebGL2 高性能渲染和浏览器本地 WebGPU/WASM AI。图片与 JSON 始终保留在用户设备。",
       version: "版本",
       author: "作者",
       repo: "GitHub 仓库",
       format: "标注格式",
       platform: "支持平台",
       license: "开源许可",
-      formatValue: "Labelme JSON",
+      formatValue: "兼容 Labelme 的 JSON",
       platformValue: "Windows · macOS · Linux · Web",
-      footer: "本地优先的标注工作流 · AI 组件按需安装"
+      footer: "纯静态 Web 架构 · 本地文件 · 本地 AI · 模型按需下载并缓存"
     };
 
     return `
       <div class="about-dialog">
         <div class="about-hero">
           <div class="about-logo-wrap">
-            <img class="about-logo" src="/static/hellolabel-icon.png?v=hellolabel-v0214" alt="HelloLabel" />
+            <img class="about-logo" src="/static/hellolabel-icon.png?v=hellolabel-v150" alt="HelloLabel" />
           </div>
           <div class="about-main">
             <div class="about-product-row">
@@ -74,7 +74,7 @@
             </div>
             <p class="about-description">${escapeHtml(copy.description)}</p>
             <div class="about-tags">
-              <span>Labelme</span><span>WebGL2</span><span>SAM</span><span>YOLO</span>
+              <span>Labelme</span><span>WebGL2</span><span>WebGPU</span><span>WASM</span>
             </div>
             <div class="about-meta-grid">
               <div class="about-meta-label">${escapeHtml(copy.version)}</div><div class="about-meta-value">${APP_VERSION}</div>
@@ -142,14 +142,14 @@
         ]
       },
       {
-        title: "SAM interaction",
+        title: "Browser-local AI",
         rows: [
-          ["Left click", "Add a positive prompt point."],
-          ["Right click", "Add a negative prompt point."],
-          ["Left-drag", "Create a Box Prompt."],
+          ["SAM left click", "Add a positive SlimSAM prompt point."],
+          ["SAM right click", "Add a negative SlimSAM prompt point."],
+          ["SAM left-drag", "Create a box prompt."],
           ["Backspace", "Remove the last SAM prompt."],
           ["Enter", "Accept the current segmentation result."],
-          ["Esc", "Cancel the current SAM interaction."]
+          ["First AI use", "Download the model into the browser cache; image data is not uploaded to HelloLabel servers."]
         ]
       }
     ];
@@ -196,14 +196,14 @@
         ]
       },
       {
-        title: "SAM 交互",
+        title: "浏览器本地 AI",
         rows: [
-          ["左键单击", "添加正样本提示点。"],
-          ["右键单击", "添加负样本提示点。"],
-          ["左键拖动", "创建 Box Prompt。"],
+          ["SAM 左键单击", "添加 SlimSAM 正样本提示点。"],
+          ["SAM 右键单击", "添加 SlimSAM 负样本提示点。"],
+          ["SAM 左键拖动", "创建 Box Prompt。"],
           ["Backspace", "撤销最后一个 SAM 提示点或提示框。"],
           ["Enter", "接受当前分割结果。"],
-          ["Esc", "取消当前 SAM 交互。"]
+          ["首次使用 AI", "模型下载到浏览器缓存；图片数据不会上传到 HelloLabel 服务器。"]
         ]
       }
     ];
