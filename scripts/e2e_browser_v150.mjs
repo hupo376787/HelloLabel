@@ -25,7 +25,7 @@ const report = {
 };
 
 function step(name, details = {}) {
-  const item = { name, at: new Date().toISOString(), ...details };
+  const item = { at: new Date().toISOString(), ...details, name };
   report.phases.push(item);
   console.log(`[E2E] ${name}${Object.keys(details).length ? ` ${JSON.stringify(details)}` : ""}`);
   return item;
@@ -270,8 +270,9 @@ try {
 
   await page.locator("#openFolderBtn").click();
   await page.waitForFunction(() => document.getElementById("imageCount")?.textContent?.includes("3"), null, { timeout: 15000 });
-  await waitActiveFile(page, "01_bus.jpg");
   step("folder opened", { imageCount: await page.locator("#imageCount").textContent() });
+  await clickFile(page, "01_bus.jpg");
+  step("first image opened", { image: "01_bus.jpg" });
 
   // Manual rectangle + immediate image switch. This intentionally switches before
   // the 300 ms debounce expires so openImageEntry() must flush the pending save.
