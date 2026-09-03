@@ -64,12 +64,12 @@ HelloLabel is an independent, high-performance image annotation application insp
 |---|---|---|
 | YOLO11 Detect | available | browser WebGPU / CPU-WASM |
 | YOLO11 Seg | available | browser WebGPU / CPU-WASM |
-| SlimSAM interactive segmentation | available | browser WebGPU / WASM |
+| SAM2.1 Tiny interactive segmentation | available | browser WebGPU / WASM |
 | TIFF preview decode | available | browser locally |
 | YOLO-World | not migrated; disabled in UI | — |
-| SAM2 / SAM3 | old Python backend is no longer used | — |
+| Legacy SAM / SAM3 Python paths | removed | — |
 
-SlimSAM interaction:
+SAM2.1 Tiny interaction:
 
 - left click: positive prompt;
 - right click: negative prompt;
@@ -78,7 +78,7 @@ SlimSAM interaction:
 - Enter: accept the result;
 - output conversion: Polygon / Rectangle / Oriented Rectangle / Circle.
 
-The same image reuses its SAM image embedding for subsequent prompt updates. Switching images causes a new encode.
+The same image reuses its SAM image embedding for subsequent prompt updates. Switching images causes a new encode. The SAM worker serializes encode / decode / reset requests and explicitly disposes temporary tensors and old image embeddings to avoid WebGPU/WASM memory growth during long annotation sessions.
 
 > First AI use requires network access to download browser models/runtime assets. Model traffic comes from the model/CDN source; the HelloLabel server does not receive the source image for inference.
 
@@ -263,7 +263,15 @@ Public sites should use HTTPS. localhost development may use HTTP.
 
 ## Automated checks
 
-The `master` branch includes a `Static Runtime Check` GitHub Actions workflow that verifies the v1.5 browser-only structure and JavaScript syntax, and guards against accidentally reintroducing the Python backend into the desktop runtime/build pipeline.
+The `master` branch includes a `Static Runtime Check` GitHub Actions workflow that verifies:
+
+- required v1.5 browser-only architecture files;
+- Desktop does not reintroduce a Python backend;
+- JavaScript syntax;
+- browser mask-to-geometry behavior;
+- SAM2.1 candidate-mask Tensor extraction;
+- SAM2.1 worker memory lifecycle/request serialization constraints;
+- a real `build_web.sh` run and validation of the generated pure-static `dist/web` distribution.
 
 ## License
 
