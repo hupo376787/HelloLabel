@@ -65,12 +65,12 @@ HelloLabel 是一个独立的、仿 Labelme 的高性能图像标注程序。**v
 |---|---|---|
 | YOLO11 Detect | 可用 | 浏览器 WebGPU / CPU-WASM |
 | YOLO11 Seg | 可用 | 浏览器 WebGPU / CPU-WASM |
-| SlimSAM 交互分割 | 可用 | 浏览器 WebGPU / WASM |
+| SAM2.1 Tiny 交互分割 | 可用 | 浏览器 WebGPU / WASM |
 | TIFF 解码预览 | 可用 | 浏览器本地 |
 | YOLO-World | 暂未迁移，界面禁用 | — |
-| SAM2 / SAM3 | 不再走旧 Python 后端 | — |
+| 旧 SAM / SAM3 Python 路径 | 已移除 | — |
 
-SlimSAM 支持：
+SAM2.1 Tiny 支持：
 
 - 左键单击：正样本；
 - 右键单击：负样本；
@@ -79,7 +79,7 @@ SlimSAM 支持：
 - Enter：接受结果；
 - 输出可转换为 Polygon / Rectangle / Oriented Rectangle / Circle。
 
-同一张图片只需要生成一次 SAM image embedding，后续提示复用该 embedding。切换图片后重新编码。
+同一张图片只生成一次 SAM image embedding，后续提示复用该 embedding；切换图片后重新编码。SAM Worker 会串行处理 encode / decode / reset，并主动释放临时 Tensor 和旧图片 embedding，避免长时间标注时累积 WebGPU / WASM 内存。
 
 > 首次 AI 使用需要联网下载浏览器模型与运行时。模型下载流量来自模型/CDN 源，不需要让 HelloLabel ECS 接收原始图片并执行推理。
 
@@ -284,7 +284,10 @@ Web 版推荐最新版 Chrome / Edge：
 - v1.5 静态架构关键文件是否完整；
 - Desktop 是否重新引入 Python 后端；
 - JavaScript 基础语法；
-- Web/Desktop 构建配置是否仍为 browser-only。
+- 浏览器 mask → 几何转换；
+- SAM2.1 Tensor 候选 mask 提取；
+- SAM2.1 Worker 的内存释放 / 请求串行化约束；
+- 实际执行 `build_web.sh` 并验证最终 `dist/web` 纯静态发布目录。
 
 ## License
 
