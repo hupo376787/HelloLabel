@@ -1,0 +1,52 @@
+# HelloLabel 1.5 pure-static Nginx example
+# Build first with build_web.sh / build_web.bat and copy dist/web/* to /var/www/hellolabel/
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name label.example.com;
+
+    # File System Access API requires a secure context outside localhost.
+    # Keep this redirect once HTTPS is configured.
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name label.example.com;
+
+    root /var/www/hellolabel;
+    index index.html;
+
+    # Replace these with your actual certificate files (e.g. Let's Encrypt).
+    ssl_certificate     /etc/letsencrypt/live/label.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/label.example.com/privkey.pem;
+
+    location = /index.html {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        try_files $uri =404;
+    }
+
+    location = /static/app.js {
+        add_header Cache-Control "no-cache, must-revalidate" always;
+        try_files $uri =404;
+    }
+
+    location /static/ {
+        add_header Cache-Control "public, max-age=3600" always;
+        try_files $uri =404;
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    add_header X-Content-Type-Options nosniff always;
+    add_header Referrer-Policy no-referrer always;
+
+    # HelloLabel 1.5 has no /api backend. Reject accidental legacy API calls.
+    location /api/ {
+        return 404;
+    }
+}
