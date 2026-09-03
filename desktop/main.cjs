@@ -6,12 +6,13 @@ const path = require('node:path');
 const HOST = '127.0.0.1';
 const PREFERRED_PORT = 19150;
 const MAX_PORT_ATTEMPTS = 10;
+const SMOKE_TEST = process.argv.includes('--smoke-test') || process.env.HELLOLABEL_SMOKE_TEST === '1';
 let mainWindow = null;
 let splashWindow = null;
 let staticServer = null;
 let staticPort = 0;
 let closePromptActive = false;
-let allowQuitWithoutPrompt = false;
+let allowQuitWithoutPrompt = SMOKE_TEST;
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -194,6 +195,53 @@ async function requestUserQuit() {
   }
 }
 
+async function runSmokeAssertions() {
+  if (!mainWindow || mainWindow.isDestroyed()) throw new Error('Main window is unavailable during smoke test');
+  const result = await mainWindow.webContents.executeJavaScript(`new Promise((resolve, reject) => {
+    const started = Date.now();
+    const timer = setInterval(() => {
+      const runtime = window.helloLabelBrowserRuntime;
+      const openFolder = document.getElementById('openFolderBtn');
+      const sam = document.getElementById('samModelSelect');
+      const yolo = document.getElementById('yoloModelSelect');
+      if (runtime && openFolder && sam && yolo) {
+        clearInterval(timer);
+        resolve({
+          title: document.title,
+          runtimeMode: runtime.mode,
+          runtimeVersion: runtime.version,
+          secureContext: window.isSecureContext,
+          crossOriginIsolated: window.crossOriginIsolated,
+          openFolderEnabled: !openFolder.disabled,
+          samText: sam.options[sam.selectedIndex]?.text || '',
+          yoloOptions: Array.from(yolo.options).map(option => ({ value: option.value, disabled: option.disabled }))
+        });
+        return;
+      }
+      if (Date.now() - started > 20000) {
+        clearInterval(timer);
+        reject(new Error('HelloLabel renderer did not become ready within 20 seconds'));
+      }
+    }, 100);
+  })`, true);
+
+  if (result.runtimeMode !== 'browser-only') throw new Error(`Unexpected runtime mode: ${result.runtimeMode}`);
+  if (result.runtimeVersion !== '1.5.0') throw new Error(`Unexpected runtime version: ${result.runtimeVersion}`);
+  if (!result.secureContext) throw new Error('Packaged renderer is not a secure context');
+  if (!result.crossOriginIsolated) throw new Error('Packaged renderer is not cross-origin isolated');
+  if (!result.openFolderEnabled) throw new Error('Open folder action is disabled in packaged renderer');
+  if (!String(result.samText).includes('SAM2.1 Tiny')) throw new Error(`Unexpected SAM option: ${result.samText}`);
+  const detect = result.yoloOptions.find(item => item.value === 'yolo11-detect');
+  const seg = result.yoloOptions.find(item => item.value === 'yolo11-seg');
+  const world = result.yoloOptions.find(item => item.value === 'yolo-world');
+  if (!detect || detect.disabled) throw new Error('YOLO11 Detect is unavailable in packaged renderer');
+  if (!seg || seg.disabled) throw new Error('YOLO11 Seg is unavailable in packaged renderer');
+  if (!world || !world.disabled) throw new Error('YOLO-World should remain disabled in v1.5 packaged renderer');
+
+  console.log(`HELLOLABEL_SMOKE_OK ${JSON.stringify(result)}`);
+  return result;
+}
+
 async function createWindow() {
   if (!staticPort) await startStaticServer();
   mainWindow = new BrowserWindow({
@@ -209,7 +257,7 @@ async function createWindow() {
     }
   });
   mainWindow.setMenuBarVisibility(false);
-  mainWindow.once('ready-to-show',()=>mainWindow && !mainWindow.isDestroyed() && mainWindow.show());
+  if (!SMOKE_TEST) mainWindow.once('ready-to-show',()=>mainWindow && !mainWindow.isDestroyed() && mainWindow.show());
   mainWindow.on('close',event=>{
     if(allowQuitWithoutPrompt)return;
     event.preventDefault();
@@ -217,7 +265,13 @@ async function createWindow() {
   });
   mainWindow.on('closed',()=>{mainWindow=null;});
   await mainWindow.loadURL(`http://${HOST}:${staticPort}/`);
-  if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) mainWindow.show();
+  if (!SMOKE_TEST && mainWindow && !mainWindow.isDestroyed() && !mainWindow.isVisible()) mainWindow.show();
+  if (SMOKE_TEST) {
+    await runSmokeAssertions();
+    allowQuitWithoutPrompt = true;
+    stopStaticServer();
+    app.exit(0);
+  }
 }
 
 ipcMain.handle('hellolabel:quit',()=>{void requestUserQuit();return{ok:true,confirmation:true};});
@@ -240,17 +294,23 @@ if (gotSingleInstanceLock) {
 
   app.whenReady().then(async()=>{
     try {
-      await createSplashWindow();
+      if (!SMOKE_TEST) await createSplashWindow();
       await startStaticServer();
       await createWindow();
-      closeSplashWindow();
+      if (!SMOKE_TEST) closeSplashWindow();
     } catch (error) {
       closeSplashWindow();
-      dialog.showErrorBox('HelloLabel failed to start', error?.stack || error?.message || String(error));
+      console.error('HELLOLABEL_START_FAILED', error?.stack || error?.message || String(error));
       allowQuitWithoutPrompt = true;
+      if (SMOKE_TEST) {
+        stopStaticServer();
+        app.exit(1);
+        return;
+      }
+      dialog.showErrorBox('HelloLabel failed to start', error?.stack || error?.message || String(error));
       app.quit();
     }
-    app.on('activate',async()=>{if(BrowserWindow.getAllWindows().length===0)await createWindow();});
+    if (!SMOKE_TEST) app.on('activate',async()=>{if(BrowserWindow.getAllWindows().length===0)await createWindow();});
   });
 }
 
