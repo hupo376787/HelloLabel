@@ -1,68 +1,58 @@
 # HelloLabel Desktop
 
-HelloLabel keeps the FastAPI + WebGL2 UI and wraps it with Electron for Windows, macOS and Linux.
+HelloLabel 1.5 uses one browser-first application core for Web and desktop. The desktop package wraps the same static HTML / CSS / JavaScript runtime with Electron; it no longer bundles or launches Python, FastAPI, Uvicorn, OpenCV, PyTorch, or a server-side AI runtime.
 
 ## Runtime architecture
 
-Release installers do **not** use a PyInstaller backend anymore. Instead each native build bundles a relocatable CPython 3.12 runtime under Electron `resources/runtime/python` and the HelloLabel Python/web sources under `resources/runtime/app`.
-
 ```text
-HelloLabel installation
-└─ resources/
-   └─ runtime/
-      ├─ python/       bundled CPython 3.12 + base requirements
-      ├─ app/          run.py, web_api.py, static/, ai/, config
-      └─ runtime-manifest.json
+HelloLabel Desktop
+├─ Electron / Chromium
+├─ resources/static/
+│  ├─ index.html
+│  ├─ app.js
+│  ├─ app-core.js
+│  ├─ browser-runtime.js
+│  ├─ sam-worker.js
+│  └─ ...
+└─ local browser runtime
+   ├─ File System Access API
+   ├─ WebGL2
+   ├─ WebGPU / WASM
+   └─ browser model cache
 ```
 
-The installed user does not need Python, pip or a virtual environment on the system.
+Electron starts a tiny local static HTTP server on `127.0.0.1`, normally port `19150`, and loads the bundled static UI from that stable origin. It tries a small range of adjacent ports only if the preferred port is already occupied. A single-instance lock prevents two HelloLabel desktop processes from competing for the normal port.
 
-At runtime Electron launches the bundled interpreter with `PYTHONNOUSERSITE=1`, so unrelated user/system Python packages cannot leak into HelloLabel.
+The stable HTTP origin is intentional: browser caches and browser-local AI storage remain reusable across application launches, while avoiding the limitations of `file://` pages.
 
-## Writable desktop data
+## Local data and privacy
 
-The installation directory is treated as read-only. Models, caches and the optional AI runtime live under Electron's per-user HelloLabel data directory:
+Images and annotation JSON are opened through Chromium's local file-system capabilities and remain on the user's device. The desktop shell does not upload image bytes to a HelloLabel backend because no backend exists in v1.5.
 
-```text
-HelloLabel userData/
-├─ ai-runtime/
-├─ models/
-├─ cache/
-│  ├─ pip/
-│  ├─ huggingface/
-│  └─ torch/
-├─ config/
-│  └─ ultralytics/
-└─ data/
-```
+AI inference is browser-local:
 
-## Desktop AI installation
+- YOLO11 Detect: browser-local inference;
+- YOLO11 Seg: browser-local inference;
+- SlimSAM: browser-local interactive segmentation;
+- WebGPU is preferred when available;
+- CPU / WASM is used as a compatibility path when WebGPU cannot be used;
+- model files download on first use and are cached by Chromium.
 
-Release installers intentionally contain **no AI frameworks or model weights**. Choosing **AI → Install AI** performs this handoff:
-
-1. Electron stops the running HelloLabel Python backend.
-2. The installer launches with the bundled base Python, not a system Python.
-3. `desktop_ai_installer.py` copies the bundled Python runtime to `userData/ai-runtime`.
-4. PyTorch, YOLO, SAM and SAM2 are installed into that private runtime. SAM3 is attempted only on supported NVIDIA/CUDA Windows/Linux environments.
-5. A `.hellolabel-ai-ready.json` marker is written after verification.
-6. On the next launch Electron automatically chooses `ai-runtime`.
-7. If the AI runtime cannot start, HelloLabel falls back to the bundled base runtime so manual annotation remains available.
-
-Source/Web mode still uses the project `.venv` and `install_ai.bat` / `install_ai.sh`; that is intentionally separate from packaged desktop behavior.
+TIFF preview conversion is also performed in the renderer and does not require OpenCV.
 
 ## Development desktop mode
 
-On Windows:
+Install Node.js 22.12+ and run:
 
-1. Run `start_web.bat` once so the source `.venv` exists, then close the web server.
-2. Install Node.js 22.12+.
-3. Run `desktop/start_desktop_dev.bat`.
+```bat
+desktop\start_desktop_dev.bat
+```
 
-Development mode uses the source `.venv`; only release installers use the bundled desktop runtime.
+The development shell serves `../static` directly. No source `.venv` or Python backend is required.
 
 ## Local builds
 
-Build machines need Python 3.12 and Node.js because they create the installer. End users do not.
+Build machines need Node.js only.
 
 ### Windows
 
@@ -70,7 +60,7 @@ Build machines need Python 3.12 and Node.js because they create the installer. E
 desktop\build_windows.bat
 ```
 
-Produces NSIS + portable packages in `dist/desktop/`.
+Produces NSIS + ZIP packages in `dist/desktop/`.
 
 ### macOS
 
@@ -88,11 +78,11 @@ Produces DMG + ZIP for the current Mac architecture.
 
 Produces AppImage + DEB.
 
-All local build scripts create `desktop/.build-venv`, install `uv`, prepare the self-contained CPython in `desktop/runtime`, then run electron-builder. Generated runtime/build folders are ignored by Git.
+The build scripts install Electron dependencies and run electron-builder. They do not create a Python build environment and do not prepare a bundled Python runtime.
 
 ## GitHub Actions
 
-`.github/workflows/desktop-build.yml` is **tag-only**:
+`.github/workflows/desktop-build.yml` remains tag-only:
 
 ```yaml
 on:
@@ -101,14 +91,14 @@ on:
       - "v*"
 ```
 
-Only a pushed tag such as `v0.2.14` triggers native builds for:
+A pushed release tag builds:
 
 - Windows x64
 - macOS Apple Silicon
 - macOS Intel x64
 - Linux x64
 
-Normal branch pushes, PRs and manual dispatch do not build installers. CI prepares only the base runtime and does not install AI.
+The CI jobs use Node.js 22 and electron-builder only.
 
 ## Application icon
 
@@ -121,4 +111,4 @@ Platform icons remain under `desktop/build/`:
 
 ## Electron builder
 
-HelloLabel pins `electron-builder` to stable `26.15.3`.
+HelloLabel pins `electron-builder` to `26.15.3` and Electron to the version specified in `desktop/package.json`.
