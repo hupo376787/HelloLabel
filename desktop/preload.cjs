@@ -4,7 +4,6 @@ contextBridge.exposeInMainWorld('helloLabelDesktop', {
   isDesktop: true,
   platform: process.platform,
   quit: () => ipcRenderer.invoke('hellolabel:quit'),
-  installAI: () => ipcRenderer.invoke('hellolabel:install-ai'),
   runtimeInfo: () => ipcRenderer.invoke('hellolabel:runtime-info')
 });
 
@@ -69,9 +68,6 @@ window.addEventListener('DOMContentLoaded', () => {
     pendingEditable = editable;
     const seq = ++focusSequence;
 
-    // Repair after normal click handling and again after Windows/Electron has
-    // settled its native activation state. Every pass re-checks visibility so a
-    // modal input can never be refocused after its backdrop has been hidden.
     for (const delay of [0, 40, 120, 250]) {
       setTimeout(() => {
         if (seq !== focusSequence || pendingEditable !== editable) return;
@@ -90,10 +86,6 @@ window.addEventListener('DOMContentLoaded', () => {
       scheduleFocusRepair(editable);
       return;
     }
-
-    // Clicking a button, label row, canvas, modal action, etc. intentionally ends
-    // any queued focus repair for the previous text field. This is especially
-    // important for OK/Cancel buttons that hide a modal immediately afterwards.
     clearPendingFocus();
   }, true);
 
@@ -119,8 +111,6 @@ window.addEventListener('DOMContentLoaded', () => {
     if (!document.hidden) restoreVisiblePending();
   });
 
-  // Watch modal visibility changes so a hidden modal can never keep ownership of
-  // keyboard focus through a stale input reference.
   const modalBackdrop = document.getElementById('modalBackdrop');
   if (modalBackdrop && typeof MutationObserver === 'function') {
     const observer = new MutationObserver(() => {
