@@ -20,25 +20,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up build Python 3.12
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
       - name: Set up Node.js 22
         uses: actions/setup-node@v7
         with:
           node-version: "22"
-
-      - name: Install runtime builder
-        shell: pwsh
-        run: python -m pip install --upgrade uv
-
-      - name: Prepare bundled Python runtime (base editor only)
-        shell: pwsh
-        run: |
-          $uv = (Get-Command uv).Source
-          python desktop/prepare_runtime.py --uv "$uv"
 
       - name: Install Electron dependencies
         working-directory: desktop
@@ -68,21 +53,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up build Python 3.12
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
       - name: Set up Node.js 22
         uses: actions/setup-node@v7
         with:
           node-version: "22"
-
-      - name: Install runtime builder
-        run: python -m pip install --upgrade uv
-
-      - name: Prepare bundled Python runtime (base editor only)
-        run: python desktop/prepare_runtime.py --uv "$(command -v uv)"
 
       - name: Install Electron dependencies
         working-directory: desktop
@@ -110,21 +84,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up build Python 3.12
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
       - name: Set up Node.js 22
         uses: actions/setup-node@v7
         with:
           node-version: "22"
-
-      - name: Install runtime builder
-        run: python -m pip install --upgrade uv
-
-      - name: Prepare bundled Python runtime (base editor only)
-        run: python desktop/prepare_runtime.py --uv "$(command -v uv)"
 
       - name: Install Electron dependencies
         working-directory: desktop
@@ -150,21 +113,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up build Python 3.12
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-
       - name: Set up Node.js 22
         uses: actions/setup-node@v7
         with:
           node-version: "22"
-
-      - name: Install runtime builder
-        run: python -m pip install --upgrade uv
-
-      - name: Prepare bundled Python runtime (base editor only)
-        run: python desktop/prepare_runtime.py --uv "$(command -v uv)"
 
       - name: Install Electron dependencies
         working-directory: desktop
