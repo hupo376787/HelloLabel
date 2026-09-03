@@ -2,7 +2,34 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-HelloLabel is an independent, high-performance image annotation application inspired by Labelme. It focuses on image annotation and AI-assisted annotation.
+HelloLabel is an independent, high-performance image annotation application inspired by Labelme. **Starting with v1.5.0, HelloLabel uses a local-first, pure-static Web architecture**: the server only delivers HTML / CSS / JavaScript, while source images, same-name JSON files, and AI inference stay on the user's device.
+
+## v1.5.0 architecture
+
+```text
+                   HelloLabel 1.5
+                        │
+           ┌────────────┴────────────┐
+           │                         │
+          Web                     Desktop
+           │                         │
+     static Nginx               Electron shell
+           │                         │
+           └────────────┬────────────┘
+                        ▼
+                  Chrome / Chromium
+            ┌───────────┼────────────┐
+            │           │            │
+       local files     WebGL2      WebGPU/WASM
+            │           │            │
+       image / JSON    rendering     AI inference
+```
+
+- **No HelloLabel server API**: production Web deployment needs no Python, FastAPI, Uvicorn, OpenCV, or PyTorch.
+- **Images are not uploaded to the ECS/server**: opening, switching, viewing, annotating, and saving happen locally in the browser.
+- **AI runs on the client**: WebGPU is preferred with CPU/WASM compatibility fallback where supported.
+- **Models download on demand and are browser-cached**.
+- **Desktop and Web share the same front-end core**: the EXE no longer bundles a Python runtime.
 
 ## Screenshots
 
@@ -10,48 +37,140 @@ HelloLabel is an independent, high-performance image annotation application insp
 ![](/screenshots/2.jpg)
 ![](/screenshots/3.jpg)
 
-## Demo Video
+## Demo
 
-[![HelloLabel demo video](https://img.youtube.com/vi/gQxBUNJIDA4/hqdefault.jpg)](https://youtu.be/gQxBUNJIDA4)
+[![HelloLabel demo](https://img.youtube.com/vi/gQxBUNJIDA4/hqdefault.jpg)](https://youtu.be/gQxBUNJIDA4)
 
 [Watch on YouTube](https://youtu.be/gQxBUNJIDA4)
 
-## Features
+## Core features
 
-- Manual tools: Pointer, Brush, Polygon, Rectangle, Oriented Rectangle, Circle, Point, Line, and Polyline.
-- Pointer editing: select/move instances, drag control points to edit geometry, double-click polygon/polyline edges to insert vertices, and delete active vertices with Delete.
-- Labels: add, delete, rename, and recolor labels; label changes propagate to linked instances. In the label picker, double-clicking an existing label immediately selects it and closes the dialog.
-- Image list: real-time filename filtering.
-- Bilingual UI: Chinese / English switching with persisted preference.
-- AI toolbar: can be shown or hidden and remembers its state.
-- Instance list: virtual scrolling with two-way canvas/list synchronization, auto-locate, and selection flash.
-- Label rendering: Smart / All / Selected modes; instance numbers are not drawn on the image.
-- Brightness / contrast: display-only adjustments. The original image and AI input are unchanged.
-- Undo / Redo: `Ctrl+Z`, `Ctrl+Y`, and `Ctrl+Shift+Z`.
-- Auto-save: annotation changes are saved to same-name JSON after a 300 ms debounce, while a manual Save JSON action remains available.
-- Performance: WebGL2 batched rendering, image-space spatial hit grid, texture-atlas labels, and virtual lists for 1000+ annotation scenarios.
-- AI: SAM / SAM2 / SAM3 interactive segmentation; YOLO11 Detect; YOLO11 Seg; YOLO-World text-guided annotation.
+- Manual tools: pointer, brush, polygon, rectangle, oriented rectangle, circle, point, line, and polyline.
+- Pointer editing: select/move instances and drag control handles to edit geometry.
+- Polygon/polyline edge editing: hover near an edge to snap, then single-click to insert a new movable vertex.
+- Polygon closure: snap to the starting point; the start circle expands to visualize the snap radius; single-click to close; right-click rolls points back one at a time.
+- Rectangle alignment: full-width/full-height crosshair guides extend to the image edges while drawing.
+- Right-click completed geometry: reopen polygon, polyline, rectangle, oriented rectangle, circle, or line; Esc restores the original shape.
+- Software-level global Label library independent from the current image.
+- Virtualized instance list synchronized with the canvas.
+- WebGL2 batch rendering, spatial-grid hit testing, smart/all/selected label display, brightness/contrast preview.
+- Undo/Redo: `Ctrl+Z`, `Ctrl+Y` / `Ctrl+Shift+Z`.
+- ~300 ms debounced same-name JSON autosave plus explicit Save JSON.
+- Chinese/English UI, system/light/dark themes, collapsible panels, persistent AI-toolbar visibility.
 
-## Web / Source Mode
+## Browser-local AI in v1.5
 
-On Windows, double-click `start_web.bat`. On the first run it automatically:
+| Capability | v1.5 status | Runs on |
+|---|---|---|
+| YOLO11 Detect | available | browser WebGPU / CPU-WASM |
+| YOLO11 Seg | available | browser WebGPU / CPU-WASM |
+| SlimSAM interactive segmentation | available | browser WebGPU / WASM |
+| TIFF preview decode | available | browser locally |
+| YOLO-World | not migrated; disabled in UI | — |
+| SAM2 / SAM3 | old Python backend is no longer used | — |
 
-1. Creates an isolated `.venv` inside the HelloLabel directory.
-2. Upgrades pip through `.venv\\Scripts\\python.exe -m pip`.
-3. Installs only the base dependencies from `requirements.txt` into that `.venv`.
-4. Starts HelloLabel with the same isolated environment.
+SlimSAM interaction:
 
-Later launches reuse the same `.venv`. If base dependencies are incomplete, only this local environment is repaired. HelloLabel never installs packages with the system pip and does not modify other Python projects.
+- left click: positive prompt;
+- right click: negative prompt;
+- left-drag: Box Prompt;
+- Backspace: remove the last prompt;
+- Enter: accept the result;
+- output conversion: Polygon / Rectangle / Oriented Rectangle / Circle.
 
-Open `http://127.0.0.1:9010` in Chrome / Edge, choose **Open Folder**, and grant read/write access to the image folder.
+The same image reuses its SAM image embedding for subsequent prompt updates. Switching images causes a new encode.
 
-HelloLabel uses port **9010**. Base editing does not require PyTorch or any AI model.
+> First AI use requires network access to download browser models/runtime assets. Model traffic comes from the model/CDN source; the HelloLabel server does not receive the source image for inference.
 
-> Automatic folder read/write uses the File System Access API. The latest Chrome / Edge on localhost is recommended. Browsers without this API cannot provide equivalent automatic same-folder JSON saving.
+## Local Web development
 
-## Labelme JSON
+HelloLabel v1.5 has no Python application backend, but the page should still be served over HTTP/HTTPS rather than opened directly as `file://`.
 
-`shapes` remains Labelme-compatible. Example:
+Windows:
+
+```bat
+start_web.bat
+```
+
+Linux/macOS:
+
+```bash
+bash start_web.sh
+```
+
+These helpers use Python's built-in `http.server` only as a **development static file server**. They do not create a `.venv`, install requirements, or run FastAPI.
+
+Development URL:
+
+```text
+http://127.0.0.1:9010/static/
+```
+
+Production deployment does not require Python. Use Nginx or another static web server. See `deploy/README.zh-CN.md` for the ECS deployment example.
+
+## Pure-static production build
+
+Windows:
+
+```bat
+build_web.bat
+```
+
+Linux/macOS:
+
+```bash
+bash build_web.sh
+```
+
+Output:
+
+```text
+dist/web/
+├─ index.html
+├─ VERSION.txt
+└─ static/
+```
+
+Upload the contents of `dist/web/` to the web root. `deploy/nginx.conf.example` provides an HTTPS/static Nginx configuration.
+
+Public deployments should use HTTPS. The provided example also enables cross-origin isolation headers used by high-performance browser WASM paths.
+
+## Desktop / EXE
+
+Desktop wraps the same `static/` application:
+
+```text
+HelloLabel.exe
+└─ Electron / Chromium
+   └─ 127.0.0.1 static server
+      └─ static/
+```
+
+The v1.5 desktop package no longer includes CPython, FastAPI, Uvicorn, OpenCV, PyTorch, or a server-side SAM/YOLO runtime.
+
+Build Windows:
+
+```bat
+desktop\build_windows.bat
+```
+
+Build macOS:
+
+```bash
+./desktop/build_macos.sh
+```
+
+Build Linux:
+
+```bash
+./desktop/build_linux.sh
+```
+
+Build machines require Node.js 22+. End users do not need Python.
+
+## Labelme / HelloLabel JSON
+
+Core geometry remains in standard `shapes` fields:
 
 ```json
 {
@@ -80,196 +199,72 @@ HelloLabel uses port **9010**. Base editing does not require PyTorch or any AI m
 }
 ```
 
-HelloLabel only adds the top-level `hellolabel.labels` object to store label colors. The legacy `labelit` extension is accepted as an input migration format; the next save writes `hellolabel` instead. Runtime instance IDs, AI provenance, and editor-only state are not written to JSON.
+HelloLabel adds the top-level `hellolabel.labels` extension for HelloLabel metadata such as label colors. Labelme ignores unknown top-level extension fields when reading the file, so the core `shapes` structure remains interoperable.
 
 Supported `shape_type` values:
 
 - `polygon`
-- `rectangle` (stored as two diagonal points)
-- `oriented_rectangle` (4 points)
+- `rectangle` (two opposite corners)
+- `oriented_rectangle` (four points)
 - `circle` (center + circumference point)
 - `point`
 - `line`
 - `linestrip`
 
-Brush drawings are saved as `polygon`.
+Brush output is saved as a `polygon`.
 
-## Label behavior
+## Global Label library
 
-- If a label is selected in the right panel, new annotations use it directly.
-- If no label is selected, completing a shape opens the label chooser. Choose an existing label, double-click one, or enter a new label.
-- Deleting an unused label requires confirmation.
-- Deleting a label that is in use requires a replacement label/new replacement label, or an explicit dangerous action to delete all linked instances.
-- Renaming shows the number of linked instances and updates all of them.
-- Renaming to an existing label merges into the existing label and adopts its color.
-- Changing a label color immediately updates all instances using that label.
+Label definitions are application-level in v1.5:
 
-## Manual annotation controls
+- they persist when switching images/folders;
+- instance counts remain per current image;
+- adding/deleting/renaming a global Label does not rewrite historical annotation JSON;
+- deleting or renaming a global Label does not silently mutate existing shape labels;
+- importing Labels merges definitions only and does not modify annotation JSON;
+- existing same-name definitions are preserved during import.
 
-| Tool | Shortcut | Operation |
+The global label library is stored locally in the browser.
+
+## Manual interaction
+
+| Tool | Key | Interaction |
 |---|---:|---|
-| Pointer | V | Select, move, and edit control points |
-| Brush | B | Click once to start; move without holding the button; return near the start to close automatically |
-| Polygon | P | Click vertices; Enter or double-click to finish |
-| Rectangle | R | Click one corner to start, move the mouse for a live preview, then click the opposite corner to finish |
-| Oriented Rectangle | O | Click first point → click end of first edge → third click sets width |
-| Circle | C | Click the center to start, move the mouse for a live preview, then click the circumference to finish |
-| Point | D | Single click |
-| Line | L | Two clicks |
-| Polyline | K | Click vertices; Enter or double-click to finish |
+| Pointer | V | select, move, edit control points |
+| Brush | B | click to start, move to draw, return near start to close |
+| Polygon | P | click vertices; snap+click start to close; right-click rollback |
+| Rectangle | R | first corner → crosshair alignment → opposite corner |
+| Oriented rectangle | O | two points define edge → third point sets width |
+| Circle | C | click center → click circumference |
+| Point | D | click |
+| Line | L | two clicks |
+| Polyline | K | click vertices, Enter to finish, right-click rollback |
 
 Other controls:
 
-- `Delete`: delete the active control point or selected instance.
-- `Ctrl+Z`: undo.
-- `Ctrl+Y` / `Ctrl+Shift+Z`: redo.
-- `Esc`: cancel the current drawing / AI interaction.
-- `Space + drag` or middle-button drag: pan.
-- Mouse wheel: zoom around the pointer.
-- In Pointer mode, double-click a polygon/polyline edge to insert a new control point.
+- `Delete / Backspace`: delete an editable polygon/polyline vertex when valid, otherwise delete selected instances;
+- `Ctrl+Z`: undo completed edits; active polygon/polyline point rollback uses right-click only;
+- `Ctrl+Y` / `Ctrl+Shift+Z`: redo;
+- `Esc`: cancel drawing/AI; if a completed shape was reopened, restore the original;
+- `Space + left-drag` or middle-drag: pan;
+- wheel: zoom around the pointer;
+- pointer near polygon/polyline edge: snap, then single-click to insert a vertex.
 
-## SAM / SAM2 / SAM3 interaction
+## Browser requirements
 
-Choose the SAM-family model and output geometry from the AI toolbar. Supported output conversions are Polygon / Rectangle / Oriented Rectangle / Circle. Circle uses the **minimum enclosing circle**.
+Latest Chrome / Edge is recommended for the Web edition:
 
-Interaction:
+- File System Access API: local folder selection and same-name JSON autosave;
+- WebGL2: high-performance annotation rendering;
+- WebGPU: AI acceleration;
+- supported AI runtimes attempt CPU/WASM fallback where WebGPU is unavailable.
 
-- Left click: positive prompt point.
-- Right click: negative prompt point.
-- Left-drag: Box Prompt.
-- Each new prompt refreshes prediction. The current image is cached so repeated prompts do not re-upload the full image unnecessarily.
-- Backspace: remove the latest prompt.
-- Enter / **Accept**: save the current AI result as a new instance.
-- Esc / **Cancel**: discard the current AI interaction.
+Public sites should use HTTPS. localhost development may use HTTP.
 
-### SAM
+## Automated checks
 
-Default `config.json`:
+The `master` branch includes a `Static Runtime Check` GitHub Actions workflow that verifies the v1.5 browser-only structure and JavaScript syntax, and guards against accidentally reintroducing the Python backend into the desktop runtime/build pipeline.
 
-```json
-"sam": {
-  "model_type": "vit_b",
-  "checkpoint": "models/sam_vit_b_01ec64.pth"
-}
-```
+## License
 
-Place the checkpoint under `models/` or change the path.
-
-### SAM2
-
-Default configuration:
-
-```json
-"sam2": {
-  "model_id": "facebook/sam2.1-hiera-small",
-  "checkpoint": "",
-  "config": ""
-}
-```
-
-You may also configure a local checkpoint and SAM2 config file.
-
-### SAM3
-
-HelloLabel uses SAM3's instance-interactive predictor with SAM-style positive/negative points and box prompts. The default package may retrieve checkpoints from Hugging Face and can require access permission/login. If SAM3 is unavailable, the base application and other AI models still work.
-
-## YOLO11 / YOLO-World
-
-- **YOLO11 Detect**: full-image detection, saved as Labelme rectangles. The text field optionally filters exact class names such as `dog,cat,bird`; blank keeps all classes.
-- **YOLO11 Seg**: instance segmentation with Polygon / Rectangle / Oriented Rectangle / Circle conversion. The text field is also an optional class filter.
-- **YOLO-World**: enter text classes such as `dog,cat,bird`, configure Score and IoU, and run. Results are saved as rectangles.
-
-Default weights:
-
-```json
-"yolo11_detect": {"weights": "yolo11n.pt"},
-"yolo11_seg": {"weights": "yolo11n-seg.pt"},
-"yolo_world": {"weights": "yolov8s-world.pt"}
-```
-
-Ultralytics may download missing weights on first use, or you can point each entry to a local file.
-
-## AI installation in source/web mode
-
-Run:
-
-```bat
-install_ai.bat
-```
-
-The source/web installer uses the same HelloLabel `.venv` as `start_web.bat`. Every pip operation explicitly uses the Python inside that environment, so other Python projects and the system Python remain untouched.
-
-The Windows installer uses the headless OpenCV variants to avoid `opencv-python` / `opencv-python-headless` conflicts. Existing compatible PyTorch can be kept; otherwise the script chooses a CUDA 12.6 build on NVIDIA systems or a CPU build where appropriate. SAM3 failure does not prevent base editing or the other supported AI models from working.
-
-## Performance design
-
-HelloLabel does not create one DOM/SVG node for every annotation. Normal instances are batched through WebGL2. The SVG overlay is used only for the shape currently being created or edited and its control handles. Label text uses a texture atlas; hit testing uses an image-space grid; the instance list renders only its visible window.
-
-The design targets smooth zooming, panning, selecting, and list scrolling with thousands of annotations. Actual performance depends on image resolution, total polygon vertex count, GPU, and browser.
-
-## Model status and error handling
-
-The **Model Status** action reports package availability, SAM checkpoint state, loaded/unloaded state, and missing dependency/access errors. AI models are lazy-loaded and are not all placed in VRAM at startup.
-
-## Project layout
-
-```text
-HelloLabel/
-├─ ai/
-│  ├─ geometry.py
-│  └─ model_manager.py
-├─ desktop/
-├─ models/
-├─ static/
-│  ├─ index.html
-│  ├─ app.js
-│  ├─ style.css
-│  ├─ hellolabel-icon.png
-│  └─ favicon.png
-├─ tests/
-├─ config.json
-├─ run.py
-├─ requirements.txt
-├─ requirements-ai.txt
-├─ install_ai.bat
-├─ start_web.bat
-└─ web_api.py
-```
-
-## Desktop packaging (Windows / macOS / Linux)
-
-HelloLabel includes an Electron desktop shell under `desktop/`. Release packages ship a **self-contained CPython 3.12 runtime**, so installed users do **not** need to install Python, pip, venv, or PyInstaller.
-
-- Windows: `desktop\\build_windows.bat` → NSIS installer + portable build
-- macOS: `desktop/build_macos.sh` → DMG + ZIP
-- Linux: `desktop/build_linux.sh` → AppImage + DEB
-
-`desktop/prepare_runtime.py` prepares the bundled base runtime. Only `requirements.txt` is installed into it. Torch, Ultralytics, SAM/SAM2/SAM3, and model weights are **not** bundled into the release installer.
-
-When a desktop user chooses **AI → Install AI**, HelloLabel stops the running Python backend and uses its bundled CPython to create a private `ai-runtime` under the Electron user-data directory. AI packages are installed only into that private runtime. System Python and system pip are not required or modified. On the next launch, HelloLabel uses the AI runtime when valid and safely falls back to the bundled base runtime if necessary.
-
-Writable desktop data is stored outside the installation directory under HelloLabel user data:
-
-```text
-HelloLabel userData/
-├─ ai-runtime/
-├─ models/
-├─ cache/
-├─ config/
-└─ data/
-```
-
-### GitHub Actions desktop builds
-
-The repository contains `.github/workflows/desktop-build.yml`. The workflow is triggered **only when a Git tag matching `v*` is pushed**. Normal branch pushes, pull requests, and manual `workflow_dispatch` do not build installers.
-
-A tag such as `v1.1.2` builds:
-
-- Windows x64: NSIS + Portable
-- macOS Apple Silicon: DMG + ZIP
-- macOS Intel x64: DMG + ZIP
-- Linux x64: AppImage + DEB
-
-The workflow downloads a platform-native self-contained CPython 3.12 runtime, installs only `requirements.txt`, then packages the app with Electron Builder. It does **not** run `install_ai.*`, download Torch/SAM/YOLO, or include model weights. The completed packages are uploaded to the matching GitHub Release.
-
-See `desktop/README.md` for desktop build details.
+MIT License for HelloLabel source code. Third-party inference libraries, browser runtimes, and model files remain subject to their respective upstream licenses.
