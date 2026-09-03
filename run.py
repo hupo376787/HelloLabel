@@ -67,6 +67,7 @@ def install_ui_extensions(app) -> None:
 
     scripts = [
         '<script src="/static/global-labels.js?v=hellolabel-global-labels-v2"></script>',
+        '<script src="/static/modal-focus-fix.js?v=hellolabel-modal-focus-v1"></script>',
         '<script src="/static/layout-fixes.js?v=hellolabel-layout-v1"></script>',
         '<script src="/static/hover.js?v=hellolabel-hover-v1"></script>',
         '<script src="/static/workspace-ui.js?v=hellolabel-workspace-v1"></script>',
