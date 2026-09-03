@@ -1,6 +1,6 @@
 {
   "name": "hellolabel-desktop",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "description": "HelloLabel desktop shell",
   "main": "main.cjs",
   "private": true,
@@ -42,8 +42,8 @@
     ],
     "extraResources": [
       {
-        "from": "runtime",
-        "to": "runtime"
+        "from": "../static",
+        "to": "static"
       }
     ],
     "win": {
