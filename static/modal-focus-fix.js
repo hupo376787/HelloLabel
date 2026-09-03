@@ -1,11 +1,6 @@
 "use strict";
 
 (() => {
-  const isEditable = element => element instanceof HTMLInputElement ||
-    element instanceof HTMLTextAreaElement ||
-    element instanceof HTMLSelectElement ||
-    element?.getAttribute?.("contenteditable") === "true";
-
   function repairFocus(element = null) {
     const target = element && element.isConnected
       ? element
@@ -13,7 +8,7 @@
 
     const focusOnce = () => {
       try { window.focus(); } catch {}
-      if (!target?.isConnected || target.disabled) return;
+      if (!target?.isConnected || target.disabled || target.getClientRects().length === 0) return;
       try { target.focus({ preventScroll: true }); } catch {
         try { target.focus(); } catch {}
       }
@@ -53,16 +48,6 @@
     });
     return result;
   };
-
-  // Keep keyboard shortcuts out of editable controls even if an extension later
-  // adds a nested span/icon inside a contenteditable container.
-  window.addEventListener("keydown", event => {
-    const target = event.target instanceof Element
-      ? event.target.closest('input, textarea, select, [contenteditable="true"]')
-      : null;
-    if (!target || !isEditable(target)) return;
-    event.stopImmediatePropagation();
-  }, true);
 
   // First-annotation label dialog: OK is disabled until a label has either been
   // selected or typed. This also prevents the global Enter handler from closing
