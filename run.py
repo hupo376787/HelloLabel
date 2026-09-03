@@ -75,7 +75,7 @@ def install_ui_extensions(app) -> None:
         '<script src="/static/geometry-edit.js?v=hellolabel-geometry-edit-v2"></script>',
         '<script src="/static/polygon-snap-visual.js?v=hellolabel-polygon-snap-v1"></script>',
         '<script src="/static/rectangle-crosshair.js?v=hellolabel-rectangle-crosshair-v1"></script>',
-        '<script src="/static/about-ui.js?v=hellolabel-about-v1"></script>',
+        '<script src="/static/about-ui.js?v=hellolabel-about-v2"></script>',
     ]
     for script in scripts:
         if script not in index_html:
