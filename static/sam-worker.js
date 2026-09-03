@@ -118,32 +118,52 @@ function makePromptInputs(prompts, box) {
   return inputs;
 }
 
+function extractBestMask(masks, scores) {
+  // Transformers.js post_process_masks() returns one Tensor per image. For one
+  // interactive object the tensor shape is [1, candidates, H, W]. Numeric Tensor
+  // indexing is supported by Transformers.js and returns a lower-rank Tensor.
+  const imageMasks = masks?.[0];
+  if (!imageMasks?.dims || imageMasks.dims.length < 3) {
+    throw new Error("SAM2.1 returned an unexpected mask tensor");
+  }
+
+  const candidateMasks = imageMasks.dims.length === 4 ? imageMasks[0] : imageMasks;
+  if (!candidateMasks?.dims || candidateMasks.dims.length !== 3) {
+    throw new Error(`SAM2.1 candidate mask shape is invalid: ${JSON.stringify(candidateMasks?.dims || [])}`);
+  }
+
+  const candidateCount = Number(candidateMasks.dims[0] || 0);
+  if (!candidateCount) throw new Error("SAM2.1 returned no mask candidates");
+  const index = Math.min(bestIndex(scores), candidateCount - 1);
+  const tensor = candidateMasks[index];
+  if (!tensor?.dims || tensor.dims.length !== 2) {
+    throw new Error(`SAM2.1 selected mask shape is invalid: ${JSON.stringify(tensor?.dims || [])}`);
+  }
+
+  const height = Number(tensor.dims[0] || 0);
+  const width = Number(tensor.dims[1] || 0);
+  if (!width || !height || tensor.data?.length !== width * height) {
+    throw new Error("SAM2.1 selected mask data does not match its dimensions");
+  }
+
+  const copy = new Uint8Array(tensor.data.length);
+  for (let i = 0; i < tensor.data.length; i++) copy[i] = tensor.data[i] ? 1 : 0;
+  return { mask: copy.buffer, width, height, index };
+}
+
 async function decode(prompts, box) {
   if (!imageInputs || !imageEmbeddings) throw new Error("SAM2.1 image embedding is not ready");
   const [m, p] = await loadRuntime();
   const outputs = await m({ ...imageEmbeddings, ...makePromptInputs(prompts, box) });
   const masks = await p.post_process_masks(outputs.pred_masks, imageInputs.original_sizes, imageInputs.reshaped_input_sizes);
   const scores = outputs.iou_scores?.data || [];
-  const index = bestIndex(scores);
+  const selected = extractBestMask(masks, scores);
 
-  // SAM2 masks are commonly [batch, object, candidates, H, W]. With one
-  // interactive object, masks[0][0] contains the candidate masks. Keep a fallback
-  // for exports that expose [batch, candidates, H, W].
-  const batch = masks?.[0];
-  let candidates = batch?.[0];
-  if (!candidates || candidates.dims?.length < 2) candidates = batch;
-  const tensor = candidates?.[index] || candidates?.[0] || batch?.[index] || batch?.[0];
-  if (!tensor) throw new Error("SAM2.1 returned no usable mask");
-
-  const raw = RawImage.fromTensor(tensor);
-  const source = raw.data instanceof Uint8Array ? raw.data : new Uint8Array(raw.data);
-  const copy = new Uint8Array(source.length);
-  copy.set(source);
   return {
-    mask: copy.buffer,
-    width: raw.width,
-    height: raw.height,
-    score: Number(scores[index] || 0),
+    mask: selected.mask,
+    width: selected.width,
+    height: selected.height,
+    score: Number(scores[selected.index] || 0),
   };
 }
 
