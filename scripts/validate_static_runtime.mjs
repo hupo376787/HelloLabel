@@ -12,6 +12,7 @@ const app = read("static/app.js");
 const index = read("static/index.html");
 const browserRuntime = read("static/browser-runtime.js");
 const browserSam = read("static/browser-sam-runtime.js");
+const browserRuntimeUi = read("static/browser-runtime-ui.js");
 const samWorker = read("static/sam-worker.js");
 const privacyGuard = read("static/browser-privacy-guard.js");
 const desktopMain = read("desktop/main.cjs");
@@ -28,13 +29,23 @@ assert(/Cross-Origin-Opener-Policy/.test(desktopMain) && /Cross-Origin-Embedder-
 assert(!/prepare_runtime|setup-python|pip install|\buv\b/i.test(workflow), "desktop CI must not prepare Python runtime");
 assert(!/run\.py|fastapi|uvicorn|requirements\.txt/i.test(startBat), "start_web.bat must be static-server only");
 assert(!/run\.py|fastapi|uvicorn|requirements\.txt/i.test(startSh), "start_web.sh must be static-server only");
+
 assert(browserRuntime.includes('mode: "browser-only"'), "browser-runtime.js must declare browser-only mode");
-assert(browserRuntime.includes('/^\\/api\\//'), "browser-runtime.js must block legacy /api calls");
+assert(!/SlimSAM|slimsam|@xenova\/transformers|SLIMSAM_MODEL/.test(browserRuntime), "browser-runtime.js must not contain the retired SlimSAM implementation");
+assert(!/runSamPrediction\s*=|runYolo\s*=|installAIFromMenu\s*=|showModelStatus\s*=/.test(browserRuntime), "browser-runtime.js must stay a shared browser runtime base, not duplicate AI implementations");
 assert(browserSam.includes("onnx-community/sam2.1-hiera-tiny-ONNX"), "browser SAM runtime must use SAM2.1 Tiny");
 assert(samWorker.includes("Sam2Model") && samWorker.includes("Sam2Processor"), "SAM worker must use Transformers.js SAM2 APIs");
 assert(samWorker.includes("onnx-community/sam2.1-hiera-tiny-ONNX"), "SAM worker must use the SAM2.1 Tiny browser model");
 assert(samWorker.includes("input_boxes"), "SAM2.1 worker must preserve true box prompts");
+
+assert(privacyGuard.includes('url.pathname === "/api"') && privacyGuard.includes('url.pathname.startsWith("/api/")'), "privacy guard must block legacy /api calls");
 assert(privacyGuard.includes("XMLHttpRequest") && privacyGuard.includes("sendBeacon"), "privacy guard must block non-fetch legacy API transports too");
+assert(!browserRuntimeUi.includes("previousInstall"), "browser runtime UI must not chain to the legacy AI installer");
+assert(!browserRuntimeUi.includes("/api/system/install-ai"), "browser runtime UI must not call the legacy AI installer API");
+assert(browserRuntimeUi.includes('runtime.yolo.loadModel("yolo11-detect")'), "browser AI installer must prepare YOLO11 Detect locally");
+assert(browserRuntimeUi.includes('runtime.yolo.loadModel("yolo11-seg")'), "browser AI installer must prepare YOLO11 Seg locally");
+assert(browserRuntimeUi.includes('runtime.sam.request("warmup")'), "browser AI installer must prepare SAM2.1 Tiny locally");
+
 assert(app.includes("browser-model-cache.js"), "app bootstrap must load browser model cache");
 assert(app.includes("browser-mask-geometry.js"), "app bootstrap must load robust mask geometry");
 assert(app.includes("browser-sam-runtime.js"), "app bootstrap must load local SAM runtime");
