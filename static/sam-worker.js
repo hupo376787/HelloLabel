@@ -14,6 +14,7 @@ let device = null;
 let imageInputs = null;
 let imageEmbeddings = null;
 let imageObjectUrl = null;
+let requestQueue = Promise.resolve();
 
 async function loadRuntime() {
   if (model && processor) return [model, processor];
@@ -60,19 +61,69 @@ async function loadRuntime() {
   return [model, processor];
 }
 
+function isTensorLike(value) {
+  return !!value && typeof value === "object" && Array.isArray(value.dims) && typeof value.dispose === "function";
+}
+
+function disposeTensorTree(value, seen = new Set()) {
+  if (!value || (typeof value !== "object" && typeof value !== "function") || seen.has(value)) return;
+  seen.add(value);
+  if (isTensorLike(value)) {
+    try { value.dispose(); } catch {}
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) disposeTensorTree(item, seen);
+    return;
+  }
+  for (const item of Object.values(value)) disposeTensorTree(item, seen);
+}
+
 function cleanupImageUrl() {
   if (!imageObjectUrl) return;
   try { URL.revokeObjectURL(imageObjectUrl); } catch {}
   imageObjectUrl = null;
 }
 
+function releaseImageState() {
+  disposeTensorTree(imageEmbeddings);
+  disposeTensorTree(imageInputs);
+  imageEmbeddings = null;
+  imageInputs = null;
+  cleanupImageUrl();
+}
+
 async function encodeImage(buffer, mime) {
   const [m, p] = await loadRuntime();
+  let nextInputs = null;
+  let nextEmbeddings = null;
   cleanupImageUrl();
   imageObjectUrl = URL.createObjectURL(new Blob([buffer], { type: mime || "application/octet-stream" }));
-  const image = await RawImage.read(imageObjectUrl);
-  imageInputs = await p(image);
-  imageEmbeddings = await m.get_image_embeddings(imageInputs);
+  try {
+    const image = await RawImage.read(imageObjectUrl);
+    nextInputs = await p(image);
+    nextEmbeddings = await m.get_image_embeddings(nextInputs);
+
+    // The vision encoder no longer needs pixel_values after embeddings are built.
+    // Keep only the size metadata required by prompt/mask post-processing.
+    const metadata = {
+      original_sizes: nextInputs.original_sizes,
+      reshaped_input_sizes: nextInputs.reshaped_input_sizes,
+    };
+    if (nextInputs.pixel_values) {
+      disposeTensorTree(nextInputs.pixel_values);
+      delete nextInputs.pixel_values;
+    }
+
+    releaseImageState();
+    imageInputs = metadata;
+    imageEmbeddings = nextEmbeddings;
+    nextEmbeddings = null;
+  } finally {
+    cleanupImageUrl();
+    disposeTensorTree(nextInputs);
+    disposeTensorTree(nextEmbeddings);
+  }
 }
 
 function clamp01(value) {
@@ -115,27 +166,32 @@ function makePromptInputs(prompts, box) {
 async function decode(prompts, box) {
   if (!imageInputs || !imageEmbeddings) throw new Error("SAM2.1 image embedding is not ready");
   const [m, p] = await loadRuntime();
-  const outputs = await m({ ...imageEmbeddings, ...makePromptInputs(prompts, box) });
-  const masks = await p.post_process_masks(outputs.pred_masks, imageInputs.original_sizes, imageInputs.reshaped_input_sizes);
-  const scores = outputs.iou_scores?.data || [];
-  const selected = extractBestMask(masks, scores);
-
-  return {
-    mask: selected.mask,
-    width: selected.width,
-    height: selected.height,
-    score: Number(scores[selected.index] || 0),
-  };
+  const promptInputs = makePromptInputs(prompts, box);
+  let outputs = null;
+  let masks = null;
+  try {
+    outputs = await m({ ...imageEmbeddings, ...promptInputs });
+    masks = await p.post_process_masks(outputs.pred_masks, imageInputs.original_sizes, imageInputs.reshaped_input_sizes);
+    const scores = outputs.iou_scores?.data || [];
+    const selected = extractBestMask(masks, scores);
+    return {
+      mask: selected.mask,
+      width: selected.width,
+      height: selected.height,
+      score: Number(scores[selected.index] || 0),
+    };
+  } finally {
+    disposeTensorTree(masks);
+    disposeTensorTree(outputs);
+    disposeTensorTree(promptInputs);
+  }
 }
 
-self.onmessage = async event => {
-  const request = event.data || {};
+async function handleRequest(request) {
   const id = request.id;
   try {
     if (request.type === "reset") {
-      imageInputs = null;
-      imageEmbeddings = null;
-      cleanupImageUrl();
+      releaseImageState();
       if (id) self.postMessage({ id, type: "reset", ok: true, model: MODEL_ID, device });
       return;
     }
@@ -158,4 +214,9 @@ self.onmessage = async event => {
   } catch (error) {
     self.postMessage({ id, type: request.type || "error", error: error?.message || String(error), model: MODEL_ID, device });
   }
+}
+
+self.onmessage = event => {
+  const request = event.data || {};
+  requestQueue = requestQueue.then(() => handleRequest(request));
 };
