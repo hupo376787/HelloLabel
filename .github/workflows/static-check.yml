@@ -32,6 +32,9 @@ jobs:
       - name: Test browser mask geometry
         run: node scripts/test_mask_geometry.mjs
 
+      - name: Test SAM2.1 mask tensor extraction
+        run: node scripts/test_sam_mask_tensor.mjs
+
       - name: Check JavaScript syntax
         shell: bash
         run: |
@@ -57,7 +60,9 @@ jobs:
           node --check static/geometry-edit.js
           node --check static/polygon-snap-visual.js
           node --check static/rectangle-crosshair.js
+          node --check static/sam-mask-utils.js
           node --check static/sam-worker.js
           node --check scripts/test_mask_geometry.mjs
+          node --check scripts/test_sam_mask_tensor.mjs
           node --check desktop/main.cjs
           node --check desktop/preload.cjs
