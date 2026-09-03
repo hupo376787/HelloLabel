@@ -13,6 +13,7 @@ const index = read("static/index.html");
 const browserRuntime = read("static/browser-runtime.js");
 const browserSam = read("static/browser-sam-runtime.js");
 const browserRuntimeUi = read("static/browser-runtime-ui.js");
+const samMaskUtils = read("static/sam-mask-utils.js");
 const samWorker = read("static/sam-worker.js");
 const privacyGuard = read("static/browser-privacy-guard.js");
 const desktopMain = read("desktop/main.cjs");
@@ -37,6 +38,9 @@ assert(browserSam.includes("onnx-community/sam2.1-hiera-tiny-ONNX"), "browser SA
 assert(samWorker.includes("Sam2Model") && samWorker.includes("Sam2Processor"), "SAM worker must use Transformers.js SAM2 APIs");
 assert(samWorker.includes("onnx-community/sam2.1-hiera-tiny-ONNX"), "SAM worker must use the SAM2.1 Tiny browser model");
 assert(samWorker.includes("input_boxes"), "SAM2.1 worker must preserve true box prompts");
+assert(samWorker.includes("./sam-mask-utils.js"), "SAM worker must use the tested SAM2.1 mask tensor helper");
+assert(!samWorker.includes("RawImage.fromTensor"), "SAM worker must not convert a 2D mask Tensor through RawImage.fromTensor");
+assert(samMaskUtils.includes("extractBestMask") && samMaskUtils.includes("tensor.data"), "SAM mask helper must extract the selected 2D Tensor directly");
 
 assert(privacyGuard.includes('url.pathname === "/api"') && privacyGuard.includes('url.pathname.startsWith("/api/")'), "privacy guard must block legacy /api calls");
 assert(privacyGuard.includes("XMLHttpRequest") && privacyGuard.includes("sendBeacon"), "privacy guard must block non-fetch legacy API transports too");
@@ -69,6 +73,7 @@ const required = [
   "static/browser-privacy-guard.js",
   "static/browser-runtime-ui.js",
   "static/browser-event-rebind.js",
+  "static/sam-mask-utils.js",
   "static/sam-worker.js",
   "static/modal-focus-fix.js",
   "static/global-labels.js",
@@ -76,6 +81,7 @@ const required = [
   "static/polygon-snap-visual.js",
   "static/rectangle-crosshair.js",
   "scripts/test_mask_geometry.mjs",
+  "scripts/test_sam_mask_tensor.mjs",
   "deploy/nginx.conf.example",
   "build_web.bat",
   "build_web.sh"
@@ -98,7 +104,8 @@ const forbiddenLegacy = [
   "ai/model_manager.py",
   "desktop/prepare_runtime.py",
   "desktop/desktop_ai_installer.py",
-  "desktop/hellolabel-server.spec"
+  "desktop/hellolabel-server.spec",
+  "static/version-ui.js"
 ];
 for (const relative of forbiddenLegacy) {
   assert(!exists(relative), `legacy server/runtime file must stay removed in v1.5: ${relative}`);
