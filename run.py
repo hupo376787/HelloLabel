@@ -73,6 +73,7 @@ def install_ui_extensions(app) -> None:
         '<script src="/static/instance-delete.js?v=hellolabel-instance-delete-v1"></script>',
         '<script src="/static/drawing-undo.js?v=hellolabel-drawing-undo-v3"></script>',
         '<script src="/static/geometry-edit.js?v=hellolabel-geometry-edit-v2"></script>',
+        '<script src="/static/rectangle-crosshair.js?v=hellolabel-rectangle-crosshair-v1"></script>',
         '<script src="/static/about-ui.js?v=hellolabel-about-v1"></script>',
     ]
     for script in scripts:
