@@ -11,6 +11,8 @@ const assert = (condition, message) => { if (!condition) errors.push(message); }
 const app = read("static/app.js");
 const index = read("static/index.html");
 const browserRuntime = read("static/browser-runtime.js");
+const browserSam = read("static/browser-sam-runtime.js");
+const samWorker = read("static/sam-worker.js");
 const privacyGuard = read("static/browser-privacy-guard.js");
 const desktopMain = read("desktop/main.cjs");
 const desktopPackage = JSON.parse(read("desktop/package.json"));
@@ -28,6 +30,10 @@ assert(!/run\.py|fastapi|uvicorn|requirements\.txt/i.test(startBat), "start_web.
 assert(!/run\.py|fastapi|uvicorn|requirements\.txt/i.test(startSh), "start_web.sh must be static-server only");
 assert(browserRuntime.includes('mode: "browser-only"'), "browser-runtime.js must declare browser-only mode");
 assert(browserRuntime.includes('/^\\/api\\//'), "browser-runtime.js must block legacy /api calls");
+assert(browserSam.includes("onnx-community/sam2.1-hiera-tiny-ONNX"), "browser SAM runtime must use SAM2.1 Tiny");
+assert(samWorker.includes("Sam2Model") && samWorker.includes("Sam2Processor"), "SAM worker must use Transformers.js SAM2 APIs");
+assert(samWorker.includes("onnx-community/sam2.1-hiera-tiny-ONNX"), "SAM worker must use the SAM2.1 Tiny browser model");
+assert(samWorker.includes("input_boxes"), "SAM2.1 worker must preserve true box prompts");
 assert(privacyGuard.includes("XMLHttpRequest") && privacyGuard.includes("sendBeacon"), "privacy guard must block non-fetch legacy API transports too");
 assert(app.includes("browser-model-cache.js"), "app bootstrap must load browser model cache");
 assert(app.includes("browser-mask-geometry.js"), "app bootstrap must load robust mask geometry");
@@ -58,6 +64,7 @@ const required = [
   "static/geometry-edit.js",
   "static/polygon-snap-visual.js",
   "static/rectangle-crosshair.js",
+  "scripts/test_mask_geometry.mjs",
   "deploy/nginx.conf.example",
   "build_web.bat",
   "build_web.sh"
