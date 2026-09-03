@@ -1,0 +1,55 @@
+name: Static Runtime Check
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hellolabel-static-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate browser-only architecture
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      - name: Validate static runtime structure
+        run: node scripts/validate_static_runtime.mjs
+
+      - name: Check JavaScript syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check static/app.js
+          node --check static/app-core.js
+          node --check static/browser-runtime.js
+          node --check static/browser-model-cache.js
+          node --check static/browser-runtime-ui.js
+          node --check static/browser-capture.js
+          node --check static/browser-event-rebind.js
+          node --check static/modal-focus-fix.js
+          node --check static/layout-fixes.js
+          node --check static/global-labels.js
+          node --check static/hover.js
+          node --check static/workspace-ui.js
+          node --check static/instance-delete.js
+          node --check static/drawing-undo.js
+          node --check static/geometry-edit.js
+          node --check static/polygon-snap-visual.js
+          node --check static/rectangle-crosshair.js
+          node --check static/sam-worker.js
+          node --check desktop/main.cjs
+          node --check desktop/preload.cjs
