@@ -5,7 +5,16 @@
   const geometry = window.helloLabelMaskGeometry;
   if (!runtime?.sam || !geometry) return;
 
+  const MODEL_ID = "onnx-community/sam2.1-hiera-tiny-ONNX";
   const text = (zh, en) => state?.language === "en" ? en : zh;
+
+  if (els.samModelSelect) {
+    els.samModelSelect.replaceChildren();
+    const option = document.createElement("option");
+    option.value = "sam2-browser";
+    option.textContent = "SAM2.1 Tiny (Browser)";
+    els.samModelSelect.appendChild(option);
+  }
 
   function ensureWorker() {
     const sam = runtime.sam;
@@ -18,6 +27,7 @@
         sam.ready = true;
         sam.loaded = true;
         sam.device = data.device || sam.device;
+        sam.model = data.model || MODEL_ID;
       }
       if (data.id && sam.pending.has(data.id)) {
         const pending = sam.pending.get(data.id);
@@ -26,7 +36,7 @@
       }
     });
     worker.addEventListener("error", event => {
-      const error = event.error || new Error(event.message || "SlimSAM worker failed");
+      const error = event.error || new Error(event.message || "SAM2.1 worker failed");
       for (const pending of sam.pending.values()) pending.reject(error);
       sam.pending.clear();
     });
@@ -106,7 +116,7 @@
     }
 
     const interactionSeq = ++state.sam.requestSeq;
-    setBusy(true, text("浏览器本地 SlimSAM 推理中...", "Running SlimSAM locally in the browser..."));
+    setBusy(true, text("浏览器本地 SAM2.1 Tiny 推理中...", "Running SAM2.1 Tiny locally in the browser..."));
     try {
       await ensureImageEncoded();
       const result = await request("decode", {
@@ -132,7 +142,7 @@
         flags: {},
         mask: null,
         _score: Number(result.score || 0),
-        _model: `browser:Xenova/slimsam-77-uniform`,
+        _model: `browser:${MODEL_ID}`,
       };
       renderSamOverlay();
       setStatus(text(
@@ -145,13 +155,14 @@
         renderSamOverlay();
         const message = error?.message || String(error);
         setStatus(message, true);
-        alert(text(`浏览器 SlimSAM 推理失败：${message}`, `Browser SlimSAM failed: ${message}`));
+        alert(text(`浏览器 SAM2.1 推理失败：${message}`, `Browser SAM2.1 failed: ${message}`));
       }
     } finally {
       if (interactionSeq === state.sam.requestSeq) setBusy(false);
     }
   };
 
+  runtime.sam.model = MODEL_ID;
   runtime.sam.request = request;
   runtime.sam.ensureImageEncoded = ensureImageEncoded;
 })();
