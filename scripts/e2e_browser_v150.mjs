@@ -139,10 +139,22 @@ async function waitForJsonShapes(page, name, minimum, timeout = 15000) {
   throw new Error(`${name} did not reach ${minimum} saved shape(s)`);
 }
 
+async function waitNotBusy(page, timeout = AI_TIMEOUT) {
+  await page.waitForFunction(() => {
+    const busy = document.getElementById("busy");
+    if (!busy) return true;
+    return busy.classList.contains("hidden") || busy.hidden || getComputedStyle(busy).display === "none";
+  }, null, { timeout });
+}
+
 async function waitActiveFile(page, name) {
   await page.waitForFunction(expected => {
     try { return state.imageName === expected; } catch { return false; }
   }, name, { timeout: 15000 });
+  // state.imageName is assigned before loadPreview()/JSON parsing finishes. Waiting
+  // for the busy overlay to clear makes this an actual "image + JSON ready" check
+  // rather than reading the previous image's stale instance count.
+  await waitNotBusy(page, 15000);
   await page.waitForFunction(() => {
     const img = document.getElementById("imageView");
     return !!img?.src && img.naturalWidth > 0 && img.naturalHeight > 0;
@@ -160,43 +172,36 @@ async function imageBox(page) {
   return box;
 }
 
-async function waitNotBusy(page, timeout = AI_TIMEOUT) {
-  await page.waitForFunction(() => {
-    const busy = document.getElementById("busy");
-    if (!busy) return true;
-    return busy.classList.contains("hidden") || busy.hidden || getComputedStyle(busy).display === "none";
-  }, null, { timeout });
-}
-
 async function runYolo(page, modelId, output = "polygon") {
   await page.selectOption("#yoloModelSelect", modelId);
   if (modelId === "yolo11-seg") await page.selectOption("#yoloOutputSelect", output);
   await page.locator("#yoloRunBtn").click();
-  await page.waitForFunction(() => Number(document.getElementById("instanceCount")?.textContent || 0) > 0, null, { timeout: AI_TIMEOUT });
   await waitNotBusy(page);
-  return page.evaluate(modelId => ({
+  const result = await page.evaluate(modelId => ({
     modelLoaded: window.helloLabelBrowserRuntime?.yolo?.models?.has?.(modelId) || false,
     device: window.helloLabelBrowserRuntime?.yolo?.devices?.get?.(modelId) || null,
     count: Number(document.getElementById("instanceCount")?.textContent || 0),
     status: document.getElementById("statusText")?.textContent || "",
   }), modelId);
+  if (result.count <= 0) throw new Error(`${modelId} completed without detections: ${result.status || "no status"}`);
+  return result;
 }
 
 async function samRound(page, action) {
   await action();
-  await page.waitForFunction(() => {
-    const preview = document.getElementById("aiPreviewPath");
-    return preview && !preview.classList.contains("hidden-svg") && (preview.getAttribute("d") || "").length > 8;
-  }, null, { timeout: AI_TIMEOUT });
   await waitNotBusy(page);
-  return page.evaluate(() => ({
+  const snapshot = await page.evaluate(() => ({
     path: document.getElementById("aiPreviewPath")?.getAttribute("d") || "",
+    hidden: document.getElementById("aiPreviewPath")?.classList.contains("hidden-svg") ?? true,
     points: state.sam.points.map(point => [...point]),
     labels: [...state.sam.labels],
     box: state.sam.box ? [...state.sam.box] : null,
     historyLength: state.sam.history.length,
     requestSeq: state.sam.requestSeq,
+    status: document.getElementById("statusText")?.textContent || "",
   }));
+  if (snapshot.hidden || snapshot.path.length <= 8) throw new Error(`SAM2.1 completed without a preview: ${snapshot.status || "no status"}`);
+  return snapshot;
 }
 
 let server = null;
@@ -216,6 +221,7 @@ try {
     args: [
       "--enable-unsafe-webgpu",
       "--ignore-gpu-blocklist",
+      "--enable-unsafe-swiftshader",
       "--use-angle=swiftshader",
     ],
   });
@@ -249,6 +255,12 @@ try {
     const line = error?.stack || error?.message || String(error);
     console.error(`[pageerror] ${line}`);
     report.pageErrors.push(line);
+  });
+  page.on("dialog", async dialog => {
+    const line = `[browser:dialog:${dialog.type()}] ${dialog.message()}`;
+    console.log(line);
+    if (dialog.type() === "alert") report.consoleErrors.push(line);
+    await dialog.dismiss().catch(() => {});
   });
 
   await page.goto(APP_URL, { waitUntil: "domcontentloaded", timeout: 30000 });
@@ -379,6 +391,7 @@ try {
         imageCount: document.getElementById("imageCount")?.textContent || "",
         instanceCount: document.getElementById("instanceCount")?.textContent || "",
         busy: document.getElementById("busyText")?.textContent || "",
+        imageName: (() => { try { return state.imageName || ""; } catch { return ""; } })(),
         sam: {
           loaded: !!window.helloLabelBrowserRuntime?.sam?.loaded,
           device: window.helloLabelBrowserRuntime?.sam?.device || null,
