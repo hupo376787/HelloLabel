@@ -6,6 +6,7 @@
 
   const isEnglish = () => state?.language === "en";
   const text = (zh, en) => isEnglish() ? en : zh;
+  const yesNo = value => value ? text("可用", "available") : text("不可用", "unavailable");
 
   // v1.5 intentionally ships only browser-native AI paths that are ready for the
   // static runtime. Keep legacy server-only choices visible as disabled context
@@ -20,6 +21,15 @@
 
   const previousInstall = installAIFromMenu;
   installAIFromMenu = async function() {
+    if (!runtime.secureContext) {
+      await showModal({
+        title: text("浏览器环境不安全", "Insecure browser context"),
+        body: `<div class="danger-note">${escapeHtml(text("浏览器 AI 和本地文件访问需要 HTTPS 或 localhost。请不要通过公网 HTTP 地址运行 HelloLabel。", "Browser AI and local file access require HTTPS or localhost. Do not run HelloLabel from a public HTTP origin."))}</div>`,
+        buttons: [{ label: t("close"), value: "ok", className: "primary" }]
+      });
+      return;
+    }
+
     await previousInstall();
     const detectReady = runtime.yolo?.devices?.has?.("yolo11-detect");
     const segReady = runtime.yolo?.devices?.has?.("yolo11-seg");
@@ -42,7 +52,10 @@
     const segDevice = runtime.yolo?.devices?.get?.("yolo11-seg") || null;
     const rows = [
       ["Runtime", "Browser-only 1.5.0"],
+      [text("安全上下文", "Secure context"), runtime.secureContext ? text("是（HTTPS / localhost）", "yes (HTTPS / localhost)") : text("否", "no")],
+      ["File System Access", yesNo(runtime.fileSystemAccess)],
       ["WebGPU", runtime.webgpu ? text("可用", "available") : text("不可用，将使用 CPU/WASM 兼容路径", "unavailable; CPU/WASM fallback")],
+      ["Cross-origin isolation", runtime.crossOriginIsolated ? text("已启用", "enabled") : text("未启用（不影响 WebGPU；部分 WASM 可能降速）", "disabled (WebGPU still works; some WASM may be slower)")],
       ["SlimSAM", runtime.sam?.loaded ? `${text("已加载", "loaded")} (${runtime.sam.device || "local"})` : text("未加载", "not loaded")],
       ["YOLO11 Detect", detectDevice ? `${text("已加载", "loaded")} (${detectDevice})` : text("未加载", "not loaded")],
       ["YOLO11 Seg", segDevice ? `${text("已加载", "loaded")} (${segDevice})` : text("未加载", "not loaded")],
@@ -60,12 +73,16 @@
 
   if (typeof I18N !== "undefined") {
     if (I18N.zh) {
+      I18N.zh.installAI = "下载浏览器 AI";
       I18N.zh.samInfo = "SlimSAM 浏览器本地推理：左键点=正样本，右键点=负样本；左键拖动=Box Prompt；Enter 接受，Esc 取消，Backspace 撤销最后一个提示。";
       I18N.zh.yoloInfo = "YOLO11 Detect / Seg 在当前浏览器本地运行，优先 WebGPU，必要时回退 CPU/WASM；原图不会上传到 HelloLabel 服务器。";
+      I18N.zh.modelStatusTitle = "查看浏览器 AI / WebGPU / 本地文件能力";
     }
     if (I18N.en) {
+      I18N.en.installAI = "Download Browser AI";
       I18N.en.samInfo = "Browser-local SlimSAM: left click = positive point, right click = negative point, left-drag = Box Prompt, Enter accepts, Esc cancels, Backspace removes the last prompt.";
       I18N.en.yoloInfo = "YOLO11 Detect / Seg run locally in this browser, preferring WebGPU with CPU/WASM fallback. Source images are never uploaded to a HelloLabel server.";
+      I18N.en.modelStatusTitle = "Check browser AI / WebGPU / local file capabilities";
     }
     try { applyLanguage(state.language, false); } catch {}
   }
