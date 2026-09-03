@@ -69,14 +69,56 @@ function clamp01(value) {
   return Math.max(0, Math.min(1, Number(value) || 0));
 }
 
+// v1.5's renderer originally represented a dragged SAM box as five positive
+// prompt points (center + four inset corners). Recover the original box here so
+// existing UI code gets real SAM input_boxes semantics without uploading the
+// image or requiring a server-side predictor.
+function recoverSyntheticBox(prompts, explicitBox) {
+  if (explicitBox && [explicitBox.x1, explicitBox.y1, explicitBox.x2, explicitBox.y2].every(Number.isFinite)) {
+    return { points: prompts || [], box: explicitBox };
+  }
+  const points = Array.isArray(prompts) ? prompts.slice() : [];
+  if (points.length < 5) return { points, box: null };
+  const tail = points.slice(-5);
+  if (!tail.every(item => Number(item?.label) === 1 && Number.isFinite(item?.x) && Number.isFinite(item?.y))) {
+    return { points, box: null };
+  }
+  const [center, tl, tr, br, bl] = tail;
+  const tolerance = 0.025;
+  const approx = (a, b) => Math.abs(a - b) <= tolerance;
+  const horizontal = approx(tl.y, tr.y) && approx(bl.y, br.y);
+  const vertical = approx(tl.x, bl.x) && approx(tr.x, br.x);
+  const centered = Math.abs(center.x - (tl.x + tr.x) / 2) <= tolerance && Math.abs(center.y - (tl.y + bl.y) / 2) <= tolerance;
+  if (!horizontal || !vertical || !centered || tr.x <= tl.x || bl.y <= tl.y) {
+    return { points, box: null };
+  }
+
+  // Renderer inset is 8% on each side, leaving 84% between synthetic corners.
+  const innerW = tr.x - tl.x;
+  const innerH = bl.y - tl.y;
+  if (innerW <= 0 || innerH <= 0) return { points, box: null };
+  const fullW = innerW / 0.84;
+  const fullH = innerH / 0.84;
+  const x1 = clamp01(tl.x - fullW * 0.08);
+  const y1 = clamp01(tl.y - fullH * 0.08);
+  const x2 = clamp01(tr.x + fullW * 0.08);
+  const y2 = clamp01(bl.y + fullH * 0.08);
+  if (x2 <= x1 || y2 <= y1) return { points, box: null };
+  return {
+    points: points.slice(0, -5),
+    box: { x1, y1, x2, y2 }
+  };
+}
+
 function makePromptInputs(prompts, box) {
   const reshaped = imageInputs?.reshaped_input_sizes?.[0];
   if (!reshaped) throw new Error("SAM resized image metadata is missing");
   const rh = Number(reshaped[0]);
   const rw = Number(reshaped[1]);
   const inputs = {};
+  const normalized = recoverSyntheticBox(prompts, box);
 
-  const usable = (prompts || []).filter(item => Number.isFinite(item?.x) && Number.isFinite(item?.y));
+  const usable = normalized.points.filter(item => Number.isFinite(item?.x) && Number.isFinite(item?.y));
   if (usable.length) {
     const coords = usable.flatMap(item => [clamp01(item.x) * rw, clamp01(item.y) * rh]);
     const labels = usable.map(item => BigInt(Number(item.label) ? 1 : 0));
@@ -84,11 +126,12 @@ function makePromptInputs(prompts, box) {
     inputs.input_labels = new Tensor("int64", labels, [1, 1, usable.length]);
   }
 
-  if (box && [box.x1, box.y1, box.x2, box.y2].every(Number.isFinite)) {
-    const x1 = clamp01(Math.min(box.x1, box.x2)) * rw;
-    const y1 = clamp01(Math.min(box.y1, box.y2)) * rh;
-    const x2 = clamp01(Math.max(box.x1, box.x2)) * rw;
-    const y2 = clamp01(Math.max(box.y1, box.y2)) * rh;
+  const promptBox = normalized.box;
+  if (promptBox) {
+    const x1 = clamp01(Math.min(promptBox.x1, promptBox.x2)) * rw;
+    const y1 = clamp01(Math.min(promptBox.y1, promptBox.y2)) * rh;
+    const x2 = clamp01(Math.max(promptBox.x1, promptBox.x2)) * rw;
+    const y2 = clamp01(Math.max(promptBox.y1, promptBox.y2)) * rh;
     inputs.input_boxes = new Tensor("float32", [x1, y1, x2, y2], [1, 1, 4]);
   }
 
