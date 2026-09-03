@@ -8,10 +8,13 @@
   const SVG_NS = "http://www.w3.org/2000/svg";
   const SNAP_PX = 12;
   const EDGE_SNAP_PX = 9;
+  const DRAWING_START_R = 5;
+  const POLYGON_SNAP_R = SNAP_PX;
   let edgeSnap = null;
   let reopened = null;
   let suppressNextContextMenu = false;
 
+  const drawingStart = document.getElementById("drawingStart");
   const snapMarker = document.createElementNS(SVG_NS, "circle");
   snapMarker.id = "geometrySnapMarker";
   snapMarker.setAttribute("r", "6");
@@ -27,8 +30,24 @@
     return state?.language === "en" ? en : zh;
   }
 
-  function showSnapAtImage(point) {
+  function setPolygonStartSnapVisual(active) {
+    if (!drawingStart) return;
+    drawingStart.setAttribute("r", String(active ? POLYGON_SNAP_R : DRAWING_START_R));
+    drawingStart.classList.toggle("polygon-snap-active", !!active);
+  }
+
+  function showSnapAtImage(point, { polygonStart = false } = {}) {
     const p = imageToViewport(point[0], point[1]);
+    if (polygonStart) {
+      // Match Labelme-style feedback: the actual polygon start handle grows to
+      // the full snap radius while the pointer is inside the magnetic area.
+      // This makes the capture zone itself visible instead of drawing a second
+      // small marker on top of the start vertex.
+      snapMarker.classList.add("hidden-svg");
+      setPolygonStartSnapVisual(true);
+      return;
+    }
+    setPolygonStartSnapVisual(false);
     snapMarker.setAttribute("cx", String(p[0]));
     snapMarker.setAttribute("cy", String(p[1]));
     snapMarker.classList.remove("hidden-svg");
@@ -37,6 +56,7 @@
   function clearSnap() {
     edgeSnap = null;
     snapMarker.classList.add("hidden-svg");
+    setPolygonStartSnapVisual(false);
   }
 
   function projectToSegment(point, a, b) {
@@ -84,8 +104,6 @@
         const screenDistance = projected.distance * state.scale;
         if (screenDistance > EDGE_SNAP_PX || screenDistance >= bestScreenDistance) continue;
 
-        // Near an existing corner, keep the existing handle behavior rather than
-        // creating a duplicate vertex on top of it.
         const endpointDistance = Math.min(
           Math.hypot(projected.point[0] - points[index][0], projected.point[1] - points[index][1]),
           Math.hypot(projected.point[0] - points[next][0], projected.point[1] - points[next][1])
@@ -233,9 +251,6 @@
     return true;
   }
 
-  // When a reopened polygon/polyline is rolled all the way back to zero points,
-  // keep it deleted. The history snapshot created on reopen still allows a normal
-  // Ctrl/Cmd+Z to restore the completed shape later.
   window.helloLabelDrawingEmptied = () => {
     if (!reopened) return;
     reopened = null;
@@ -253,8 +268,11 @@
     const closePoint = polygonStartSnap(event.clientX, event.clientY);
     if (closePoint) {
       state.drawing.cursor = [closePoint[0], closePoint[1]];
-      showSnapAtImage(closePoint);
+      showSnapAtImage(closePoint, { polygonStart: true });
       renderDrawingOverlay();
+      // renderDrawingOverlay may restore the base radius, so assert the magnetic
+      // radius after rendering the latest drawing path.
+      setPolygonStartSnapVisual(true);
       event.stopImmediatePropagation();
       return;
     }
@@ -312,9 +330,6 @@
     }
   }, true);
 
-  // Double-click no longer closes polygons or inserts polygon/polyline vertices.
-  // Polygon completion is now an explicit snap-to-start + single click action,
-  // while completed-edge insertion is a single snapped click.
   viewport.addEventListener("dblclick", event => {
     if (state.drawing?.type === "polygon" || (state.mode === "pointer" && !state.drawing)) {
       event.preventDefault();
