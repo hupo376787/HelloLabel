@@ -5,11 +5,6 @@ on:
   push:
     branches:
       - master
-    paths:
-      - "static/**"
-      - "desktop/**"
-      - "scripts/e2e_browser_v150.mjs"
-      - ".github/workflows/e2e-v150.yml"
 
 permissions:
   contents: read
