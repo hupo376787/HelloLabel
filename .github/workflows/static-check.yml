@@ -35,6 +35,12 @@ jobs:
       - name: Test SAM2.1 mask tensor extraction
         run: node scripts/test_sam_mask_tensor.mjs
 
+      - name: Build pure-static Web distribution
+        run: bash build_web.sh
+
+      - name: Validate generated Web distribution
+        run: node scripts/validate_web_dist.mjs
+
       - name: Check JavaScript syntax
         shell: bash
         run: |
@@ -64,5 +70,6 @@ jobs:
           node --check static/sam-worker.js
           node --check scripts/test_mask_geometry.mjs
           node --check scripts/test_sam_mask_tensor.mjs
+          node --check scripts/validate_web_dist.mjs
           node --check desktop/main.cjs
           node --check desktop/preload.cjs
