@@ -37,6 +37,10 @@ jobs:
           node --check static/app-core.js
           node --check static/browser-runtime.js
           node --check static/browser-model-cache.js
+          node --check static/browser-mask-geometry.js
+          node --check static/browser-sam-runtime.js
+          node --check static/browser-yolo-runtime.js
+          node --check static/browser-privacy-guard.js
           node --check static/browser-runtime-ui.js
           node --check static/browser-capture.js
           node --check static/browser-event-rebind.js
