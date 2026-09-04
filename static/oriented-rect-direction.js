@@ -43,37 +43,54 @@
     const screen = points.map(point => imageToViewport(Number(point[0]), Number(point[1])));
     if (screen.some(point => !Number.isFinite(point[0]) || !Number.isFinite(point[1]))) return null;
 
+    // For a Labelme-style oriented rectangle, p0-p1 is the first edge drawn by
+    // the user and p2-p3 is the opposite edge created when width is chosen.
+    // Direction therefore means "from the first edge to the second edge", not
+    // along the first edge itself.
+    const firstMidpoint = [
+      (screen[0][0] + screen[1][0]) / 2,
+      (screen[0][1] + screen[1][1]) / 2,
+    ];
+    const secondMidpoint = [
+      (screen[2][0] + screen[3][0]) / 2,
+      (screen[2][1] + screen[3][1]) / 2,
+    ];
     const center = [
-      (screen[0][0] + screen[1][0] + screen[2][0] + screen[3][0]) / 4,
-      (screen[0][1] + screen[1][1] + screen[2][1] + screen[3][1]) / 4,
+      (firstMidpoint[0] + secondMidpoint[0]) / 2,
+      (firstMidpoint[1] + secondMidpoint[1]) / 2,
     ];
 
-    // The first Labelme OBB edge defines direction. Keeping the arrow derived
-    // from p0 -> p1 means the standard four-point JSON remains the single source
-    // of truth; no HelloLabel-only direction field is written to disk.
-    const dx = screen[1][0] - screen[0][0];
-    const dy = screen[1][1] - screen[0][1];
-    const edgeLength = Math.hypot(dx, dy);
-    if (edgeLength < 5) return null;
+    const dx = secondMidpoint[0] - firstMidpoint[0];
+    const dy = secondMidpoint[1] - firstMidpoint[1];
+    const widthDistance = Math.hypot(dx, dy);
+    if (widthDistance < 7) return null;
 
-    const ux = dx / edgeLength;
-    const uy = dy / edgeLength;
+    const ux = dx / widthDistance;
+    const uy = dy / widthDistance;
     const px = -uy;
     const py = ux;
 
-    let length = Math.max(10, Math.min(68, edgeLength * 0.42));
-    length = Math.min(length, edgeLength * 0.72);
-    if (length < 6) return null;
+    // Keep the shaft just inside both rectangle edges. The arrow therefore
+    // visually reads as first edge -> opposite edge while avoiding overlap with
+    // the OBB outline itself.
+    const inset = Math.min(12, Math.max(2.5, widthDistance * 0.1));
+    const start = [
+      firstMidpoint[0] + ux * inset,
+      firstMidpoint[1] + uy * inset,
+    ];
+    const end = [
+      secondMidpoint[0] - ux * inset,
+      secondMidpoint[1] - uy * inset,
+    ];
+    const shaftLength = Math.hypot(end[0] - start[0], end[1] - start[1]);
+    if (shaftLength < 5) return null;
 
-    const half = length * 0.5;
-    const start = [center[0] - ux * half, center[1] - uy * half];
-    const end = [center[0] + ux * half, center[1] + uy * half];
-    const head = Math.max(4, Math.min(12, length * 0.3));
+    const head = Math.max(4, Math.min(12, shaftLength * 0.3));
     const wing = head * 0.62;
     const left = [end[0] - ux * head + px * wing, end[1] - uy * head + py * wing];
     const right = [end[0] - ux * head - px * wing, end[1] - uy * head - py * wing];
 
-    return { center, start, end, left, right };
+    return { center, firstMidpoint, secondMidpoint, start, end, left, right };
   }
 
   function traceArrow(arrow) {
@@ -126,8 +143,8 @@
       drawArrow(shape.points, labelColor(shape.label));
     }
 
-    // Show the same direction cue while the user is choosing OBB width, so the
-    // final orientation is visible before the third click is committed.
+    // Show the same first-edge -> second-edge cue while the user is choosing
+    // OBB width, so the final direction is visible before the third click.
     const draft = typeof currentDrawingShape === "function" ? currentDrawingShape() : null;
     if (draft?.shape_type === "oriented_rectangle") {
       const previewColor = getComputedStyle(document.documentElement).getPropertyValue("--selection").trim() || "#ffd54f";
