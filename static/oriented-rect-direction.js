@@ -70,22 +70,21 @@
     const px = -uy;
     const py = ux;
 
-    // Keep the shaft just inside both rectangle edges. The arrow therefore
-    // visually reads as first edge -> opposite edge while avoiding overlap with
-    // the OBB outline itself.
-    const inset = Math.min(12, Math.max(2.5, widthDistance * 0.1));
+    // The direction arrow is centered inside the OBB and its total shaft length
+    // is exactly one quarter of the distance between the first and second edges.
+    const shaftLength = widthDistance * 0.25;
+    if (shaftLength < 3) return null;
+    const half = shaftLength * 0.5;
     const start = [
-      firstMidpoint[0] + ux * inset,
-      firstMidpoint[1] + uy * inset,
+      center[0] - ux * half,
+      center[1] - uy * half,
     ];
     const end = [
-      secondMidpoint[0] - ux * inset,
-      secondMidpoint[1] - uy * inset,
+      center[0] + ux * half,
+      center[1] + uy * half,
     ];
-    const shaftLength = Math.hypot(end[0] - start[0], end[1] - start[1]);
-    if (shaftLength < 5) return null;
 
-    const head = Math.max(4, Math.min(12, shaftLength * 0.3));
+    const head = Math.max(3, Math.min(10, shaftLength * 0.32));
     const wing = head * 0.62;
     const left = [end[0] - ux * head + px * wing, end[1] - uy * head + py * wing];
     const right = [end[0] - ux * head - px * wing, end[1] - uy * head - py * wing];
