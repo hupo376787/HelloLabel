@@ -3,6 +3,7 @@
 (() => {
   const VERSION = "hellolabel-v150";
   const styles = [
+    `/static/style.css?v=${VERSION}`,
     `/static/theme-workspace.css?v=${VERSION}`,
     `/static/about-ui.css?v=${VERSION}`,
   ];

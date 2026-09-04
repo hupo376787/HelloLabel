@@ -78,8 +78,6 @@
       try {
         worker.postMessage({ id, type, ...payload }, transfer);
       } catch (error) {
-        clearTimeout(timer);
-        sam.pending.delete(id);
         resetWorker(worker, error);
       }
     });

@@ -8,9 +8,6 @@
   const text = (zh, en) => isEnglish() ? en : zh;
   const yesNo = value => value ? text("可用", "available") : text("不可用", "unavailable");
 
-  // v1.5 intentionally exposes only AI paths that are implemented entirely in
-  // the browser. Server-only choices stay disabled instead of falling back to an
-  // upload/API path.
   const worldOption = els.yoloModelSelect?.querySelector('option[value="yolo-world"]');
   if (worldOption) {
     worldOption.disabled = true;
@@ -116,7 +113,7 @@
       [text("安全上下文", "Secure context"), runtime.secureContext ? text("是（HTTPS / localhost）", "yes (HTTPS / localhost)") : text("否", "no")],
       ["File System Access", yesNo(runtime.fileSystemAccess)],
       ["WebGPU", runtime.webgpu ? text("可用", "available") : text("不可用，将使用 CPU/WASM 兼容路径", "unavailable; CPU/WASM fallback")],
-      ["Cross-origin isolation", runtime.crossOriginIsolated ? text("已启用", "enabled") : text("未启用（不影响 WebGPU；部分 WASM 可能降速）", "disabled (WebGPU still works; some WASM may be slower")],
+      ["Cross-origin isolation", runtime.crossOriginIsolated ? text("已启用", "enabled") : text("未启用（不影响 WebGPU；部分 WASM 可能降速）", "disabled (WebGPU still works; some WASM may be slower)")],
       ["SAM2.1 Tiny", runtime.sam?.loaded ? `${text("已加载", "loaded")} (${runtime.sam.device || "local"})` : text("未加载", "not loaded")],
       [text("SAM 模型", "SAM model"), samModel],
       ["YOLO11 Detect", detectDevice ? `${text("已加载", "loaded")} (${detectDevice})` : text("未加载", "not loaded")],
