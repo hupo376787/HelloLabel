@@ -56,7 +56,8 @@ assert(samWorker.includes("modelPromise = null") && samWorker.includes("processo
 assert(samMaskUtils.includes("extractBestMask") && samMaskUtils.includes("tensor.data"), "SAM mask helper must extract the selected 2D Tensor directly");
 
 assert(orientedRectDirection.includes("points.length !== 4"), "OBB direction overlay must derive from the four Labelme points");
-assert(orientedRectDirection.includes("screen[1][0] - screen[0][0]") && orientedRectDirection.includes("screen[1][1] - screen[0][1]"), "OBB direction must follow the Labelme p0 -> p1 edge");
+assert(orientedRectDirection.includes("firstMidpoint") && orientedRectDirection.includes("secondMidpoint"), "OBB direction must be derived from the first and opposite edge midpoints");
+assert(orientedRectDirection.includes("secondMidpoint[0] - firstMidpoint[0]") && orientedRectDirection.includes("secondMidpoint[1] - firstMidpoint[1]"), "OBB direction must point perpendicularly from the first edge toward the opposite edge");
 assert(!/shape\.direction\s*=|direction\s*:\s*\[/.test(orientedRectDirection), "OBB direction overlay must not add a HelloLabel-only direction field to JSON shapes");
 
 assert(privacyGuard.includes('url.pathname === "/api"') && privacyGuard.includes('url.pathname.startsWith("/api/")'), "privacy guard must block legacy /api calls");
