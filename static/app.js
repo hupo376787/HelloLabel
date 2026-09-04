@@ -48,6 +48,7 @@
     `/static/instance-delete.js?v=${VERSION}`,
     `/static/drawing-undo.js?v=${VERSION}`,
     `/static/geometry-edit.js?v=${VERSION}`,
+    `/static/viewport-context-menu.js?v=${VERSION}`,
     `/static/polygon-snap-visual.js?v=${VERSION}`,
     `/static/rectangle-crosshair.js?v=${VERSION}`,
     `/static/oriented-rect-direction.js?v=${VERSION}`,
