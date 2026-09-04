@@ -53,6 +53,7 @@
     `/static/oriented-rect-direction.js?v=${VERSION}`,
     `/static/viewport-context-menu.js?v=${VERSION}`,
     `/static/about-ui.js?v=${VERSION}`,
+    `/static/telemetry.js?v=${VERSION}`,
   ];
 
   for (const href of styles) {

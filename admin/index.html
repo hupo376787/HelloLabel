@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow,noarchive" />
+  <title>HelloLabel Telemetry</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png" />
+  <link rel="stylesheet" href="/admin/admin.css" />
+</head>
+<body>
+  <header class="admin-topbar">
+    <a class="brand" href="/" aria-label="返回 HelloLabel">
+      <img src="/static/hellolabel-icon.png" alt="" />
+      <span><strong>HelloLabel</strong><small>Telemetry</small></span>
+    </a>
+    <div class="top-actions">
+      <a class="ghost-btn" href="/">返回标注工具</a>
+      <button id="logoutBtn" class="ghost-btn hidden" type="button">退出后台</button>
+    </div>
+  </header>
+
+  <main class="admin-shell">
+    <section id="loginView" class="login-view">
+      <div class="login-card">
+        <div class="login-icon">HL</div>
+        <h1>遥测后台</h1>
+        <p>查看 HelloLabel 的匿名访问统计。后台口令仅保存在当前标签页的会话存储中。</p>
+        <form id="loginForm">
+          <label for="tokenInput">后台口令</label>
+          <div class="token-row">
+            <input id="tokenInput" type="password" autocomplete="current-password" placeholder="输入 ADMIN_TOKEN" required />
+            <button class="primary-btn" type="submit">进入后台</button>
+          </div>
+          <div id="loginError" class="form-message" role="status"></div>
+        </form>
+        <div class="privacy-note">
+          <strong>隐私设计</strong>
+          <span>不上传图片、文件名、文件夹路径、标注内容或原始 IP；尊重 DNT 与 Global Privacy Control。</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="dashboardView" class="dashboard hidden">
+      <div class="dashboard-head">
+        <div>
+          <p class="eyebrow">HELLOLABEL ANALYTICS</p>
+          <h1>网站遥测</h1>
+          <p id="updatedAt" class="subtle">正在加载统计数据…</p>
+        </div>
+        <div class="dashboard-controls">
+          <label class="range-control">
+            <span>统计范围</span>
+            <select id="rangeSelect">
+              <option value="7">最近 7 天</option>
+              <option value="30" selected>最近 30 天</option>
+              <option value="90">最近 90 天</option>
+            </select>
+          </label>
+          <button id="refreshBtn" class="primary-btn" type="button">刷新</button>
+        </div>
+      </div>
+
+      <div id="dashboardError" class="dashboard-error hidden" role="status"></div>
+
+      <section class="metric-grid" aria-label="核心指标">
+        <article class="metric-card accent">
+          <span class="metric-label">今日 PV</span>
+          <strong id="todayPv" class="metric-value">0</strong>
+          <span class="metric-foot">今日页面访问次数</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">今日 UV</span>
+          <strong id="todayUv" class="metric-value">0</strong>
+          <span class="metric-foot">今日匿名访客数</span>
+        </article>
+        <article class="metric-card live">
+          <span class="metric-label"><i class="live-dot"></i>活跃用户</span>
+          <strong id="activeUv" class="metric-value">0</strong>
+          <span class="metric-foot">最近 5 分钟</span>
+        </article>
+        <article class="metric-card">
+          <span id="periodPvLabel" class="metric-label">30 天 PV</span>
+          <strong id="periodPv" class="metric-value">0</strong>
+          <span id="periodSessions" class="metric-foot">0 个会话</span>
+        </article>
+        <article class="metric-card">
+          <span id="periodUvLabel" class="metric-label">30 天 UV</span>
+          <strong id="periodUv" class="metric-value">0</strong>
+          <span class="metric-foot">统计范围内匿名访客</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">累计 PV / UV</span>
+          <strong id="totalPv" class="metric-value">0</strong>
+          <span id="totalUv" class="metric-foot">累计 UV 0</span>
+        </article>
+      </section>
+
+      <section class="panel trend-panel">
+        <div class="panel-head">
+          <div>
+            <h2>访问趋势</h2>
+            <p>按 UTC 日期聚合的 PV / UV</p>
+          </div>
+          <div class="legend"><span class="legend-pv">PV</span><span class="legend-uv">UV</span></div>
+        </div>
+        <div class="chart-wrap"><canvas id="trendCanvas" aria-label="访问趋势图"></canvas></div>
+      </section>
+
+      <section class="dimension-grid">
+        <article class="panel"><div class="panel-head compact"><h2>国家 / 地区</h2></div><div id="countriesBars" class="bar-list"></div></article>
+        <article class="panel"><div class="panel-head compact"><h2>浏览器</h2></div><div id="browsersBars" class="bar-list"></div></article>
+        <article class="panel"><div class="panel-head compact"><h2>操作系统</h2></div><div id="osBars" class="bar-list"></div></article>
+        <article class="panel"><div class="panel-head compact"><h2>设备类型</h2></div><div id="devicesBars" class="bar-list"></div></article>
+        <article class="panel"><div class="panel-head compact"><h2>来源网站</h2></div><div id="referrersBars" class="bar-list"></div></article>
+        <article class="panel"><div class="panel-head compact"><h2>页面</h2></div><div id="pathsBars" class="bar-list"></div></article>
+        <article class="panel"><div class="panel-head compact"><h2>屏幕分辨率</h2></div><div id="screensBars" class="bar-list"></div></article>
+        <article class="panel"><div class="panel-head compact"><h2>HelloLabel 版本</h2></div><div id="versionsBars" class="bar-list"></div></article>
+      </section>
+
+      <section class="panel recent-panel">
+        <div class="panel-head">
+          <div><h2>最近访问</h2><p>仅显示匿名环境信息，不保存原始 IP。</p></div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>时间</th><th>页面</th><th>地区</th><th>浏览器 / 系统</th><th>设备</th><th>屏幕</th><th>来源</th><th>版本</th></tr></thead>
+            <tbody id="recentBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="/admin/admin.js"></script>
+</body>
+</html>
