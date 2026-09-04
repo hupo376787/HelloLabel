@@ -1,4 +1,4 @@
-name: HelloLabel 1.5 E2E Acceptance
+name: HelloLabel 2.1 E2E Acceptance
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: hellolabel-v150-e2e-${{ github.ref }}
+  group: hellolabel-v210-e2e-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -41,17 +41,17 @@ jobs:
             -o tests/fixtures/bus.jpg
           test "$(wc -c < tests/fixtures/bus.jpg)" -gt 10000
 
-      - name: Run full HelloLabel 1.5 browser chain
+      - name: Run full HelloLabel 2.1 browser chain
         env:
           HELLOLABEL_AI_TIMEOUT_MS: "480000"
-        run: node scripts/e2e_browser_v150.mjs
+        run: node scripts/e2e_browser_v210.mjs
 
       - name: Upload browser E2E evidence
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: HelloLabel-v1.5-browser-e2e
-          path: artifacts/e2e-v150/
+          name: HelloLabel-v2.1-browser-e2e
+          path: artifacts/e2e-v210/
           if-no-files-found: warn
 
   windows-packaged-desktop:
@@ -88,9 +88,9 @@ jobs:
           $process = Start-Process -FilePath $exe.FullName -ArgumentList '--smoke-test' -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
           if (Test-Path $out) { Get-Content $out }
           if (Test-Path $err) { Get-Content $err }
-          New-Item -ItemType Directory -Force -Path 'artifacts/e2e-v150-desktop' | Out-Null
-          Copy-Item $out 'artifacts/e2e-v150-desktop/stdout.txt' -ErrorAction SilentlyContinue
-          Copy-Item $err 'artifacts/e2e-v150-desktop/stderr.txt' -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path 'artifacts/e2e-v210-desktop' | Out-Null
+          Copy-Item $out 'artifacts/e2e-v210-desktop/stdout.txt' -ErrorAction SilentlyContinue
+          Copy-Item $err 'artifacts/e2e-v210-desktop/stderr.txt' -ErrorAction SilentlyContinue
           if ($process.ExitCode -ne 0) { throw "Packaged HelloLabel smoke test failed with exit code $($process.ExitCode)" }
           if (-not (Select-String -Path $out -Pattern 'HELLOLABEL_SMOKE_OK' -Quiet)) { throw 'Packaged smoke process did not emit HELLOLABEL_SMOKE_OK' }
 
@@ -98,9 +98,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: HelloLabel-v1.5-Windows-x64-acceptance
+          name: HelloLabel-v2.1-Windows-x64-acceptance
           path: |
-            artifacts/e2e-v150-desktop/
+            artifacts/e2e-v210-desktop/
             dist/desktop/*.exe
             dist/desktop/*.zip
           if-no-files-found: warn
