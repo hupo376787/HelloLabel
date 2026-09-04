@@ -69,6 +69,7 @@ jobs:
           node --check static/polygon-snap-visual.js
           node --check static/rectangle-crosshair.js
           node --check static/oriented-rect-direction.js
+          node --check static/viewport-context-menu.js
           node --check static/sam-mask-utils.js
           node --check static/sam-worker.js
           node --check scripts/test_boundary_guards.mjs
@@ -76,5 +77,6 @@ jobs:
           node --check scripts/test_sam_mask_tensor.mjs
           node --check scripts/validate_web_dist.mjs
           node --check scripts/e2e_browser_v150.mjs
+          node --check scripts/e2e_browser_v210.mjs
           node --check desktop/main.cjs
           node --check desktop/preload.cjs
