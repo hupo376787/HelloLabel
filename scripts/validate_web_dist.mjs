@@ -22,7 +22,7 @@ assert(exists("static/sam-mask-utils.js"), "dist/web/static/sam-mask-utils.js is
 assert(!exists("static/index.html"), "dist/web/static/index.html should not duplicate the site root index.html");
 
 if (exists("VERSION.txt")) {
-  assert(read("VERSION.txt").trim() === "HelloLabel 1.5.0 - browser-only static runtime", "VERSION.txt must identify the v1.5.0 browser-only runtime");
+  assert(read("VERSION.txt").trim() === "HelloLabel 2.1.0 - browser-only static runtime", "VERSION.txt must identify the v2.1.0 browser-only runtime");
 }
 if (exists("index.html")) {
   const index = read("index.html");
@@ -53,9 +53,9 @@ function walk(directory, relative = "") {
 if (fs.existsSync(dist)) walk(dist);
 
 if (errors.length) {
-  console.error("HelloLabel v1.5 web distribution validation failed:\n");
+  console.error("HelloLabel v2.1 web distribution validation failed:\n");
   for (const error of errors) console.error(` - ${error}`);
   process.exit(1);
 }
 
-console.log("HelloLabel v1.5 web distribution validation passed.");
+console.log("HelloLabel v2.1 web distribution validation passed.");
