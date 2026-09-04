@@ -70,6 +70,7 @@ jobs:
           node --check static/geometry-edit.js
           node --check static/polygon-snap-visual.js
           node --check static/rectangle-crosshair.js
+          node --check static/oriented-rect-direction.js
           node --check static/sam-mask-utils.js
           node --check static/sam-worker.js
           node --check scripts/test_boundary_guards.mjs
