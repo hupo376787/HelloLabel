@@ -50,6 +50,7 @@
     `/static/geometry-edit.js?v=${VERSION}`,
     `/static/polygon-snap-visual.js?v=${VERSION}`,
     `/static/rectangle-crosshair.js?v=${VERSION}`,
+    `/static/oriented-rect-direction.js?v=${VERSION}`,
     `/static/about-ui.js?v=${VERSION}`,
   ];
 
