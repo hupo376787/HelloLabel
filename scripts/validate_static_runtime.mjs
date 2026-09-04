@@ -15,6 +15,7 @@ const browserFileGuard = read("static/browser-file-guard.js");
 const browserSam = read("static/browser-sam-runtime.js");
 const browserYolo = read("static/browser-yolo-runtime.js");
 const browserRuntimeUi = read("static/browser-runtime-ui.js");
+const orientedRectDirection = read("static/oriented-rect-direction.js");
 const samMaskUtils = read("static/sam-mask-utils.js");
 const samWorker = read("static/sam-worker.js");
 const privacyGuard = read("static/browser-privacy-guard.js");
@@ -54,6 +55,10 @@ assert(samWorker.includes("requestQueue = requestQueue.then"), "SAM worker reque
 assert(samWorker.includes("modelPromise = null") && samWorker.includes("processorPromise = null"), "SAM model/processor load failures must be retryable");
 assert(samMaskUtils.includes("extractBestMask") && samMaskUtils.includes("tensor.data"), "SAM mask helper must extract the selected 2D Tensor directly");
 
+assert(orientedRectDirection.includes("points.length !== 4"), "OBB direction overlay must derive from the four Labelme points");
+assert(orientedRectDirection.includes("screen[1][0] - screen[0][0]") && orientedRectDirection.includes("screen[1][1] - screen[0][1]"), "OBB direction must follow the Labelme p0 -> p1 edge");
+assert(!/shape\.direction\s*=|direction\s*:\s*\[/.test(orientedRectDirection), "OBB direction overlay must not add a HelloLabel-only direction field to JSON shapes");
+
 assert(privacyGuard.includes('url.pathname === "/api"') && privacyGuard.includes('url.pathname.startsWith("/api/")'), "privacy guard must block legacy /api calls");
 assert(privacyGuard.includes("XMLHttpRequest") && privacyGuard.includes("sendBeacon"), "privacy guard must block non-fetch legacy API transports too");
 assert(!browserRuntimeUi.includes("previousInstall"), "browser runtime UI must not chain to the legacy AI installer");
@@ -69,6 +74,7 @@ assert(app.includes("browser-sam-runtime.js"), "app bootstrap must load local SA
 assert(app.includes("browser-yolo-runtime.js"), "app bootstrap must load local YOLO runtime");
 assert(app.includes("browser-privacy-guard.js"), "app bootstrap must load upload privacy guard");
 assert(app.includes("browser-runtime-ui.js"), "app bootstrap must load browser runtime UI hardening");
+assert(app.includes("oriented-rect-direction.js"), "app bootstrap must load the oriented rectangle direction overlay");
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 
 const staticReferences = [...app.matchAll(/`\/static\/([^?`]+)\?v=/g)].map(match => `static/${match[1]}`);
@@ -94,6 +100,7 @@ const required = [
   "static/geometry-edit.js",
   "static/polygon-snap-visual.js",
   "static/rectangle-crosshair.js",
+  "static/oriented-rect-direction.js",
   "scripts/test_boundary_guards.mjs",
   "scripts/test_mask_geometry.mjs",
   "scripts/test_sam_mask_tensor.mjs",
