@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v150";
+  const VERSION = "hellolabel-v210";
 
   // Resolve the theme before loading the rest of the runtime. style.css defaults
   // to dark variables, so waiting for app-core.js used to cause a visible black
@@ -48,10 +48,10 @@
     `/static/instance-delete.js?v=${VERSION}`,
     `/static/drawing-undo.js?v=${VERSION}`,
     `/static/geometry-edit.js?v=${VERSION}`,
-    `/static/viewport-context-menu.js?v=${VERSION}`,
     `/static/polygon-snap-visual.js?v=${VERSION}`,
     `/static/rectangle-crosshair.js?v=${VERSION}`,
     `/static/oriented-rect-direction.js?v=${VERSION}`,
+    `/static/viewport-context-menu.js?v=${VERSION}`,
     `/static/about-ui.js?v=${VERSION}`,
   ];
 
@@ -77,7 +77,7 @@
   (async () => {
     for (const src of scripts) await loadScript(src);
     document.documentElement.dataset.hellolabelRuntime = "browser-only";
-    window.dispatchEvent(new CustomEvent("hellolabel:ready", { detail: { version: "1.5.0", runtime: "browser-only" } }));
+    window.dispatchEvent(new CustomEvent("hellolabel:ready", { detail: { version: "2.1.0", runtime: "browser-only" } }));
   })().catch(error => {
     console.error("HelloLabel bootstrap failed", error);
     const pre = document.createElement("pre");
