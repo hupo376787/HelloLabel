@@ -10,12 +10,14 @@ const assert = (condition, message) => { if (!condition) errors.push(message); }
 
 const app = read("static/app.js");
 const index = read("static/index.html");
+const aboutUi = read("static/about-ui.js");
 const browserRuntime = read("static/browser-runtime.js");
 const browserFileGuard = read("static/browser-file-guard.js");
 const browserSam = read("static/browser-sam-runtime.js");
 const browserYolo = read("static/browser-yolo-runtime.js");
 const browserRuntimeUi = read("static/browser-runtime-ui.js");
 const orientedRectDirection = read("static/oriented-rect-direction.js");
+const viewportContextMenu = read("static/viewport-context-menu.js");
 const samMaskUtils = read("static/sam-mask-utils.js");
 const samWorker = read("static/sam-worker.js");
 const privacyGuard = read("static/browser-privacy-guard.js");
@@ -25,7 +27,11 @@ const workflow = read(".github/workflows/desktop-build.yml");
 const startBat = read("start_web.bat");
 const startSh = read("start_web.sh");
 
-assert(desktopPackage.version === "1.5.0", "desktop/package.json must be version 1.5.0");
+assert(desktopPackage.version === "2.1.0", "desktop/package.json must be version 2.1.0");
+assert(app.includes('const VERSION = "hellolabel-v210"'), "app bootstrap cache version must be hellolabel-v210");
+assert(app.includes('version: "2.1.0"'), "app ready event must report version 2.1.0");
+assert(browserRuntime.includes('const RUNTIME_VERSION = "2.1.0"'), "browser runtime must report version 2.1.0");
+assert(aboutUi.includes('const APP_VERSION = "2.1.0"'), "About dialog must report version 2.1.0");
 assert(desktopPackage.build?.extraResources?.some(item => item.from === "../static" && item.to === "static"), "desktop package must bundle ../static as resources/static");
 assert(!JSON.stringify(desktopPackage.build?.extraResources || []).includes("runtime"), "desktop package must not bundle a Python runtime");
 assert(!/child_process|spawn\s*\(|execFile\s*\(|exec\s*\(|web_api\.py|run\.py|fastapi|uvicorn/i.test(desktopMain), "desktop/main.cjs must not launch Python/FastAPI");
@@ -59,6 +65,7 @@ assert(orientedRectDirection.includes("points.length !== 4"), "OBB direction ove
 assert(orientedRectDirection.includes("firstMidpoint") && orientedRectDirection.includes("secondMidpoint"), "OBB direction must be derived from the first and opposite edge midpoints");
 assert(orientedRectDirection.includes("secondMidpoint[0] - firstMidpoint[0]") && orientedRectDirection.includes("secondMidpoint[1] - firstMidpoint[1]"), "OBB direction must point perpendicularly from the first edge toward the opposite edge");
 assert(!/shape\.direction\s*=|direction\s*:\s*\[/.test(orientedRectDirection), "OBB direction overlay must not add a HelloLabel-only direction field to JSON shapes");
+assert(viewportContextMenu.includes('addEventListener("contextmenu"') && viewportContextMenu.includes("preventDefault"), "image viewport must suppress the browser context menu locally");
 
 assert(privacyGuard.includes('url.pathname === "/api"') && privacyGuard.includes('url.pathname.startsWith("/api/")'), "privacy guard must block legacy /api calls");
 assert(privacyGuard.includes("XMLHttpRequest") && privacyGuard.includes("sendBeacon"), "privacy guard must block non-fetch legacy API transports too");
@@ -76,6 +83,7 @@ assert(app.includes("browser-yolo-runtime.js"), "app bootstrap must load local Y
 assert(app.includes("browser-privacy-guard.js"), "app bootstrap must load upload privacy guard");
 assert(app.includes("browser-runtime-ui.js"), "app bootstrap must load browser runtime UI hardening");
 assert(app.includes("oriented-rect-direction.js"), "app bootstrap must load the oriented rectangle direction overlay");
+assert(app.includes("viewport-context-menu.js"), "app bootstrap must load the viewport context-menu guard");
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 
 const staticReferences = [...app.matchAll(/`\/static\/([^?`]+)\?v=/g)].map(match => `static/${match[1]}`);
@@ -102,14 +110,16 @@ const required = [
   "static/polygon-snap-visual.js",
   "static/rectangle-crosshair.js",
   "static/oriented-rect-direction.js",
+  "static/viewport-context-menu.js",
   "scripts/test_boundary_guards.mjs",
   "scripts/test_mask_geometry.mjs",
   "scripts/test_sam_mask_tensor.mjs",
+  "scripts/e2e_browser_v210.mjs",
   "deploy/nginx.conf.example",
   "build_web.bat",
   "build_web.sh"
 ];
-for (const relative of required) assert(exists(relative), `required v1.5 file is missing: ${relative}`);
+for (const relative of required) assert(exists(relative), `required v2.1 file is missing: ${relative}`);
 
 const forbiddenLegacy = [
   "run.py",
@@ -128,13 +138,13 @@ const forbiddenLegacy = [
   "static/version-ui.js"
 ];
 for (const relative of forbiddenLegacy) {
-  assert(!exists(relative), `legacy server/runtime file must stay removed in v1.5: ${relative}`);
+  assert(!exists(relative), `legacy server/runtime file must stay removed in v2.1: ${relative}`);
 }
 
 if (errors.length) {
-  console.error("HelloLabel v1.5 static runtime validation failed:\n");
+  console.error("HelloLabel v2.1 static runtime validation failed:\n");
   for (const error of errors) console.error(` - ${error}`);
   process.exit(1);
 }
 
-console.log(`HelloLabel v1.5 static runtime validation passed (${staticReferences.length} bootstrap assets checked).`);
+console.log(`HelloLabel v2.1 static runtime validation passed (${staticReferences.length} bootstrap assets checked).`);
