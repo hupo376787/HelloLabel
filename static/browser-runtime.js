@@ -19,6 +19,7 @@
       imageKey: null,
       encodePromise: null,
       requestSeq: 0,
+      interactionSeq: 0,
       pending: new Map(),
       loaded: false,
       device: null,
@@ -118,6 +119,7 @@
   }
 
   function resetBrowserSamImage() {
+    runtime.sam.interactionSeq++;
     runtime.sam.imageKey = null;
     runtime.sam.encodePromise = null;
     if (runtime.sam.worker) {
@@ -125,8 +127,6 @@
     }
   }
 
-  // v1.5 preview path is browser-only. Image bytes are never posted to a
-  // HelloLabel server; TIFF files are decoded locally before rendering.
   loadPreview = async function(file) {
     if (!file) throw new Error(message("没有可读取的图片文件。", "No image file was provided."));
 

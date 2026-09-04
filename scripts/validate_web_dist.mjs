@@ -13,6 +13,7 @@ assert(exists("index.html"), "dist/web/index.html is missing");
 assert(exists("VERSION.txt"), "dist/web/VERSION.txt is missing");
 assert(exists("static/app.js"), "dist/web/static/app.js is missing");
 assert(exists("static/app-core.js"), "dist/web/static/app-core.js is missing");
+assert(exists("static/browser-file-guard.js"), "dist/web/static/browser-file-guard.js is missing");
 assert(exists("static/browser-runtime.js"), "dist/web/static/browser-runtime.js is missing");
 assert(exists("static/browser-sam-runtime.js"), "dist/web/static/browser-sam-runtime.js is missing");
 assert(exists("static/browser-yolo-runtime.js"), "dist/web/static/browser-yolo-runtime.js is missing");

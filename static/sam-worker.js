@@ -57,8 +57,18 @@ async function loadRuntime() {
       }
     })();
   }
-  [model, processor] = await Promise.all([modelPromise, processorPromise]);
-  return [model, processor];
+  try {
+    [model, processor] = await Promise.all([modelPromise, processorPromise]);
+    return [model, processor];
+  } catch (error) {
+    modelPromise = null;
+    processorPromise = null;
+    model = null;
+    processor = null;
+    device = null;
+    releaseImageState();
+    throw error;
+  }
 }
 
 function isTensorLike(value) {
@@ -104,8 +114,6 @@ async function encodeImage(buffer, mime) {
     nextInputs = await p(image);
     nextEmbeddings = await m.get_image_embeddings(nextInputs);
 
-    // The vision encoder no longer needs pixel_values after embeddings are built.
-    // Keep only the size metadata required by prompt/mask post-processing.
     const metadata = {
       original_sizes: nextInputs.original_sizes,
       reshaped_input_sizes: nextInputs.reshaped_input_sizes,

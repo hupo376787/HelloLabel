@@ -41,7 +41,12 @@ const MIME = {
 };
 
 function safeStaticPath(urlPath) {
-  const pathname = decodeURIComponent(String(urlPath || '/').split('?')[0]);
+  let pathname;
+  try {
+    pathname = decodeURIComponent(String(urlPath || '/').split('?')[0]);
+  } catch {
+    return null;
+  }
   let relative = pathname === '/' ? 'index.html' : pathname.replace(/^\/static\//, '').replace(/^\/+/, '');
   relative = path.normalize(relative);
   if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
@@ -180,6 +185,31 @@ function quitDialogOptions() {
   };
 }
 
+function saveFailureDialogOptions(message) {
+  return isChineseLocale() ? {
+    type:'error', title:'无法退出 HelloLabel', message:'当前标注保存失败，应用未退出。', detail:String(message || '未知保存错误'), buttons:['确定'], defaultId:0,cancelId:0,noLink:true
+  } : {
+    type:'error', title:'Unable to quit HelloLabel', message:'The current annotation could not be saved, so the application stayed open.', detail:String(message || 'Unknown save error'), buttons:['OK'], defaultId:0,cancelId:0,noLink:true
+  };
+}
+
+async function flushRendererSaveBeforeQuit() {
+  if (!mainWindow || mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) return { ok:true };
+  try {
+    return await mainWindow.webContents.executeJavaScript(`(async () => {
+      try {
+        if (typeof flushPendingSave === 'function') await flushPendingSave();
+        if (typeof state !== 'undefined' && state?.dirty) throw new Error('Pending annotation changes remain unsaved');
+        return { ok: true };
+      } catch (error) {
+        return { ok: false, error: error?.message || String(error) };
+      }
+    })()`, true);
+  } catch (error) {
+    return { ok:false, error:error?.message || String(error) };
+  }
+}
+
 async function requestUserQuit() {
   if (allowQuitWithoutPrompt || closePromptActive) return;
   closePromptActive = true;
@@ -187,6 +217,12 @@ async function requestUserQuit() {
     const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined;
     const result = parent ? await dialog.showMessageBox(parent, quitDialogOptions()) : await dialog.showMessageBox(quitDialogOptions());
     if (result.response === 1) {
+      const saved = await flushRendererSaveBeforeQuit();
+      if (!saved?.ok) {
+        if (parent && !parent.isDestroyed()) await dialog.showMessageBox(parent, saveFailureDialogOptions(saved?.error));
+        else await dialog.showMessageBox(saveFailureDialogOptions(saved?.error));
+        return;
+      }
       allowQuitWithoutPrompt = true;
       app.quit();
     }

@@ -8,6 +8,7 @@
   ];
   const scripts = [
     `/static/app-core.js?v=${VERSION}`,
+    `/static/browser-file-guard.js?v=${VERSION}`,
     `/static/global-labels.js?v=${VERSION}`,
     `/static/browser-capture.js?v=${VERSION}`,
     `/static/browser-runtime.js?v=${VERSION}`,

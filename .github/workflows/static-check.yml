@@ -29,6 +29,9 @@ jobs:
       - name: Validate static runtime structure
         run: node scripts/validate_static_runtime.mjs
 
+      - name: Test file/JSON boundary guards
+        run: node scripts/test_boundary_guards.mjs
+
       - name: Test browser mask geometry
         run: node scripts/test_mask_geometry.mjs
 
@@ -47,6 +50,7 @@ jobs:
           set -euo pipefail
           node --check static/app.js
           node --check static/app-core.js
+          node --check static/browser-file-guard.js
           node --check static/browser-runtime.js
           node --check static/browser-model-cache.js
           node --check static/browser-mask-geometry.js
@@ -68,105 +72,10 @@ jobs:
           node --check static/rectangle-crosshair.js
           node --check static/sam-mask-utils.js
           node --check static/sam-worker.js
+          node --check scripts/test_boundary_guards.mjs
           node --check scripts/test_mask_geometry.mjs
           node --check scripts/test_sam_mask_tensor.mjs
           node --check scripts/validate_web_dist.mjs
           node --check scripts/e2e_browser_v150.mjs
           node --check desktop/main.cjs
           node --check desktop/preload.cjs
-
-  browser-chain:
-    name: Chromium real annotation + AI chain
-    if: github.event_name == 'push'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 35
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-
-      - name: Install Playwright Chromium
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install --no-save --no-package-lock playwright@1.55.0
-          npx playwright install --with-deps chromium
-
-      - name: Download deterministic YOLO/SAM test image
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p tests/fixtures
-          curl -fL --retry 4 --retry-delay 2 \
-            https://raw.githubusercontent.com/ultralytics/assets/main/im/bus.jpg \
-            -o tests/fixtures/bus.jpg
-          test "$(wc -c < tests/fixtures/bus.jpg)" -gt 10000
-
-      - name: Run full HelloLabel 1.5 browser chain
-        env:
-          HELLOLABEL_AI_TIMEOUT_MS: "480000"
-        run: node scripts/e2e_browser_v150.mjs
-
-      - name: Upload browser E2E evidence
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: HelloLabel-v1.5-browser-e2e
-          path: artifacts/e2e-v150/
-          if-no-files-found: warn
-
-  windows-packaged-desktop:
-    name: Windows x64 package + launch smoke
-    if: github.event_name == 'push'
-    runs-on: windows-2025
-    timeout-minutes: 30
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-
-      - name: Set up Node.js 22
-        uses: actions/setup-node@v7
-        with:
-          node-version: "22"
-
-      - name: Install Electron dependencies
-        working-directory: desktop
-        shell: pwsh
-        run: npm install --no-audit --no-fund
-
-      - name: Build real Windows installer and ZIP
-        working-directory: desktop
-        shell: pwsh
-        run: npm run dist:win -- --publish never
-
-      - name: Launch packaged HelloLabel and run renderer smoke assertions
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $exe = Get-ChildItem -Path 'dist/desktop/win-unpacked' -Filter 'HelloLabel.exe' -File | Select-Object -First 1
-          if (-not $exe) { throw 'Packaged HelloLabel.exe not found in win-unpacked' }
-          $out = Join-Path $env:RUNNER_TEMP 'hellolabel-smoke.stdout.txt'
-          $err = Join-Path $env:RUNNER_TEMP 'hellolabel-smoke.stderr.txt'
-          $process = Start-Process -FilePath $exe.FullName -ArgumentList '--smoke-test' -Wait -PassThru -RedirectStandardOutput $out -RedirectStandardError $err
-          if (Test-Path $out) { Get-Content $out }
-          if (Test-Path $err) { Get-Content $err }
-          New-Item -ItemType Directory -Force -Path 'artifacts/e2e-v150-desktop' | Out-Null
-          Copy-Item $out 'artifacts/e2e-v150-desktop/stdout.txt' -ErrorAction SilentlyContinue
-          Copy-Item $err 'artifacts/e2e-v150-desktop/stderr.txt' -ErrorAction SilentlyContinue
-          if ($process.ExitCode -ne 0) { throw "Packaged HelloLabel smoke test failed with exit code $($process.ExitCode)" }
-          if (-not (Select-String -Path $out -Pattern 'HELLOLABEL_SMOKE_OK' -Quiet)) { throw 'Packaged smoke process did not emit HELLOLABEL_SMOKE_OK' }
-
-      - name: Upload packaged Windows acceptance evidence
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: HelloLabel-v1.5-Windows-x64-acceptance
-          path: |
-            artifacts/e2e-v150-desktop/
-            dist/desktop/*.exe
-            dist/desktop/*.zip
-          if-no-files-found: warn

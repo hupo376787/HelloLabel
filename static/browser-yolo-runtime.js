@@ -13,7 +13,16 @@
   const text = (zh, en) => state?.language === "en" ? en : zh;
 
   async function loadModule() {
-    if (!runtime.yolo.module) runtime.yolo.module = import(ULTRALYTICS_URL);
+    if (!runtime.yolo.module) {
+      const promise = import(ULTRALYTICS_URL);
+      runtime.yolo.module = promise;
+      try {
+        return await promise;
+      } catch (error) {
+        if (runtime.yolo.module === promise) runtime.yolo.module = null;
+        throw error;
+      }
+    }
     return runtime.yolo.module;
   }
 
@@ -56,15 +65,10 @@
     return { x1, y1, x2, y2 };
   }
 
-  // Ultralytics browser Results currently expose a composite RGBA mask overlay.
-  // Isolate the pixels matching this detection's palette color *inside its own
-  // box*, then let the contour chooser use the box centre to disambiguate same-
-  // color components. This prevents two nearby objects of the same class from
-  // being merged into one polygon simply because they share a palette color.
-  function maskForDetection(results, box) {
+  function maskForDetection(results, box, fallbackWidth, fallbackHeight) {
     const rgba = results?.masks;
-    const width = Number(results?.width || state.width);
-    const height = Number(results?.height || state.height);
+    const width = Number(results?.width || fallbackWidth);
+    const height = Number(results?.height || fallbackHeight);
     if (!(rgba instanceof Uint8Array) || rgba.length < width * height * 4) return null;
     const bounds = detectionBounds(box, width, height);
     const color = parseColor(box.color);
@@ -122,12 +126,23 @@
       return;
     }
 
+    const imageFile = state.imageFile;
+    const imageName = state.imageName;
+    const dataRef = state.data;
+    const previewBlob = state.previewBlob;
+    const width = state.width;
+    const height = state.height;
+    const isCurrent = () => state.imageFile === imageFile && state.imageName === imageName && state.data === dataRef;
+
     setBusy(true, text("浏览器本地 YOLO 推理中...", "Running YOLO locally in the browser..."));
     try {
       const model = await loadModel(modelId);
+      if (!isCurrent()) return;
       const conf = Math.max(0.001, Math.min(1, Number(els.yoloConf.value || 0.25)));
       const iou = Math.max(0.001, Math.min(1, Number(els.yoloIou.value || 0.5)));
-      const results = await model.predict(state.previewBlob || state.imageFile, { conf, iou });
+      const results = await model.predict(previewBlob || imageFile, { conf, iou });
+      if (!isCurrent()) return;
+
       let boxes = Array.isArray(results?.boxes) ? results.boxes : [];
       const requested = parseRequestedClasses();
       if (requested.size) boxes = boxes.filter(item => requested.has(String(item.name ?? item.cls ?? "").toLowerCase()));
@@ -142,7 +157,7 @@
         const label = String(item.name ?? item.cls ?? "object");
         let shape;
         if (modelId === "yolo11-seg" && requestedType !== "rectangle") {
-          const isolated = maskForDetection(results, item);
+          const isolated = maskForDetection(results, item, width, height);
           if (isolated) {
             try {
               shape = {
@@ -158,6 +173,7 @@
         additions.push({ label, shape, score: Number(item.conf ?? 0) });
       }
 
+      if (!isCurrent()) return;
       if (!additions.length) {
         setStatus(t("noDetections"));
         return;
@@ -165,9 +181,9 @@
 
       pushHistory();
       for (const addition of additions) {
-        if (!state.data.hellolabel.labels[addition.label]) state.data.hellolabel.labels[addition.label] = { color: stableColor(addition.label) };
+        if (!dataRef.hellolabel.labels[addition.label]) dataRef.hellolabel.labels[addition.label] = { color: stableColor(addition.label) };
         const id = uid();
-        state.data.shapes.push(makeShape(addition.label, addition.shape.type, addition.shape.points));
+        dataRef.shapes.push(makeShape(addition.label, addition.shape.type, addition.shape.points));
         state.runtimeIds.push(id);
         state.runtimeMeta[id] = { source: `browser:${modelId}`, score: addition.score };
       }
@@ -176,11 +192,12 @@
       if (additions.length === 1) selectId(shapeIds().at(-1), { scroll: true, ensure: true });
       setStatus(text(`浏览器本地 AI 已新增 ${additions.length} 个实例。`, `Browser AI added ${additions.length} instance(s).`));
     } catch (error) {
+      if (!isCurrent()) return;
       const message = error?.message || String(error);
       setStatus(message, true);
       alert(text(`浏览器 YOLO 推理失败：${message}`, `Browser YOLO failed: ${message}`));
     } finally {
-      setBusy(false);
+      if (isCurrent()) setBusy(false);
     }
   };
 
