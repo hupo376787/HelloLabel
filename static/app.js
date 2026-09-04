@@ -2,6 +2,27 @@
 
 (() => {
   const VERSION = "hellolabel-v150";
+
+  // Resolve the theme before loading the rest of the runtime. style.css defaults
+  // to dark variables, so waiting for app-core.js used to cause a visible black
+  // flash before a saved light theme was applied. New users now default to light;
+  // explicit light/dark/system choices continue to be respected.
+  try {
+    let theme = localStorage.getItem("hellolabel-theme") || localStorage.getItem("labelit-theme");
+    if (!theme) {
+      theme = "light";
+      localStorage.setItem("hellolabel-theme", theme);
+    }
+    const resolved = theme === "system"
+      ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : (theme === "dark" ? "dark" : "light");
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.style.backgroundColor = resolved === "dark" ? "#0f1116" : "#eef1f5";
+  } catch {
+    document.documentElement.dataset.theme = "light";
+    document.documentElement.style.backgroundColor = "#eef1f5";
+  }
+
   const styles = [
     `/static/style.css?v=${VERSION}`,
     `/static/theme-workspace.css?v=${VERSION}`,
