@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const RUNTIME_VERSION = "1.5.0";
+  const RUNTIME_VERSION = "2.1.0";
   const TIFF_EXTENSIONS = new Set([".tif", ".tiff"]);
   const TIFF_DECODER_URL = "https://cdn.jsdelivr.net/npm/utif@3.1.0/UTIF.js";
 
