@@ -2,12 +2,14 @@
 
 [English](README.md) | **简体中文**
 
-HelloLabel 是一个独立的、仿 Labelme 的高性能图像标注程序。**v1.5.0 开始采用本地优先、纯静态 Web 架构**：服务器只负责发送 HTML / CSS / JavaScript，图片、同名 JSON 和 AI 推理都留在用户设备。
+**官方网站：** [https://www.hellolabel.xyz](https://www.hellolabel.xyz)
 
-## v1.5.0 架构
+HelloLabel 是一个独立的、仿 Labelme 的高性能图像标注程序。**v2.0.0 开始采用本地优先、纯静态 Web 架构**：服务器只负责发送 HTML / CSS / JavaScript，图片、同名 JSON 和 AI 推理都留在用户设备。
+
+## v2.0.0 架构
 
 ```text
-                   HelloLabel 1.5
+                   HelloLabel 2.0
                         │
            ┌────────────┴────────────┐
            │                         │
@@ -57,11 +59,11 @@ HelloLabel 是一个独立的、仿 Labelme 的高性能图像标注程序。**v
 - 自动保存：标注修改后约 300 ms 防抖保存同名 JSON，同时保留手动保存。
 - 中英文界面、亮/暗/系统主题、左右面板折叠、AI 工具栏显示状态记忆。
 
-## v1.5 浏览器本地 AI
+## v2.0 浏览器本地 AI
 
 当前纯浏览器正式路径：
 
-| 功能 | v1.5 状态 | 运行位置 |
+| 功能 | v2.0 状态 | 运行位置 |
 |---|---|---|
 | YOLO11 Detect | 可用 | 浏览器 WebGPU / CPU-WASM |
 | YOLO11 Seg | 可用 | 浏览器 WebGPU / CPU-WASM |
@@ -85,7 +87,7 @@ SAM2.1 Tiny 支持：
 
 ## Web 本地启动
 
-HelloLabel v1.5 本身不需要 Python 后端，但浏览器页面仍应通过 HTTP/HTTPS 打开，而不是直接双击 `index.html`。
+HelloLabel v2.0 本身不需要 Python 后端，但浏览器页面仍应通过 HTTP/HTTPS 打开，而不是直接双击 `index.html`。
 
 Windows 可运行：
 
@@ -231,7 +233,7 @@ HelloLabel 增加顶层 `hellolabel.labels` 保存标签颜色等 HelloLabel 扩
 
 ## 全局 Label 库
 
-v1.5 的 Label 定义是**软件级全局库**：
+v2.0 的 Label 定义是**软件级全局库**：
 
 - 切换图片、切换文件夹后仍保留；
 - 当前图片的实例数量仍按当前图片统计；
@@ -281,7 +283,7 @@ Web 版推荐最新版 Chrome / Edge：
 
 `master` 分支包含 `Static Runtime Check` GitHub Actions，用于检查：
 
-- v1.5 静态架构关键文件是否完整；
+- v2.0 静态架构关键文件是否完整；
 - Desktop 是否重新引入 Python 后端；
 - JavaScript 基础语法；
 - 浏览器 mask → 几何转换；
