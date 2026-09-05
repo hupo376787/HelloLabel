@@ -43,6 +43,19 @@ const SCHEMA = [
     label TEXT,
     app_version TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS telemetry_annotations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts INTEGER NOT NULL,
+    day TEXT NOT NULL,
+    visitor_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    tool TEXT NOT NULL,
+    shape_type TEXT NOT NULL,
+    source TEXT,
+    count INTEGER NOT NULL DEFAULT 1,
+    app_version TEXT
+  )`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_ts ON telemetry_events(ts)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_day ON telemetry_events(day)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_visitor ON telemetry_events(visitor_id)`,
@@ -50,6 +63,8 @@ const SCHEMA = [
   `CREATE INDEX IF NOT EXISTS idx_telemetry_sessions_last_seen ON telemetry_sessions(last_seen)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_clicks_day ON telemetry_clicks(day)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_clicks_action ON telemetry_clicks(action)`,
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_annotations_day ON telemetry_annotations(day)`,
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_annotations_tool ON telemetry_annotations(tool)`,
 ];
 
 function text(value, max = 120) {
@@ -129,6 +144,18 @@ function makeStatements(db, data) {
     return [session, click];
   }
 
+  if (data.kind === "annotation_create") {
+    const annotation = db.prepare(`
+      INSERT INTO telemetry_annotations (
+        ts, day, visitor_id, session_id, path, tool, shape_type, source, count, app_version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      data.now, data.day, data.visitorId, data.sessionId, data.path,
+      data.tool, data.shapeType, data.source, data.count, data.appVersion,
+    );
+    return [session, annotation];
+  }
+
   const event = db.prepare(`
     INSERT INTO telemetry_events (
       ts, day, visitor_id, session_id, path, referrer_host,
@@ -171,7 +198,7 @@ export async function onRequestPost(context) {
     return Response.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const kind = ["heartbeat", "pageview", "click"].includes(body?.kind) ? body.kind : "";
+  const kind = ["heartbeat", "pageview", "click", "annotation_create"].includes(body?.kind) ? body.kind : "";
   if (!kind || !validId(body?.visitor_id) || !validId(body?.session_id)) {
     return Response.json({ error: "invalid_payload" }, { status: 400 });
   }
@@ -185,6 +212,16 @@ export async function onRequestPost(context) {
     return Response.json({ error: "invalid_click" }, { status: 400 });
   }
 
+  const tool = kind === "annotation_create" ? text(body?.tool, 80) : "";
+  const shapeType = kind === "annotation_create" ? text(body?.shape_type, 80) : "";
+  const source = kind === "annotation_create" ? text(body?.source, 80) : "";
+  const count = kind === "annotation_create"
+    ? Math.max(1, Math.min(1000, Math.trunc(Number(body?.count || 1)) || 1))
+    : 0;
+  if (kind === "annotation_create" && (!tool || !shapeType)) {
+    return Response.json({ error: "invalid_annotation" }, { status: 400 });
+  }
+
   const now = Date.now();
   const cf = request.cf || {};
   const data = {
@@ -196,6 +233,10 @@ export async function onRequestPost(context) {
     path,
     action,
     label,
+    tool,
+    shapeType,
+    source,
+    count,
     referrerHost: text(body?.referrer_host, 120),
     country: text(cf.country || "", 8),
     region: text(cf.regionCode || cf.region || "", 64),
@@ -208,9 +249,7 @@ export async function onRequestPost(context) {
   };
 
   try {
-    if (kind === "click") {
-      // Do the migration up front so a newly introduced telemetry_clicks table
-      // cannot fail silently on the first real user click.
+    if (kind === "click" || kind === "annotation_create") {
       await initSchema(env.TELEMETRY_DB);
     }
     await writeTelemetry(env.TELEMETRY_DB, data);
@@ -223,10 +262,8 @@ export async function onRequestPost(context) {
     });
   } catch (error) {
     console.error("HelloLabel telemetry write failed", error);
-    if (kind === "click") {
-      // A click write is diagnostic-only and never blocks the application, so
-      // surface the failure to telemetry.js instead of pretending it succeeded.
-      return Response.json({ error: "click_write_failed" }, {
+    if (kind === "click" || kind === "annotation_create") {
+      return Response.json({ error: `${kind}_write_failed` }, {
         status: 500,
         headers: { "Cache-Control": "no-store" },
       });

@@ -16,6 +16,10 @@
     clicksSent: 0,
     lastClickAction: "",
     lastClickStatus: null,
+    annotationsAttempted: 0,
+    annotationsSent: 0,
+    lastAnnotationTool: "",
+    lastAnnotationStatus: null,
   };
   window.helloLabelTelemetry = state;
 
@@ -98,6 +102,11 @@
       state.lastClickAction = clean(extra.action, 120);
       state.lastClickStatus = null;
     }
+    if (kind === "annotation_create") {
+      state.annotationsAttempted += Math.max(1, Number(extra.count || 1));
+      state.lastAnnotationTool = clean(extra.tool, 80);
+      state.lastAnnotationStatus = null;
+    }
     try {
       const response = await fetch(API, {
         method: "POST",
@@ -113,6 +122,10 @@
         state.lastClickStatus = response.status;
         if (response.ok) state.clicksSent += 1;
       }
+      if (kind === "annotation_create") {
+        state.lastAnnotationStatus = response.status;
+        if (response.ok) state.annotationsSent += Math.max(1, Number(extra.count || 1));
+      }
       if (!response.ok) {
         state.lastError = (await response.text()).slice(0, 300) || `HTTP ${response.status}`;
       } else {
@@ -121,9 +134,25 @@
     } catch (error) {
       state.lastKind = kind;
       if (kind === "click") state.lastClickStatus = -1;
+      if (kind === "annotation_create") state.lastAnnotationStatus = -1;
       state.lastError = String(error?.message || error || "telemetry request failed");
     }
   }
+
+  function trackAnnotationCreate(detail = {}) {
+    const tool = clean(detail.tool, 80);
+    const shapeType = clean(detail.shape_type || detail.shapeType, 80);
+    const source = clean(detail.source || "manual", 80);
+    const count = Math.max(1, Math.min(1000, Math.trunc(Number(detail.count || 1)) || 1));
+    if (!tool || !shapeType) return;
+    void send("annotation_create", {
+      tool,
+      shape_type: shapeType,
+      source,
+      count,
+    });
+  }
+  state.trackAnnotationCreate = trackAnnotationCreate;
 
   function buttonDescriptor(button) {
     const id = clean(button.id, 80);

@@ -36,7 +36,7 @@
         </form>
         <div class="privacy-note">
           <strong>隐私设计</strong>
-          <span>匿名统计页面访问和按钮点击；不上传图片、文件名、文件夹路径、标注内容、输入内容或原始 IP；尊重 DNT 与 Global Privacy Control。</span>
+          <span>匿名统计页面访问、按钮点击和成功创建的标注工具类型；不上传图片、文件名、文件夹路径、标签名称、标注内容、坐标、输入内容或原始 IP；尊重 DNT 与 Global Privacy Control。</span>
         </div>
       </div>
     </section>
@@ -117,6 +117,16 @@
         <div id="clicksBars" class="bar-list"></div>
       </section>
 
+      <section class="panel trend-panel" id="annotationTelemetryPanel">
+        <div class="panel-head">
+          <div>
+            <h2>标注创建频率</h2>
+            <p id="annotationSummary">只在一个新标注实例真正创建成功后计数；取消绘制、顶点点击和编辑已有标注不会计数。</p>
+          </div>
+        </div>
+        <div id="annotationBars" class="bar-list"></div>
+      </section>
+
       <section class="dimension-grid">
         <article class="panel"><div class="panel-head compact"><h2>国家 / 地区</h2></div><div id="countriesBars" class="bar-list"></div></article>
         <article class="panel"><div class="panel-head compact"><h2>浏览器</h2></div><div id="browsersBars" class="bar-list"></div></article>
@@ -143,5 +153,6 @@
   </main>
 
   <script src="/admin/admin.js"></script>
+  <script src="/admin/annotation-telemetry-ui.js"></script>
 </body>
 </html>
