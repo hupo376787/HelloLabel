@@ -1,15 +1,35 @@
 "use strict";
 
 (() => {
-  if (location.pathname.startsWith("/admin")) return;
-  if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl === true) return;
+  if (window.__helloLabelTelemetryLoaded) return;
+  window.__helloLabelTelemetryLoaded = true;
+
+  const state = {
+    enabled: true,
+    reason: "",
+    started: false,
+    lastStatus: null,
+    lastSentAt: null,
+    lastError: "",
+  };
+  window.helloLabelTelemetry = state;
+
+  if (location.pathname.startsWith("/admin")) {
+    state.enabled = false;
+    state.reason = "admin";
+    return;
+  }
+  if (navigator.doNotTrack === "1" || navigator.globalPrivacyControl === true) {
+    state.enabled = false;
+    state.reason = "privacy-control";
+    return;
+  }
 
   const API = "/api/telemetry";
   const VISITOR_KEY = "hellolabel-telemetry-visitor";
   const SESSION_KEY = "hellolabel-telemetry-session";
   const HEARTBEAT_MS = 120000;
   let appVersion = "2.1.0";
-  let started = false;
   let heartbeatTimer = null;
 
   function randomId() {
@@ -64,22 +84,28 @@
   async function send(kind) {
     if (document.visibilityState === "hidden" && kind === "heartbeat") return;
     try {
-      await fetch(API, {
+      const response = await fetch(API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload(kind)),
         keepalive: true,
         credentials: "same-origin",
       });
-    } catch {
-      // Telemetry must never interfere with annotation workflows.
+      state.lastStatus = response.status;
+      state.lastSentAt = Date.now();
+      if (!response.ok) {
+        state.lastError = (await response.text()).slice(0, 300) || `HTTP ${response.status}`;
+      } else {
+        state.lastError = "";
+      }
+    } catch (error) {
+      state.lastError = String(error?.message || error || "telemetry request failed");
     }
   }
 
-  function start(detail) {
-    if (started) return;
-    started = true;
-    if (detail?.version) appVersion = String(detail.version).slice(0, 32);
+  function start() {
+    if (state.started) return;
+    state.started = true;
     send("pageview");
     heartbeatTimer = setInterval(() => send("heartbeat"), HEARTBEAT_MS);
 
@@ -92,10 +118,10 @@
     }, { once: true });
   }
 
-  window.addEventListener("hellolabel:ready", event => start(event.detail), { once: true });
+  // Start immediately. Telemetry does not depend on annotation runtime readiness.
+  start();
 
-  // Defensive fallback for environments where the ready event has already fired.
-  setTimeout(() => {
-    if (document.documentElement.dataset.hellolabelRuntime === "browser-only") start({ version: "2.1.0" });
-  }, 2500);
+  window.addEventListener("hellolabel:ready", event => {
+    if (event.detail?.version) appVersion = String(event.detail.version).slice(0, 32);
+  }, { once: true });
 })();

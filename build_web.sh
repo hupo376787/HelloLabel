@@ -2,6 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 OUT="dist/web"
+CACHE_TOKEN="hellolabel-v210-t2"
 
 printf '%s\n' \
   '============================================================' \
@@ -13,6 +14,9 @@ mkdir -p "$OUT/static" "$OUT/admin"
 cp -R static/. "$OUT/static/"
 cp -R admin/. "$OUT/admin/"
 cp static/index.html "$OUT/index.html"
+# Force a fresh production bootstrap even when browsers still cache an older
+# app.js query token from pre-2.1 builds.
+sed -i "s/hellolabel-v0214/${CACHE_TOKEN}/g" "$OUT/index.html"
 cp _headers "$OUT/_headers"
 cp _redirects "$OUT/_redirects"
 rm -f "$OUT/static/index.html"

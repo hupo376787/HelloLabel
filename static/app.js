@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v210";
+  const VERSION = "hellolabel-v210-t2";
 
   // Resolve the theme before loading the rest of the runtime. style.css defaults
   // to dark variables, so waiting for app-core.js used to cause a visible black
@@ -29,6 +29,9 @@
     `/static/about-ui.css?v=${VERSION}`,
   ];
   const scripts = [
+    // Telemetry is intentionally loaded first so a failure in an unrelated
+    // annotation module cannot suppress page-view accounting.
+    `/static/telemetry.js?v=${VERSION}`,
     `/static/app-core.js?v=${VERSION}`,
     `/static/browser-file-guard.js?v=${VERSION}`,
     `/static/global-labels.js?v=${VERSION}`,
@@ -53,7 +56,6 @@
     `/static/oriented-rect-direction.js?v=${VERSION}`,
     `/static/viewport-context-menu.js?v=${VERSION}`,
     `/static/about-ui.js?v=${VERSION}`,
-    `/static/telemetry.js?v=${VERSION}`,
   ];
 
   for (const href of styles) {
