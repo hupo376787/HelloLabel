@@ -8,18 +8,32 @@
   runtime.fileSystemAccess = typeof window.showDirectoryPicker === "function";
   runtime.crossOriginIsolated = window.crossOriginIsolated === true;
 
-  function isLegacyApiTarget(value) {
+  const ALLOWED_SAME_ORIGIN_API_PATHS = new Set([
+    "/api/telemetry",
+  ]);
+
+  function targetUrl(value) {
     try {
       const raw = typeof value === "string" ? value : value?.url;
-      if (!raw) return false;
-      const url = new URL(raw, location.href);
-      return url.origin === location.origin && (url.pathname === "/api" || url.pathname.startsWith("/api/"));
+      return raw ? new URL(raw, location.href) : null;
     } catch {
-      return false;
+      return null;
     }
   }
 
-  const blockedError = target => new Error(`HelloLabel 1.5 is browser-only; legacy server API blocked: ${String(typeof target === "string" ? target : target?.url || target)}`);
+  function isAllowedApiTarget(value) {
+    const url = targetUrl(value);
+    return !!url && url.origin === location.origin && ALLOWED_SAME_ORIGIN_API_PATHS.has(url.pathname);
+  }
+
+  function isLegacyApiTarget(value) {
+    const url = targetUrl(value);
+    if (!url || url.origin !== location.origin) return false;
+    if (isAllowedApiTarget(url.href)) return false;
+    return url.pathname === "/api" || url.pathname.startsWith("/api/");
+  }
+
+  const blockedError = target => new Error(`HelloLabel 2.1 is browser-only; legacy server API blocked: ${String(typeof target === "string" ? target : target?.url || target)}`);
 
   const previousFetch = window.fetch.bind(window);
   window.fetch = function(input, init) {
@@ -48,6 +62,7 @@
 
   window.helloLabelPrivacyGuard = {
     isLegacyApiTarget,
+    isAllowedApiTarget,
     imageUploadDisabled: true,
   };
 })();
