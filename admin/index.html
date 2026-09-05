@@ -25,7 +25,7 @@
       <div class="login-card">
         <div class="login-icon">HL</div>
         <h1>遥测后台</h1>
-        <p>查看 HelloLabel 的匿名访问统计。后台口令仅保存在当前标签页的会话存储中。</p>
+        <p>查看 HelloLabel 的匿名访问与功能使用统计。后台口令仅保存在当前标签页的会话存储中。</p>
         <form id="loginForm">
           <label for="tokenInput">后台口令</label>
           <div class="token-row">
@@ -36,7 +36,7 @@
         </form>
         <div class="privacy-note">
           <strong>隐私设计</strong>
-          <span>不上传图片、文件名、文件夹路径、标注内容或原始 IP；尊重 DNT 与 Global Privacy Control。</span>
+          <span>匿名统计页面访问和按钮点击；不上传图片、文件名、文件夹路径、标注内容、输入内容或原始 IP；尊重 DNT 与 Global Privacy Control。</span>
         </div>
       </div>
     </section>
@@ -105,6 +105,16 @@
           <div class="legend"><span class="legend-pv">PV</span><span class="legend-uv">UV</span></div>
         </div>
         <div class="chart-wrap"><canvas id="trendCanvas" aria-label="访问趋势图"></canvas></div>
+      </section>
+
+      <section class="panel trend-panel">
+        <div class="panel-head">
+          <div>
+            <h2>按钮点击频率</h2>
+            <p id="clickSummary">统计范围内各功能按钮的匿名点击次数，不记录按钮输入内容。</p>
+          </div>
+        </div>
+        <div id="clicksBars" class="bar-list"></div>
       </section>
 
       <section class="dimension-grid">

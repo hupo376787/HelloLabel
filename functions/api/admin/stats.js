@@ -32,18 +32,35 @@ const SCHEMA = [
     screen TEXT,
     app_version TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS telemetry_clicks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts INTEGER NOT NULL,
+    day TEXT NOT NULL,
+    visitor_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    action TEXT NOT NULL,
+    label TEXT,
+    app_version TEXT
+  )`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_ts ON telemetry_events(ts)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_day ON telemetry_events(day)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_visitor ON telemetry_events(visitor_id)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_session ON telemetry_events(session_id)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_sessions_last_seen ON telemetry_sessions(last_seen)`,
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_clicks_day ON telemetry_clicks(day)`,
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_clicks_action ON telemetry_clicks(action)`,
 ];
 
 async function initSchema(db) {
-  const existing = await db.prepare(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'telemetry_events'"
-  ).first();
-  if (!existing) await db.batch(SCHEMA.map(sql => db.prepare(sql)));
+  const result = await db.prepare(`
+    SELECT name FROM sqlite_master
+    WHERE type = 'table' AND name IN ('telemetry_events', 'telemetry_sessions', 'telemetry_clicks')
+  `).all();
+  const names = new Set((result.results || []).map(row => String(row.name || "")));
+  if (!names.has("telemetry_events") || !names.has("telemetry_sessions") || !names.has("telemetry_clicks")) {
+    await db.batch(SCHEMA.map(sql => db.prepare(sql)));
+  }
 }
 
 async function sha256(value) {
@@ -124,6 +141,28 @@ export async function onRequestGet(context) {
       WHERE last_seen >= ?
     `).bind(activeSince).first();
 
+    const clickSummary = await db.prepare(`
+      SELECT
+        COUNT(*) AS total_clicks,
+        SUM(CASE WHEN day = ? THEN 1 ELSE 0 END) AS today_clicks,
+        SUM(CASE WHEN day >= ? THEN 1 ELSE 0 END) AS period_clicks,
+        COUNT(DISTINCT CASE WHEN day >= ? THEN visitor_id END) AS period_click_uv
+      FROM telemetry_clicks
+    `).bind(today, startDay, startDay).first();
+
+    const clickRowsResult = await db.prepare(`
+      SELECT
+        action,
+        COALESCE(NULLIF(label, ''), action) AS label,
+        COUNT(*) AS value,
+        COUNT(DISTINCT visitor_id) AS uv
+      FROM telemetry_clicks
+      WHERE day >= ?
+      GROUP BY action, label
+      ORDER BY value DESC, action ASC
+      LIMIT 40
+    `).bind(startDay).all();
+
     const dailyResult = await db.prepare(`
       SELECT day, COUNT(*) AS pv, COUNT(DISTINCT visitor_id) AS uv
       FROM telemetry_events
@@ -186,12 +225,24 @@ export async function onRequestGet(context) {
         active_sessions: number(active?.active_sessions),
         active_uv: number(active?.active_uv),
       },
+      clicks: {
+        total_clicks: number(clickSummary?.total_clicks),
+        today_clicks: number(clickSummary?.today_clicks),
+        period_clicks: number(clickSummary?.period_clicks),
+        period_click_uv: number(clickSummary?.period_click_uv),
+      },
       daily: (dailyResult.results || []).map(row => ({
         day: String(row.day),
         pv: number(row.pv),
         uv: number(row.uv),
       })),
       dimensions: {
+        button_clicks: (clickRowsResult.results || []).map(row => ({
+          action: String(row.action || "button:unknown"),
+          label: String(row.label || row.action || "button:unknown"),
+          value: number(row.value),
+          uv: number(row.uv),
+        })),
         countries,
         browsers,
         operating_systems: operatingSystems,

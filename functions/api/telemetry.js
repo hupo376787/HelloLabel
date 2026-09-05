@@ -32,11 +32,24 @@ const SCHEMA = [
     screen TEXT,
     app_version TEXT
   )`,
+  `CREATE TABLE IF NOT EXISTS telemetry_clicks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts INTEGER NOT NULL,
+    day TEXT NOT NULL,
+    visitor_id TEXT NOT NULL,
+    session_id TEXT NOT NULL,
+    path TEXT NOT NULL,
+    action TEXT NOT NULL,
+    label TEXT,
+    app_version TEXT
+  )`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_ts ON telemetry_events(ts)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_day ON telemetry_events(day)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_visitor ON telemetry_events(visitor_id)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_events_session ON telemetry_events(session_id)`,
   `CREATE INDEX IF NOT EXISTS idx_telemetry_sessions_last_seen ON telemetry_sessions(last_seen)`,
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_clicks_day ON telemetry_clicks(day)`,
+  `CREATE INDEX IF NOT EXISTS idx_telemetry_clicks_action ON telemetry_clicks(action)`,
 ];
 
 function text(value, max = 120) {
@@ -102,7 +115,19 @@ function makeStatements(db, data) {
     data.language, data.screen, data.appVersion,
   );
 
-  if (data.kind !== "pageview") return [session];
+  if (data.kind === "heartbeat") return [session];
+
+  if (data.kind === "click") {
+    const click = db.prepare(`
+      INSERT INTO telemetry_clicks (
+        ts, day, visitor_id, session_id, path, action, label, app_version
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      data.now, data.day, data.visitorId, data.sessionId, data.path,
+      data.action, data.label, data.appVersion,
+    );
+    return [session, click];
+  }
 
   const event = db.prepare(`
     INSERT INTO telemetry_events (
@@ -146,13 +171,19 @@ export async function onRequestPost(context) {
     return Response.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const kind = body?.kind === "heartbeat" ? "heartbeat" : body?.kind === "pageview" ? "pageview" : "";
+  const kind = ["heartbeat", "pageview", "click"].includes(body?.kind) ? body.kind : "";
   if (!kind || !validId(body?.visitor_id) || !validId(body?.session_id)) {
     return Response.json({ error: "invalid_payload" }, { status: 400 });
   }
 
   const path = text(body?.path, 180) || "/";
   if (!path.startsWith("/") || path.startsWith("/admin")) return new Response(null, { status: 204 });
+
+  const action = kind === "click" ? text(body?.action, 120) : "";
+  const label = kind === "click" ? text(body?.label, 100) : "";
+  if (kind === "click" && !action) {
+    return Response.json({ error: "invalid_click" }, { status: 400 });
+  }
 
   const now = Date.now();
   const cf = request.cf || {};
@@ -163,6 +194,8 @@ export async function onRequestPost(context) {
     visitorId: body.visitor_id,
     sessionId: body.session_id,
     path,
+    action,
+    label,
     referrerHost: text(body?.referrer_host, 120),
     country: text(cf.country || "", 8),
     region: text(cf.regionCode || cf.region || "", 64),

@@ -82,6 +82,7 @@
 
   function render(stats) {
     const o = stats.overview || {};
+    const clicks = stats.clicks || {};
     const days = Number(stats.range_days || 30);
     $("todayPv").textContent = fmt(o.today_pv);
     $("todayUv").textContent = fmt(o.today_uv);
@@ -94,7 +95,9 @@
     $("totalPv").textContent = fmt(o.total_pv);
     $("totalUv").textContent = `累计 UV ${fmt(o.total_uv)}`;
     $("updatedAt").textContent = `最后更新：${new Date(stats.generated_at || Date.now()).toLocaleString("zh-CN")} · 日期按 UTC 聚合`;
+    $("clickSummary").textContent = `${days} 天共 ${fmt(clicks.period_clicks)} 次按钮点击 · ${fmt(clicks.period_click_uv)} 个匿名访客 · 今日 ${fmt(clicks.today_clicks)} 次 · 累计 ${fmt(clicks.total_clicks)} 次`;
 
+    renderClickBars("clicksBars", stats.dimensions?.button_clicks);
     renderBars("countriesBars", stats.dimensions?.countries);
     renderBars("browsersBars", stats.dimensions?.browsers);
     renderBars("osBars", stats.dimensions?.operating_systems);
@@ -132,6 +135,47 @@
       const value = document.createElement("span");
       value.className = "bar-value";
       value.textContent = fmt(row.value);
+      meta.append(label, value);
+
+      const track = document.createElement("div");
+      track.className = "bar-track";
+      const fill = document.createElement("div");
+      fill.className = "bar-fill";
+      fill.style.width = `${Math.max(2, Number(row.value || 0) / max * 100)}%`;
+      track.appendChild(fill);
+      item.append(meta, track);
+      root.appendChild(item);
+    }
+  }
+
+  function renderClickBars(id, rows = []) {
+    const root = $(id);
+    root.replaceChildren();
+    if (!rows.length) {
+      const empty = document.createElement("div");
+      empty.className = "bar-empty";
+      empty.textContent = "暂无按钮点击数据";
+      root.appendChild(empty);
+      return;
+    }
+
+    const max = Math.max(...rows.map(row => Number(row.value || 0)), 1);
+    for (const row of rows) {
+      const item = document.createElement("div");
+      item.className = "bar-row";
+
+      const meta = document.createElement("div");
+      meta.className = "bar-meta";
+      const label = document.createElement("span");
+      label.className = "bar-label";
+      const display = row.label && row.label !== row.action
+        ? `${row.label} · ${row.action}`
+        : (row.action || row.label || "button:unknown");
+      label.title = display;
+      label.textContent = display;
+      const value = document.createElement("span");
+      value.className = "bar-value";
+      value.textContent = `${fmt(row.value)} 次 · ${fmt(row.uv)} UV`;
       meta.append(label, value);
 
       const track = document.createElement("div");
