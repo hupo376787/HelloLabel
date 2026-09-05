@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 set "OUT=dist\web"
-set "CACHE_TOKEN=hellolabel-v210-t3"
+set "CACHE_TOKEN=hellolabel-v210-t4"
 
 echo ============================================================
 echo   HelloLabel 2.1 - Build Static Web Distribution
@@ -19,7 +19,7 @@ xcopy /e /i /y "admin\*" "%OUT%\admin\" >nul
 if errorlevel 1 goto :error
 copy /y "static\index.html" "%OUT%\index.html" >nul
 if errorlevel 1 goto :error
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%OUT%\index.html'; $c=[IO.File]::ReadAllText($p); $c=$c.Replace('hellolabel-v0214','%CACHE_TOKEN%'); [IO.File]::WriteAllText($p,$c,(New-Object Text.UTF8Encoding($false)))"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p='%OUT%\index.html'; $c=[IO.File]::ReadAllText($p); $c=[regex]::Replace($c,'hellolabel-v[0-9A-Za-z-]+','%CACHE_TOKEN%'); [IO.File]::WriteAllText($p,$c,(New-Object Text.UTF8Encoding($false)))"
 if errorlevel 1 goto :error
 copy /y "_headers" "%OUT%\_headers" >nul
 if errorlevel 1 goto :error

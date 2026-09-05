@@ -1,12 +1,8 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v210-t3";
+  const VERSION = "hellolabel-v210-t4";
 
-  // Resolve the theme before loading the rest of the runtime. style.css defaults
-  // to dark variables, so waiting for app-core.js used to cause a visible black
-  // flash before a saved light theme was applied. New users now default to light;
-  // explicit light/dark/system choices continue to be respected.
   try {
     let theme = localStorage.getItem("hellolabel-theme") || localStorage.getItem("labelit-theme");
     if (!theme) {
@@ -29,8 +25,6 @@
     `/static/about-ui.css?v=${VERSION}`,
   ];
   const scripts = [
-    // Telemetry is intentionally loaded first so a failure in an unrelated
-    // annotation module cannot suppress page-view or button-click accounting.
     `/static/telemetry.js?v=${VERSION}`,
     `/static/app-core.js?v=${VERSION}`,
     `/static/browser-file-guard.js?v=${VERSION}`,

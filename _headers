@@ -12,12 +12,6 @@
   Cache-Control: no-cache, no-store, must-revalidate
 
 /static/*
-  Cache-Control: public, max-age=3600
-
-/static/app.js
-  Cache-Control: no-cache, no-store, must-revalidate
-
-/static/telemetry.js
   Cache-Control: no-cache, no-store, must-revalidate
 
 /admin

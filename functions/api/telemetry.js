@@ -208,11 +208,29 @@ export async function onRequestPost(context) {
   };
 
   try {
+    if (kind === "click") {
+      // Do the migration up front so a newly introduced telemetry_clicks table
+      // cannot fail silently on the first real user click.
+      await initSchema(env.TELEMETRY_DB);
+    }
     await writeTelemetry(env.TELEMETRY_DB, data);
-    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Cache-Control": "no-store",
+        "X-HelloLabel-Telemetry": "stored",
+      },
+    });
   } catch (error) {
     console.error("HelloLabel telemetry write failed", error);
-    // Fail open so analytics never breaks the application.
+    if (kind === "click") {
+      // A click write is diagnostic-only and never blocks the application, so
+      // surface the failure to telemetry.js instead of pretending it succeeded.
+      return Response.json({ error: "click_write_failed" }, {
+        status: 500,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
     return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
   }
 }

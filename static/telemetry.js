@@ -12,7 +12,10 @@
     lastStatus: null,
     lastSentAt: null,
     lastError: "",
+    clicksAttempted: 0,
     clicksSent: 0,
+    lastClickAction: "",
+    lastClickStatus: null,
   };
   window.helloLabelTelemetry = state;
 
@@ -90,6 +93,11 @@
 
   async function send(kind, extra = {}) {
     if (document.visibilityState === "hidden" && kind === "heartbeat") return;
+    if (kind === "click") {
+      state.clicksAttempted += 1;
+      state.lastClickAction = clean(extra.action, 120);
+      state.lastClickStatus = null;
+    }
     try {
       const response = await fetch(API, {
         method: "POST",
@@ -101,7 +109,10 @@
       state.lastKind = kind;
       state.lastStatus = response.status;
       state.lastSentAt = Date.now();
-      if (kind === "click" && response.ok) state.clicksSent += 1;
+      if (kind === "click") {
+        state.lastClickStatus = response.status;
+        if (response.ok) state.clicksSent += 1;
+      }
       if (!response.ok) {
         state.lastError = (await response.text()).slice(0, 300) || `HTTP ${response.status}`;
       } else {
@@ -109,6 +120,7 @@
       }
     } catch (error) {
       state.lastKind = kind;
+      if (kind === "click") state.lastClickStatus = -1;
       state.lastError = String(error?.message || error || "telemetry request failed");
     }
   }
@@ -153,19 +165,19 @@
       const button = origin?.closest?.("button");
       if (!button || button.disabled) return;
       const descriptor = buttonDescriptor(button);
-      send("click", descriptor);
-    }, { capture: true, passive: true });
+      void send("click", descriptor);
+    }, { capture: true });
   }
 
   function start() {
     if (state.started) return;
     state.started = true;
-    send("pageview");
+    void send("pageview");
     trackButtonClicks();
-    heartbeatTimer = setInterval(() => send("heartbeat"), HEARTBEAT_MS);
+    heartbeatTimer = setInterval(() => void send("heartbeat"), HEARTBEAT_MS);
 
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") send("heartbeat");
+      if (document.visibilityState === "visible") void send("heartbeat");
     });
 
     window.addEventListener("pagehide", () => {
@@ -173,7 +185,6 @@
     }, { once: true });
   }
 
-  // Start immediately. Telemetry does not depend on annotation runtime readiness.
   start();
 
   window.addEventListener("hellolabel:ready", event => {
