@@ -2,12 +2,14 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-HelloLabel is an independent, high-performance image annotation application inspired by Labelme. **Starting with v1.5.0, HelloLabel uses a local-first, pure-static Web architecture**: the server only delivers HTML / CSS / JavaScript, while source images, same-name JSON files, and AI inference stay on the user's device.
+**Official Website:** [https://www.hellolabel.xyz](https://www.hellolabel.xyz)
 
-## v1.5.0 architecture
+HelloLabel is an independent, high-performance image annotation application inspired by Labelme. **Starting with v2.0.0, HelloLabel uses a local-first, pure-static Web architecture**: the server only delivers HTML / CSS / JavaScript, while source images, same-name JSON files, and AI inference stay on the user's device.
+
+## v2.0.0 architecture
 
 ```text
-                   HelloLabel 1.5
+                   HelloLabel 2.0
                         │
            ┌────────────┴────────────┐
            │                         │
@@ -58,9 +60,9 @@ HelloLabel is an independent, high-performance image annotation application insp
 - ~300 ms debounced same-name JSON autosave plus explicit Save JSON.
 - Chinese/English UI, system/light/dark themes, collapsible panels, persistent AI-toolbar visibility.
 
-## Browser-local AI in v1.5
+## Browser-local AI in v2.0
 
-| Capability | v1.5 status | Runs on |
+| Capability | v2.0 status | Runs on |
 |---|---|---|
 | YOLO11 Detect | available | browser WebGPU / CPU-WASM |
 | YOLO11 Seg | available | browser WebGPU / CPU-WASM |
@@ -84,7 +86,7 @@ The same image reuses its SAM image embedding for subsequent prompt updates. Swi
 
 ## Local Web development
 
-HelloLabel v1.5 has no Python application backend, but the page should still be served over HTTP/HTTPS rather than opened directly as `file://`.
+HelloLabel v2.0 has no Python application backend, but the page should still be served over HTTP/HTTPS rather than opened directly as `file://`.
 
 Windows:
 
@@ -146,7 +148,7 @@ HelloLabel.exe
       └─ static/
 ```
 
-The v1.5 desktop package no longer includes CPython, FastAPI, Uvicorn, OpenCV, PyTorch, or a server-side SAM/YOLO runtime.
+The v2.0 desktop package no longer includes CPython, FastAPI, Uvicorn, OpenCV, PyTorch, or a server-side SAM/YOLO runtime.
 
 Build Windows:
 
@@ -215,7 +217,7 @@ Brush output is saved as a `polygon`.
 
 ## Global Label library
 
-Label definitions are application-level in v1.5:
+Label definitions are application-level in v2.0:
 
 - they persist when switching images/folders;
 - instance counts remain per current image;
@@ -265,7 +267,7 @@ Public sites should use HTTPS. localhost development may use HTTP.
 
 The `master` branch includes a `Static Runtime Check` GitHub Actions workflow that verifies:
 
-- required v1.5 browser-only architecture files;
+- required v2.0 browser-only architecture files;
 - Desktop does not reintroduce a Python backend;
 - JavaScript syntax;
 - browser mask-to-geometry behavior;
