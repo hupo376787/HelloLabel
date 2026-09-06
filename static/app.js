@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v210-t7";
+  const VERSION = "hellolabel-v220-t1";
 
   try {
     let theme = localStorage.getItem("hellolabel-theme") || localStorage.getItem("labelit-theme");
@@ -76,7 +76,7 @@
   (async () => {
     for (const src of scripts) await loadScript(src);
     document.documentElement.dataset.hellolabelRuntime = "browser-only";
-    window.dispatchEvent(new CustomEvent("hellolabel:ready", { detail: { version: "2.1.0", runtime: "browser-only" } }));
+    window.dispatchEvent(new CustomEvent("hellolabel:ready", { detail: { version: "2.2.0", runtime: "browser-only" } }));
   })().catch(error => {
     console.error("HelloLabel bootstrap failed", error);
     const pre = document.createElement("pre");
