@@ -1,6 +1,6 @@
 # HelloLabel Desktop
 
-HelloLabel 1.5 uses one browser-first application core for Web and desktop. The desktop package wraps the same static HTML / CSS / JavaScript runtime with Electron; it no longer bundles or launches Python, FastAPI, Uvicorn, OpenCV, PyTorch, or a server-side AI runtime.
+HelloLabel 2.2 uses one browser-first application core for Web and desktop. The desktop package wraps the same static HTML / CSS / JavaScript runtime with Electron; it does not bundle or launch Python, FastAPI, Uvicorn, OpenCV, PyTorch, or a server-side AI runtime.
 
 ## Runtime architecture
 
@@ -27,13 +27,13 @@ The stable HTTP origin is intentional: browser caches and browser-local AI stora
 
 ## Local data and privacy
 
-Images and annotation JSON are opened through Chromium's local file-system capabilities and remain on the user's device. The desktop shell does not upload image bytes to a HelloLabel backend because no backend exists in v1.5.
+Images and annotation JSON are opened through Chromium's local file-system capabilities and remain on the user's device. The desktop shell does not upload image bytes to a HelloLabel backend; HelloLabel 2.2 has no image-processing application backend.
 
 AI inference is browser-local:
 
 - YOLO11 Detect: browser-local inference;
 - YOLO11 Seg: browser-local inference;
-- SlimSAM: browser-local interactive segmentation;
+- SAM2.1 Tiny: browser-local interactive segmentation;
 - WebGPU is preferred when available;
 - CPU / WASM is used as a compatibility path when WebGPU cannot be used;
 - model files download on first use and are cached by Chromium.
