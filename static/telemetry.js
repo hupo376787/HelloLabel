@@ -38,7 +38,7 @@
   const VISITOR_KEY = "hellolabel-telemetry-visitor";
   const SESSION_KEY = "hellolabel-telemetry-session";
   const HEARTBEAT_MS = 120000;
-  let appVersion = "2.1.0";
+  let appVersion = "2.2.0";
   let heartbeatTimer = null;
 
   function randomId() {
