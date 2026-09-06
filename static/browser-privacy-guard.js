@@ -33,7 +33,7 @@
     return url.pathname === "/api" || url.pathname.startsWith("/api/");
   }
 
-  const blockedError = target => new Error(`HelloLabel 2.1 is browser-only; legacy server API blocked: ${String(typeof target === "string" ? target : target?.url || target)}`);
+  const blockedError = target => new Error(`HelloLabel 2.2 is browser-only; legacy server API blocked: ${String(typeof target === "string" ? target : target?.url || target)}`);
 
   const previousFetch = window.fetch.bind(window);
   window.fetch = function(input, init) {
