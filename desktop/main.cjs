@@ -262,7 +262,7 @@ async function runSmokeAssertions() {
   })`, true);
 
   if (result.runtimeMode !== 'browser-only') throw new Error(`Unexpected runtime mode: ${result.runtimeMode}`);
-  if (result.runtimeVersion !== '1.5.0') throw new Error(`Unexpected runtime version: ${result.runtimeVersion}`);
+  if (result.runtimeVersion !== '2.2.0') throw new Error(`Unexpected runtime version: ${result.runtimeVersion}`);
   if (!result.secureContext) throw new Error('Packaged renderer is not a secure context');
   if (!result.crossOriginIsolated) throw new Error('Packaged renderer is not cross-origin isolated');
   if (!result.openFolderEnabled) throw new Error('Open folder action is disabled in packaged renderer');
@@ -272,7 +272,7 @@ async function runSmokeAssertions() {
   const world = result.yoloOptions.find(item => item.value === 'yolo-world');
   if (!detect || detect.disabled) throw new Error('YOLO11 Detect is unavailable in packaged renderer');
   if (!seg || seg.disabled) throw new Error('YOLO11 Seg is unavailable in packaged renderer');
-  if (!world || !world.disabled) throw new Error('YOLO-World should remain disabled in v1.5 packaged renderer');
+  if (!world || !world.disabled) throw new Error('YOLO-World should remain disabled in v2.2 packaged renderer');
 
   console.log(`HELLOLABEL_SMOKE_OK ${JSON.stringify(result)}`);
   return result;
