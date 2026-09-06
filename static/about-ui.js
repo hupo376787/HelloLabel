@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const APP_VERSION = "2.1.0";
+  const APP_VERSION = "2.2.0";
   const REPOSITORY_URL = "https://github.com/hupo376787/HelloLabel";
 
   if (typeof I18N !== "undefined") {
@@ -62,7 +62,7 @@
       <div class="about-dialog">
         <div class="about-hero">
           <div class="about-logo-wrap">
-            <img class="about-logo" src="/static/hellolabel-icon.png?v=hellolabel-v210" alt="HelloLabel" />
+            <img class="about-logo" src="/static/hellolabel-icon.png?v=hellolabel-v220" alt="HelloLabel" />
           </div>
           <div class="about-main">
             <div class="about-product-row">
@@ -138,7 +138,7 @@
           ["Ctrl/Cmd+Y / Ctrl/Cmd+Shift+Z", "Redo."],
           ["Delete / Backspace", "If a polygon/polyline control point is active, remove that vertex when valid; otherwise delete the selected instance(s)."],
           ["Enter", "Finish the current sequence drawing; in SAM mode, accept the current result."],
-          ["Esc", "Cancel the current drawing or AI interaction. If a completed shape was reopened, restore the original."]
+          ["Esc", "Cancel the current drawing or AI interaction. If a completed shape was reopened, restore the original shape."]
         ]
       },
       {
