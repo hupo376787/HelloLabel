@@ -2,11 +2,11 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 OUT="dist/web"
-CACHE_TOKEN="hellolabel-v210-t7"
+CACHE_TOKEN="hellolabel-v220-t1"
 
 printf '%s\n' \
   '============================================================' \
-  '  HelloLabel 2.1 - Build Static Web Distribution' \
+  '  HelloLabel 2.2 - Build Static Web Distribution' \
   '============================================================'
 
 rm -rf "$OUT"
@@ -20,7 +20,7 @@ sed -i -E "s/hellolabel-v[0-9A-Za-z-]+/${CACHE_TOKEN}/g" "$OUT/index.html"
 cp _headers "$OUT/_headers"
 cp _redirects "$OUT/_redirects"
 rm -f "$OUT/static/index.html"
-printf '%s\n' 'HelloLabel 2.1.0 - browser-only static runtime' > "$OUT/VERSION.txt"
+printf '%s\n' 'HelloLabel 2.2.0 - browser-only static runtime' > "$OUT/VERSION.txt"
 
 echo "[OK] Static site created at $OUT"
 echo "Upload the CONTENTS of $OUT to your Nginx document root or Cloudflare Pages."
