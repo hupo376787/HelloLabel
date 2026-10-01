@@ -46,6 +46,27 @@
     lastPointerType = normalizePointerType(event?.pointerType);
   }
 
+  function capture(event) {
+    if (!event || event.pointerId == null) return false;
+    try {
+      viewport.setPointerCapture?.(event.pointerId);
+      return viewport.hasPointerCapture?.(event.pointerId) ?? true;
+    } catch {
+      return false;
+    }
+  }
+
+  function release(pointerId) {
+    if (pointerId == null) return false;
+    try {
+      if (!viewport.hasPointerCapture?.(pointerId)) return false;
+      viewport.releasePointerCapture?.(pointerId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   viewport.addEventListener("pointerdown", rememberPointer, { capture: true, passive: true });
   viewport.addEventListener("pointermove", rememberPointer, { capture: true, passive: true });
   viewport.addEventListener("pointerup", rememberPointer, { capture: true, passive: true });
@@ -55,6 +76,8 @@
     profiles: PROFILES,
     profileFor,
     normalizePointerType,
+    capture,
+    release,
     get lastPointerType() {
       return lastPointerType;
     },
