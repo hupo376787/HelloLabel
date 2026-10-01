@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v220-t9";
+  const VERSION = "hellolabel-v220-t10";
 
   try {
     let theme = localStorage.getItem("hellolabel-theme") || localStorage.getItem("labelit-theme");
@@ -38,6 +38,12 @@
     `/static/core/history-manager.js?v=${VERSION}`,
     `/static/io/json-storage.js?v=${VERSION}`,
     `/static/io/folder-controller.js?v=${VERSION}`,
+    `/static/render/geometry-utils.js?v=${VERSION}`,
+    `/static/render/webgl-renderer.js?v=${VERSION}`,
+    `/static/render/render-cache.js?v=${VERSION}`,
+    `/static/render/viewport-renderer.js?v=${VERSION}`,
+    `/static/render/selection-overlay.js?v=${VERSION}`,
+    `/static/render/hit-test.js?v=${VERSION}`,
     `/static/core/mode-manager.js?v=${VERSION}`,
     `/static/core/event-manager.js?v=${VERSION}`,
     `/static/drawing-state-bridge.js?v=${VERSION}`,

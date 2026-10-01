@@ -26,6 +26,12 @@ const statusUi = read("static/ui/status-ui.js");
 const historyManager = read("static/core/history-manager.js");
 const jsonStorage = read("static/io/json-storage.js");
 const folderController = read("static/io/folder-controller.js");
+const geometryUtils = read("static/render/geometry-utils.js");
+const webglRenderer = read("static/render/webgl-renderer.js");
+const renderCache = read("static/render/render-cache.js");
+const viewportRenderer = read("static/render/viewport-renderer.js");
+const selectionOverlay = read("static/render/selection-overlay.js");
+const hitTest = read("static/render/hit-test.js");
 const drawingPreview = read("static/drawing-preview.js");
 const drawingDispatcher = read("static/tools/drawing-dispatcher.js");
 const circleTool = read("static/tools/circle-tool.js");
@@ -149,6 +155,12 @@ for (const asset of [
   "core/history-manager.js",
   "io/json-storage.js",
   "io/folder-controller.js",
+  "render/geometry-utils.js",
+  "render/webgl-renderer.js",
+  "render/render-cache.js",
+  "render/viewport-renderer.js",
+  "render/selection-overlay.js",
+  "render/hit-test.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 assert(i18nCore.includes("HelloLabelI18n"), "i18n core must expose HelloLabelI18n");
@@ -167,6 +179,14 @@ assert(statusUi.includes("HelloLabelStatusUI"), "status UI must be extracted");
 assert(historyManager.includes("HelloLabelHistory"), "history manager must be extracted");
 assert(jsonStorage.includes("HelloLabelJsonStorage"), "JSON storage must be extracted");
 assert(folderController.includes("HelloLabelFolder"), "folder controller must be extracted");
+assert(geometryUtils.includes("HelloLabelGeometry"), "geometry utils must be extracted");
+assert(webglRenderer.includes("HelloLabelWebGL"), "WebGL renderer must be extracted");
+assert(renderCache.includes("HelloLabelRenderCache"), "render cache must be extracted");
+assert(viewportRenderer.includes("HelloLabelViewportRenderer"), "viewport renderer must be extracted");
+assert(selectionOverlay.includes("HelloLabelSelectionOverlay"), "selection overlay must be extracted");
+assert(hitTest.includes("HelloLabelHitTest"), "hit testing must be extracted");
+assert(!appCore.includes("lineVs="), "WebGL shader implementation must not remain inline in app core");
+assert(!appCore.includes("state.shapeById.clear();state.indexById.clear();state.shapeGrid.clear();"), "render cache implementation must not remain inline in app core");
 assert(!appCore.includes("async function requestFolder(){"), "folder workflow must not remain inline in app core");
 assert(!appCore.includes("async function saveJsonToFolder(showMessage=true){"), "JSON save implementation must not remain inline in app core");
 assert(!appCore.includes("function pushHistory(){if(!state.data)"), "history implementation must not remain inline in app core");
@@ -226,6 +246,12 @@ const required = [
   "static/core/history-manager.js",
   "static/io/json-storage.js",
   "static/io/folder-controller.js",
+  "static/render/geometry-utils.js",
+  "static/render/webgl-renderer.js",
+  "static/render/render-cache.js",
+  "static/render/viewport-renderer.js",
+  "static/render/selection-overlay.js",
+  "static/render/hit-test.js",
   "static/app-core.js",
   "static/telemetry.js",
   "static/annotation-telemetry.js",

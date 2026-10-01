@@ -108,121 +108,48 @@ function loadPreview(file){return window.HelloLabelFolder.loadPreview(file);}
 function openImageEntry(entry){return window.HelloLabelFolder.openImageEntry(entry);}
 
 // ---------- Geometry + WebGL2 renderer ----------
-function resizeOverlay(){
-  const rect=els.viewport.getBoundingClientRect(),cssW=Math.max(1,Math.round(rect.width||1)),cssH=Math.max(1,Math.round(rect.height||1)),dpr=Math.min(CANVAS_MAX_DPR,window.devicePixelRatio||1);
-  const bw=Math.max(1,Math.round(cssW*dpr)),bh=Math.max(1,Math.round(cssH*dpr));if(els.shapeCanvas.width!==bw)els.shapeCanvas.width=bw;if(els.shapeCanvas.height!==bh)els.shapeCanvas.height=bh;els.shapeCanvas.style.width=`${cssW}px`;els.shapeCanvas.style.height=`${cssH}px`;els.interactionSvg.setAttribute("viewBox",`0 0 ${cssW} ${cssH}`);state.glRenderer?.resize?.(cssW,cssH,dpr);return {cssW,cssH,dpr};
-}
-function compileShader(gl,type,src){const s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS)){const log=gl.getShaderInfoLog(s);gl.deleteShader(s);throw new Error(log);}return s;}
-function makeProgram(gl,vs,fs){const v=compileShader(gl,gl.VERTEX_SHADER,vs),f=compileShader(gl,gl.FRAGMENT_SHADER,fs),p=gl.createProgram();gl.attachShader(p,v);gl.attachShader(p,f);gl.linkProgram(p);gl.deleteShader(v);gl.deleteShader(f);if(!gl.getProgramParameter(p,gl.LINK_STATUS)){const log=gl.getProgramInfoLog(p);gl.deleteProgram(p);throw new Error(log);}return p;}
-function createWebGLRenderer(canvas){
-  const gl=canvas.getContext("webgl2",{alpha:true,antialias:true,premultipliedAlpha:true,desynchronized:true,powerPreference:"high-performance"});if(!gl)return {available:false};
-  const lineVs=`#version 300 es
-  precision highp float; layout(location=0) in vec2 aCorner; layout(location=1) in vec4 aSeg; layout(location=2) in vec4 aColor;
-  uniform vec2 uPan; uniform float uScale; uniform vec2 uViewport; uniform float uHalfWidth; out float vAlong; out float vSide; out float vLen; out vec4 vColor;
-  void main(){vec2 s1=uPan+aSeg.xy*uScale, s2=uPan+aSeg.zw*uScale;vec2 d=s2-s1;float len=max(length(d),.001);vec2 dir=d/len, perp=vec2(-dir.y,dir.x);float along=mix(-uHalfWidth,len+uHalfWidth,aCorner.x);float side=aCorner.y*uHalfWidth;vec2 p=s1+dir*along+perp*side;gl_Position=vec4(p.x/uViewport.x*2.-1.,1.-p.y/uViewport.y*2.,0,1);vAlong=along;vSide=side;vLen=len;vColor=aColor;}`;
-  const lineFs=`#version 300 es
-  precision highp float; uniform float uHalfWidth; in float vAlong; in float vSide; in float vLen; in vec4 vColor; out vec4 outColor;
-  void main(){float e=0.;if(vAlong<0.)e=-vAlong;else if(vAlong>vLen)e=vAlong-vLen;float d=length(vec2(e,vSide));float aa=max(fwidth(d),.65);float a=1.-smoothstep(uHalfWidth-aa,uHalfWidth+aa,d);if(a<=.001)discard;outColor=vec4(vColor.rgb,vColor.a*a);}`;
-  const pointVs=`#version 300 es
-  precision highp float; layout(location=0) in vec2 aCorner; layout(location=1) in vec2 aCenter; layout(location=2) in vec4 aColor;
-  uniform vec2 uPan; uniform float uScale; uniform vec2 uViewport; uniform float uRadius; out vec2 vCorner; out vec4 vColor;
-  void main(){vec2 c=uPan+aCenter*uScale;vec2 p=c+aCorner*uRadius;gl_Position=vec4(p.x/uViewport.x*2.-1.,1.-p.y/uViewport.y*2.,0,1);vCorner=aCorner;vColor=aColor;}`;
-  const pointFs=`#version 300 es
-  precision mediump float; in vec2 vCorner; in vec4 vColor; out vec4 outColor; void main(){float r=length(vCorner);float a=1.-smoothstep(.78,1.,r);if(a<=0.)discard;outColor=vec4(vColor.rgb,vColor.a*a);}`;
-  const labelVs=`#version 300 es
-  precision highp float; layout(location=0) in vec4 aQuad; layout(location=1) in vec2 aCenter; layout(location=2) in vec4 aUv; layout(location=3) in vec2 aSize;
-  uniform vec2 uPan; uniform float uScale; uniform vec2 uViewport; uniform float uDpr; out vec2 vUv;
-  void main(){vec2 p=uPan+aCenter*uScale+aQuad.xy*aSize*uDpr;gl_Position=vec4(p.x/uViewport.x*2.-1.,1.-p.y/uViewport.y*2.,0,1);vUv=mix(aUv.xy,aUv.zw,aQuad.zw);}`;
-  const labelFs=`#version 300 es
-  precision mediump float; uniform sampler2D uAtlas; in vec2 vUv; out vec4 outColor; void main(){vec4 c=texture(uAtlas,vUv);if(c.a<.01)discard;outColor=c;}`;
-  const lp=makeProgram(gl,lineVs,lineFs),pp=makeProgram(gl,pointVs,pointFs),tp=makeProgram(gl,labelVs,labelFs);
-  const lineQuad=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,lineQuad);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([0,-1,1,-1,0,1,1,1]),gl.STATIC_DRAW);
-  const pointQuad=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,pointQuad);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
-  const labelQuad=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,labelQuad);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-.5,-.5,0,0,.5,-.5,1,0,-.5,.5,0,1,.5,.5,1,1]),gl.STATIC_DRAW);
-  const lineBuf=gl.createBuffer(),pointBuf=gl.createBuffer(),labelBuf=gl.createBuffer(),tex=gl.createTexture();let lineCount=0,pointCount=0,labelCount=0,dpr=1;
-  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.disable(gl.DEPTH_TEST);
-  function setGeometry(segments,points){lineCount=Math.floor((segments?.length||0)/8);pointCount=Math.floor((points?.length||0)/6);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,segments||new Float32Array(),gl.STATIC_DRAW);gl.bindBuffer(gl.ARRAY_BUFFER,pointBuf);gl.bufferData(gl.ARRAY_BUFFER,points||new Float32Array(),gl.STATIC_DRAW);}
-  function setLabels(atlas,instances){labelCount=Math.floor((instances?.length||0)/8);gl.bindBuffer(gl.ARRAY_BUFFER,labelBuf);gl.bufferData(gl.ARRAY_BUFFER,instances||new Float32Array(),gl.STATIC_DRAW);if(!atlas)return;gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,atlas);}
-  function resize(_w,_h,nextDpr){dpr=Math.max(1,nextDpr||1);gl.viewport(0,0,canvas.width,canvas.height);}
-  function common(program,panX,panY,scale){gl.uniform2f(gl.getUniformLocation(program,"uPan"),panX*dpr,panY*dpr);gl.uniform1f(gl.getUniformLocation(program,"uScale"),scale*dpr);gl.uniform2f(gl.getUniformLocation(program,"uViewport"),canvas.width,canvas.height);}
-  function draw({panX,panY,scale,showLabels}){
-    gl.viewport(0,0,canvas.width,canvas.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);
-    if(lineCount){gl.useProgram(lp);common(lp,panX,panY,scale);gl.uniform1f(gl.getUniformLocation(lp,"uHalfWidth"),OUTLINE_PX*dpr*.5);gl.bindBuffer(gl.ARRAY_BUFFER,lineQuad);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);gl.vertexAttribDivisor(0,0);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,32,0);gl.vertexAttribDivisor(1,1);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,32,16);gl.vertexAttribDivisor(2,1);gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,lineCount);}
-    if(pointCount){gl.useProgram(pp);common(pp,panX,panY,scale);gl.uniform1f(gl.getUniformLocation(pp,"uRadius"),POINT_PX*dpr);gl.bindBuffer(gl.ARRAY_BUFFER,pointQuad);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);gl.vertexAttribDivisor(0,0);gl.bindBuffer(gl.ARRAY_BUFFER,pointBuf);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,2,gl.FLOAT,false,24,0);gl.vertexAttribDivisor(1,1);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,24,8);gl.vertexAttribDivisor(2,1);gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,pointCount);}
-    if(showLabels&&labelCount){gl.useProgram(tp);common(tp,panX,panY,scale);gl.uniform1f(gl.getUniformLocation(tp,"uDpr"),dpr);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(gl.getUniformLocation(tp,"uAtlas"),0);gl.bindBuffer(gl.ARRAY_BUFFER,labelQuad);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,4,gl.FLOAT,false,16,0);gl.vertexAttribDivisor(0,0);gl.bindBuffer(gl.ARRAY_BUFFER,labelBuf);const st=32;gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,2,gl.FLOAT,false,st,0);gl.vertexAttribDivisor(1,1);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,st,8);gl.vertexAttribDivisor(2,1);gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,2,gl.FLOAT,false,st,24);gl.vertexAttribDivisor(3,1);gl.drawArraysInstanced(gl.TRIANGLE_STRIP,0,4,labelCount);}
-  }
-  function clear(){setGeometry(new Float32Array(),new Float32Array());setLabels(null,new Float32Array());draw({panX:0,panY:0,scale:1,showLabels:false});}
-  return {available:true,setGeometry,setLabels,resize,draw,clear};
-}
-function initRenderer(){if(state.glRenderer?.available)return true;try{state.glRenderer=createWebGLRenderer(els.shapeCanvas);state.webglReady=!!state.glRenderer.available;}catch(err){console.error(err);state.glRenderer={available:false};state.webglReady=false;}if(!state.webglReady)setStatus(t("webglFallback"),true);return state.webglReady;}
+const {
+  rectCorners,circleInfo,renderVertices,isClosedType,shapeBounds,shapeAnchor,
+  controlPointsForShape,pointSegDistance,shapeHit
+}=window.HelloLabelGeometry;
 
-function rectCorners(points){if(!points?.length)return [];const a=points[0]||[0,0],b=points[1]||a;const x1=Number(a[0]),y1=Number(a[1]),x2=Number(b[0]),y2=Number(b[1]);return [[x1,y1],[x2,y1],[x2,y2],[x1,y2]];}
-function circleInfo(shape){const a=shape.points?.[0]||[0,0],b=shape.points?.[1]||a;return {cx:Number(a[0]),cy:Number(a[1]),r:Math.hypot(Number(b[0])-Number(a[0]),Number(b[1])-Number(a[1]))};}
-function renderVertices(shape){
-  const t=shape.shape_type,p=shape.points||[];
-  if(t==="rectangle")return rectCorners(p);
-  if(t==="circle"){const {cx,cy,r}=circleInfo(shape),n=64,out=[];for(let i=0;i<n;i++){const a=i/n*Math.PI*2;out.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);}return out;}
-  return p.map(q=>[Number(q[0]),Number(q[1])]);
-}
-function isClosedType(t){return t==="polygon"||t==="rectangle"||t==="oriented_rectangle"||t==="circle";}
-function shapeBounds(shape){
-  if(shape.shape_type==="circle"){const {cx,cy,r}=circleInfo(shape);return [cx-r,cy-r,cx+r,cy+r];}
-  const p=renderVertices(shape);if(!p.length)return [0,0,0,0];let x1=Infinity,y1=Infinity,x2=-Infinity,y2=-Infinity;for(const q of p){x1=Math.min(x1,q[0]);y1=Math.min(y1,q[1]);x2=Math.max(x2,q[0]);y2=Math.max(y2,q[1]);}return [x1,y1,x2,y2];
-}
-function shapeAnchor(shape){const b=shapeBounds(shape);return [(b[0]+b[2])/2,(b[1]+b[3])/2];}
-function addSeg(arr,a,b,c){arr.push(a[0],a[1],b[0],b[1],c[0],c[1],c[2],c[3]);}
-function buildRenderCache(excludeIds=null){
-  state.shapeById.clear();state.indexById.clear();state.shapeGrid.clear();state.boundsById.clear();initRenderer();const seg=[],pts=[];const ids=shapeIds(),shapes=state.data?.shapes||[];
-  for(let i=0;i<shapes.length;i++){
-    const id=ids[i],shape=shapes[i];state.shapeById.set(id,shape);state.indexById.set(id,i);const bounds=shapeBounds(shape);state.boundsById.set(id,bounds);
-    const expand=8;const gx0=Math.floor((bounds[0]-expand)/HIT_GRID),gy0=Math.floor((bounds[1]-expand)/HIT_GRID),gx1=Math.floor((bounds[2]+expand)/HIT_GRID),gy1=Math.floor((bounds[3]+expand)/HIT_GRID);for(let gy=gy0;gy<=gy1;gy++)for(let gx=gx0;gx<=gx1;gx++){const k=`${gx},${gy}`;let a=state.shapeGrid.get(k);if(!a){a=[];state.shapeGrid.set(k,a);}a.push(id);}
-    if(excludeIds?.has(id))continue;const color=hexToRgba(labelColor(shape.label),.96),v=renderVertices(shape),closed=isClosedType(shape.shape_type);
-    if(shape.shape_type==="point"&&v[0]){pts.push(v[0][0],v[0][1],...color);continue;}
-    for(let j=0;j<v.length-1;j++)addSeg(seg,v[j],v[j+1],color);if(closed&&v.length>2)addSeg(seg,v[v.length-1],v[0],color);
-  }
-  if(state.webglReady)state.glRenderer.setGeometry(new Float32Array(seg),new Float32Array(pts));
-}
-function buildLabelAtlas(){
-  state.labelAtlas=null;state.labelInstances=new Float32Array();if(!state.data?.shapes?.length){state.glRenderer?.setLabels?.(null,new Float32Array());return;}
-  const keys=new Map(),measure=document.createElement("canvas").getContext("2d");measure.font=`800 ${LABEL_FONT_PX}px "Segoe UI", "Microsoft YaHei UI", sans-serif`;const pad=4,rowH=23;let x=0,y=0,usedW=1;
-  for(const shape of state.data.shapes){const label=shape.label,color=labelColor(label),key=`${label}\u0000${color}`;if(keys.has(key))continue;const w=Math.max(18,Math.ceil(measure.measureText(label).width+pad*2+5));if(x&&x+w>LABEL_ATLAS_W){x=0;y+=rowH;}keys.set(key,{label,color,x,y,w,h:rowH});x+=w;usedW=Math.max(usedW,x);}
-  const atlas=document.createElement("canvas"),dpr=Math.min(2.5,Math.max(1.5,window.devicePixelRatio||1));atlas.width=Math.ceil(usedW*dpr);atlas.height=Math.ceil(Math.max(rowH,y+rowH)*dpr);const ctx=atlas.getContext("2d");ctx.setTransform(dpr,0,0,dpr,0,0);ctx.font=`800 ${LABEL_FONT_PX}px "Segoe UI", "Microsoft YaHei UI", sans-serif`;ctx.textAlign="center";ctx.textBaseline="middle";ctx.lineJoin="round";ctx.lineWidth=3;
-  for(const e of keys.values()){const cx=e.x+e.w/2,cy=e.y+e.h/2;ctx.strokeStyle="rgba(10,12,16,.86)";ctx.fillStyle=e.color;ctx.strokeText(e.label,cx,cy);ctx.fillText(e.label,cx,cy);}
-  const data=new Float32Array(state.data.shapes.length*8);let o=0;for(const shape of state.data.shapes){const e=keys.get(`${shape.label}\u0000${labelColor(shape.label)}`),a=shapeAnchor(shape);data[o++]=a[0];data[o++]=a[1];data[o++]=(e.x*dpr)/atlas.width;data[o++]=(e.y*dpr)/atlas.height;data[o++]=((e.x+e.w)*dpr)/atlas.width;data[o++]=((e.y+e.h)*dpr)/atlas.height;data[o++]=e.w;data[o++]=e.h;}
-  state.labelAtlas=atlas;state.labelInstances=data;if(state.webglReady)state.glRenderer.setLabels(atlas,data);
-}
-function shouldWebglShowLabels(){if(!els.showLabelsCheck.checked)return false;const mode=els.labelDisplayMode.value;if(mode==="selected")return false;if(mode==="all")return true;return (state.data?.shapes?.length||0)<=180||state.scale>=.65;}
-function drawFallback2D(showLabels){
-  const {dpr}=resizeOverlay(),ctx=els.shapeCanvas.getContext("2d");ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,els.shapeCanvas.width,els.shapeCanvas.height);ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineWidth=OUTLINE_PX;ctx.lineJoin="round";ctx.lineCap="round";
-  for(const [id,shape] of state.shapeById){if(state.editing?.id===id)continue;ctx.strokeStyle=labelColor(shape.label);ctx.fillStyle=labelColor(shape.label);const v=renderVertices(shape);if(shape.shape_type==="point"){const p=imageToViewport(...v[0]);ctx.beginPath();ctx.arc(p[0],p[1],POINT_PX,0,Math.PI*2);ctx.fill();continue;}if(!v.length)continue;ctx.beginPath();const p0=imageToViewport(...v[0]);ctx.moveTo(...p0);for(let i=1;i<v.length;i++)ctx.lineTo(...imageToViewport(...v[i]));if(isClosedType(shape.shape_type))ctx.closePath();ctx.stroke();if(showLabels){const a=imageToViewport(...shapeAnchor(shape));ctx.font=`800 ${LABEL_FONT_PX}px Segoe UI`;ctx.lineWidth=3;ctx.strokeStyle="#111";ctx.strokeText(shape.label,a[0],a[1]);ctx.fillStyle=labelColor(shape.label);ctx.fillText(shape.label,a[0],a[1]);}}
-}
-function scheduleViewportRender(){if(state.transformRaf)return;state.transformRaf=requestAnimationFrame(()=>{state.transformRaf=0;applyTransformNow();});}
-function applyTransformNow(){els.stage.style.transform=`translate(${state.panX}px,${state.panY}px) scale(${state.scale})`;els.zoomLabel.textContent=`${Math.round(state.scale*100)}%`;resizeOverlay();const show=shouldWebglShowLabels();if(state.webglReady)state.glRenderer.draw({panX:state.panX,panY:state.panY,scale:Math.max(.0001,state.scale),showLabels:show});else drawFallback2D(show);renderSelectedOverlay();renderDrawingOverlay();renderSamOverlay();}
-function imageToViewport(x,y){return [state.panX+Number(x)*state.scale,state.panY+Number(y)*state.scale];}
-function screenToImage(clientX,clientY){const r=els.viewport.getBoundingClientRect();return [(clientX-r.left-state.panX)/state.scale,(clientY-r.top-state.panY)/state.scale];}
-function pointerProfile(pointerType=null){return window.helloLabelPointerInput?.profileFor?.(pointerType)||{pointerType:"mouse",shapeHitPx:8,vertexHitPx:10,edgeHitPx:9,polygonStartHitPx:12,allowHover:true};}
-function clampImagePoint(p){return [clamp(p[0],0,Math.max(0,state.width-1)),clamp(p[1],0,Math.max(0,state.height-1))];}
-function shapeScreenPath(shape){
-  if(!shape)return "";if(shape.shape_type==="circle"){const {cx,cy,r}=circleInfo(shape),c=imageToViewport(cx,cy),rr=r*state.scale;return `M ${c[0]+rr} ${c[1]} A ${rr} ${rr} 0 1 0 ${c[0]-rr} ${c[1]} A ${rr} ${rr} 0 1 0 ${c[0]+rr} ${c[1]}`;}
-  if(shape.shape_type==="point"){const p=imageToViewport(...shape.points[0]),r=6;return `M ${p[0]+r} ${p[1]} A ${r} ${r} 0 1 0 ${p[0]-r} ${p[1]} A ${r} ${r} 0 1 0 ${p[0]+r} ${p[1]}`;}
-  const v=renderVertices(shape);if(!v.length)return "";const p0=imageToViewport(...v[0]);let d=`M ${p0[0]} ${p0[1]}`;for(let i=1;i<v.length;i++){const p=imageToViewport(...v[i]);d+=` L ${p[0]} ${p[1]}`;}if(isClosedType(shape.shape_type))d+=" Z";return d;
-}
-function controlPointsForShape(shape){if(!shape)return [];if(shape.shape_type==="rectangle")return rectCorners(shape.points).map((p,i)=>({p,index:i,kind:"rect-corner"}));return (shape.points||[]).map((p,i)=>({p:[Number(p[0]),Number(p[1])],index:i,kind:"point"}));}
-function renderSelectedOverlay(){
-  const shape=primaryShape();els.controlHandles.replaceChildren();if(!shape){els.selectedPath.classList.add("hidden-svg");els.selectedLabelText.classList.add("hidden-svg");return;}
-  els.selectedPath.setAttribute("d",shapeScreenPath(shape));els.selectedPath.style.fill=isClosedType(shape.shape_type)?"":"none";els.selectedPath.classList.remove("hidden-svg");
-  if(state.mode==="pointer")for(const h of controlPointsForShape(shape)){const p=imageToViewport(...h.p),c=document.createElementNS("http://www.w3.org/2000/svg","circle");c.setAttribute("cx",p[0]);c.setAttribute("cy",p[1]);c.setAttribute("r",5);c.classList.add("control-handle");if(state.activeHandle&&state.activeHandle.index===h.index)c.classList.add("active");c.dataset.handleIndex=String(h.index);c.dataset.handleKind=h.kind;c.dataset.shapeId=state.primaryId;els.controlHandles.appendChild(c);}
-  const mode=els.labelDisplayMode.value,showSelected=els.showLabelsCheck.checked&&(mode==="selected"||mode==="smart"&&!shouldWebglShowLabels());if(showSelected){const a=imageToViewport(...shapeAnchor(shape));els.selectedLabelText.textContent=shape.label;els.selectedLabelText.setAttribute("x",a[0]+7);els.selectedLabelText.setAttribute("y",a[1]-7);els.selectedLabelText.setAttribute("fill",labelColor(shape.label));els.selectedLabelText.classList.remove("hidden-svg");}else els.selectedLabelText.classList.add("hidden-svg");
-}
-function flashSelected(){const el=els.selectedPath;if(!state.primaryId)return;el.classList.remove("flash-3x");void el.getBoundingClientRect();el.classList.add("flash-3x");}
+window.HelloLabelWebGL.configure({
+  state,els,setStatus,t,CANVAS_MAX_DPR,OUTLINE_PX,POINT_PX
+});
+function resizeOverlay(){return window.HelloLabelWebGL.resizeOverlay();}
+function initRenderer(){return window.HelloLabelWebGL.initRenderer();}
 
-function pointInPolygon(x,y,pts){let inside=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const xi=pts[i][0],yi=pts[i][1],xj=pts[j][0],yj=pts[j][1];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/((yj-yi)||1e-12)+xi))inside=!inside;}return inside;}
-function pointSegDistance(p,a,b){const vx=b[0]-a[0],vy=b[1]-a[1],wx=p[0]-a[0],wy=p[1]-a[1],l=vx*vx+vy*vy;if(l<1e-12)return Math.hypot(wx,wy);let t=(wx*vx+wy*vy)/l;t=clamp(t,0,1);return Math.hypot(p[0]-(a[0]+t*vx),p[1]-(a[1]+t*vy));}
-function shapeHit(shape,x,y,tol){
-  const t=shape.shape_type;if(t==="circle"){const {cx,cy,r}=circleInfo(shape);return Math.hypot(x-cx,y-cy)<=r+tol;}if(t==="point")return Math.hypot(x-shape.points[0][0],y-shape.points[0][1])<=tol*1.5;
-  const v=renderVertices(shape);if(isClosedType(t)&&pointInPolygon(x,y,v))return true;const end=isClosedType(t)?v.length:v.length-1;for(let i=0;i<end;i++){const j=(i+1)%v.length;if(pointSegDistance([x,y],v[i],v[j])<=tol)return true;}return false;
-}
-function findShapeAt(x,y,pointerType=null){const gx=Math.floor(x/HIT_GRID),gy=Math.floor(y/HIT_GRID),ids=state.shapeGrid.get(`${gx},${gy}`)||[],profile=pointerProfile(pointerType),tol=Math.max(4,profile.shapeHitPx/state.scale);let best=null,bestArea=Infinity;for(let i=ids.length-1;i>=0;i--){const id=ids[i],shape=shapeAtId(id);if(!shape||!shapeHit(shape,x,y,tol))continue;const b=state.boundsById.get(id),area=Math.max(1,(b[2]-b[0])*(b[3]-b[1]));if(area<=bestArea){best={id,shape};bestArea=area;}}return best;}
+window.HelloLabelRenderCache.configure({
+  state,HIT_GRID,LABEL_FONT_PX,LABEL_ATLAS_W,shapeIds,shapeBounds,initRenderer,
+  hexToRgba,labelColor,renderVertices,isClosedType,shapeAnchor,els
+});
+function buildRenderCache(excludeIds=null){return window.HelloLabelRenderCache.buildRenderCache(excludeIds);}
+function buildLabelAtlas(){return window.HelloLabelRenderCache.buildLabelAtlas();}
+function shouldWebglShowLabels(){return window.HelloLabelRenderCache.shouldWebglShowLabels();}
+
+window.HelloLabelViewportRenderer.configure({
+  state,els,clamp,OUTLINE_PX,POINT_PX,LABEL_FONT_PX,resizeOverlay,labelColor,
+  renderVertices,isClosedType,shapeAnchor,shouldWebglShowLabels,
+  renderSelectedOverlay,renderDrawingOverlay,renderSamOverlay
+});
+function scheduleViewportRender(){return window.HelloLabelViewportRenderer.scheduleViewportRender();}
+function imageToViewport(x,y){return window.HelloLabelViewportRenderer.imageToViewport(x,y);}
+function screenToImage(clientX,clientY){return window.HelloLabelViewportRenderer.screenToImage(clientX,clientY);}
+function pointerProfile(pointerType=null){return window.HelloLabelViewportRenderer.pointerProfile(pointerType);}
+function clampImagePoint(point){return window.HelloLabelViewportRenderer.clampImagePoint(point);}
+
+window.HelloLabelSelectionOverlay.configure({
+  state,els,imageToViewport,circleInfo,renderVertices,isClosedType,primaryShape,
+  controlPointsForShape,shouldWebglShowLabels,shapeAnchor,labelColor
+});
+function shapeScreenPath(shape){return window.HelloLabelSelectionOverlay.shapeScreenPath(shape);}
+function renderSelectedOverlay(){return window.HelloLabelSelectionOverlay.renderSelectedOverlay();}
+function flashSelected(){return window.HelloLabelSelectionOverlay.flashSelected();}
+
+window.HelloLabelHitTest.configure({
+  state,HIT_GRID,pointerProfile,shapeAtId,shapeHit
+});
+function findShapeAt(x,y,pointerType=null){return window.HelloLabelHitTest.findShapeAt(x,y,pointerType);}
 
 // ---------- Labels, instances, selection ----------
 function renderAll({excludeSelected=false}={}){
