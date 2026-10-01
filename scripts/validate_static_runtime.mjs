@@ -187,6 +187,14 @@ for (const asset of [
   "core/app-initializer.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
+assert(app.includes("bootstrap/core-services.js"), "app bootstrap must load bootstrap/core-services.js");
+assert(app.includes("bootstrap/render-services.js"), "app bootstrap must load bootstrap/render-services.js");
+assert(app.includes("bootstrap/ui-services.js"), "app bootstrap must load bootstrap/ui-services.js");
+assert(app.includes("bootstrap/drawing-services.js"), "app bootstrap must load bootstrap/drawing-services.js");
+assert(app.includes("bootstrap/ai-services.js"), "app bootstrap must load bootstrap/ai-services.js");
+assert(app.includes("bootstrap/view-services.js"), "app bootstrap must load bootstrap/view-services.js");
+assert(app.includes("bootstrap/event-services.js"), "app bootstrap must load bootstrap/event-services.js");
+assert(app.includes("bootstrap/app-start.js"), "app bootstrap must load bootstrap/app-start.js");
 assert(i18nCore.includes("HelloLabelI18n"), "i18n core must expose HelloLabelI18n");
 assert(i18nZh.includes("HelloLabelI18nMessages.zh"), "Chinese messages must be split from app core");
 assert(i18nMenuZh.includes("HelloLabelI18nMessages.zh"), "Chinese menu messages must be split from app core");
@@ -257,6 +265,14 @@ const staticReferences = [...app.matchAll(/`\/static\/([^?`]+)\?v=/g)].map(match
 for (const relative of staticReferences) assert(exists(relative), `bootstrap references missing file: ${relative}`);
 
 const required = [
+  "static/bootstrap/core-services.js",
+  "static/bootstrap/render-services.js",
+  "static/bootstrap/ui-services.js",
+  "static/bootstrap/drawing-services.js",
+  "static/bootstrap/ai-services.js",
+  "static/bootstrap/view-services.js",
+  "static/bootstrap/event-services.js",
+  "static/bootstrap/app-start.js",
   "static/core/dom-elements.js",
   "static/core/constants.js",
   "static/core/app-state.js",
@@ -339,10 +355,34 @@ for (const relative of required) assert(exists(relative), `required v2.2 file is
 
 const byteSize = relative => Buffer.byteLength(read(relative), "utf8");
 
+const bootstrapRuntimeFiles = [
+  "static/bootstrap/core-services.js",
+  "static/bootstrap/render-services.js",
+  "static/bootstrap/ui-services.js",
+  "static/bootstrap/drawing-services.js",
+  "static/bootstrap/ai-services.js",
+  "static/bootstrap/view-services.js",
+  "static/bootstrap/event-services.js",
+  "static/bootstrap/app-start.js",
+];
+for (const relative of bootstrapRuntimeFiles) {
+  assert(byteSize(relative) <= 8 * 1024, `${relative} must stay <= 8 KiB`);
+}
+assert(!appCore.includes(".configure({"), "app-core.js must remain a thin facade without configure blocks");
+assert(!appCore.includes(".bind();"), "app-core.js must not bind runtime events directly");
+
 // Keep the composition root small, and prevent extracted feature modules from growing back into monoliths.
-assert(byteSize("static/app-core.js") <= 20 * 1024, "static/app-core.js must stay <= 20 KiB");
+assert(byteSize("static/app-core.js") <= 12 * 1024, "static/app-core.js must stay <= 12 KiB");
 
 const modularRuntimeFiles = [
+  "static/bootstrap/core-services.js",
+  "static/bootstrap/render-services.js",
+  "static/bootstrap/ui-services.js",
+  "static/bootstrap/drawing-services.js",
+  "static/bootstrap/ai-services.js",
+  "static/bootstrap/view-services.js",
+  "static/bootstrap/event-services.js",
+  "static/bootstrap/app-start.js",
   "static/core/dom-elements.js",
   "static/core/constants.js",
   "static/core/app-state.js",
