@@ -144,7 +144,7 @@
 
     // Show the same first-edge -> second-edge cue while the user is choosing
     // OBB width, so the final direction is visible before the third click.
-    const draft = typeof currentDrawingShape === "function" ? currentDrawingShape() : null;
+    const draft = window.HelloLabelDrawingPreview?.currentShape?.() || null;
     if (draft?.shape_type === "oriented_rectangle") {
       const previewColor = getComputedStyle(document.documentElement).getPropertyValue("--selection").trim() || "#ffd54f";
       drawArrow(draft.points, previewColor, 0.98);
@@ -165,38 +165,12 @@
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
-  const originalApplyTransformNow = applyTransformNow;
-  applyTransformNow = function() {
-    const result = originalApplyTransformNow.apply(this, arguments);
-    scheduleDirectionRender();
-    return result;
-  };
-
-  const originalRenderDrawingOverlay = renderDrawingOverlay;
-  renderDrawingOverlay = function() {
-    const result = originalRenderDrawingOverlay.apply(this, arguments);
-    scheduleDirectionRender();
-    return result;
-  };
-
-  const originalRenderAll = renderAll;
-  renderAll = function() {
-    const result = originalRenderAll.apply(this, arguments);
-    scheduleDirectionRender();
-    return result;
-  };
-
-  const originalResetCurrentState = resetCurrentState;
-  resetCurrentState = function() {
-    clearDirectionOverlay();
-    return originalResetCurrentState.apply(this, arguments);
-  };
-
   // Expose only the pure geometry result for acceptance/debug checks. The JSON
   // representation itself is intentionally untouched and remains Labelme-style.
   window.helloLabelOrientedRectDirection = Object.freeze({
     arrowForPoints,
     render: scheduleDirectionRender,
+    clear: clearDirectionOverlay,
   });
 
   scheduleDirectionRender();

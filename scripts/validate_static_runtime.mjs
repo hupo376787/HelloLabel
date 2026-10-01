@@ -118,6 +118,10 @@ assert(samMaskUtils.includes("extractBestMask") && samMaskUtils.includes("tensor
 assert(orientedRectDirection.includes("points.length !== 4"), "OBB direction overlay must derive from the four Labelme points");
 assert(orientedRectDirection.includes("firstMidpoint") && orientedRectDirection.includes("secondMidpoint"), "OBB direction must use first/opposite edge midpoints");
 assert(!/shape\.direction\s*=|direction\s*:\s*\[/.test(orientedRectDirection), "OBB direction overlay must not add a HelloLabel-only direction field to JSON shapes");
+assert(orientedRectDirection.includes("HelloLabelDrawingPreview?.currentShape?.()"), "OBB direction preview must use the extracted drawing-preview module");
+assert(!orientedRectDirection.includes("originalApplyTransformNow") && !orientedRectDirection.includes("applyTransformNow = function"), "OBB direction overlay must not monkey-patch the retired global viewport renderer");
+assert(viewportRenderer.includes("helloLabelOrientedRectDirection?.render?.()"), "viewport renderer must schedule the OBB direction overlay");
+assert(drawingPreview.includes("helloLabelOrientedRectDirection?.render?.()"), "drawing preview must keep the OBB direction arrow live while drawing");
 assert(viewportContextMenu.includes('addEventListener("contextmenu"') && viewportContextMenu.includes("preventDefault"), "image viewport must suppress the browser context menu locally");
 assert(privacyGuard.includes('"/api/telemetry"'), "privacy guard must explicitly allow telemetry");
 assert(privacyGuard.includes('url.pathname === "/api"') && privacyGuard.includes('url.pathname.startsWith("/api/")'), "privacy guard must block other legacy /api calls");

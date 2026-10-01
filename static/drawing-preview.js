@@ -80,6 +80,7 @@
 
     if (!shape?.points?.length) {
       hide();
+      window.helloLabelOrientedRectDirection?.render?.();
       return null;
     }
 
@@ -105,6 +106,7 @@
       els.drawingStart.classList.add("hidden-svg");
     }
 
+    window.helloLabelOrientedRectDirection?.render?.();
     return shape;
   }
 

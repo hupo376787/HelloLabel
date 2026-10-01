@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v220-t15";
+  const VERSION = "hellolabel-v220-t16";
 
   try {
     let theme = localStorage.getItem("hellolabel-theme") || localStorage.getItem("labelit-theme");

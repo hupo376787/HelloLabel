@@ -121,6 +121,7 @@
     renderSelectedOverlay();
     renderDrawingOverlay();
     renderSamOverlay();
+    window.helloLabelOrientedRectDirection?.render?.();
   }
 
   const api={
