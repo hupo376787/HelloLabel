@@ -32,6 +32,11 @@ const renderCache = read("static/render/render-cache.js");
 const viewportRenderer = read("static/render/viewport-renderer.js");
 const selectionOverlay = read("static/render/selection-overlay.js");
 const hitTest = read("static/render/hit-test.js");
+const modalController = read("static/ui/modal-controller.js");
+const labelsController = read("static/ui/labels-controller.js");
+const instanceList = read("static/ui/instance-list.js");
+const selectionController = read("static/ui/selection-controller.js");
+const renderOrchestrator = read("static/ui/render-orchestrator.js");
 const drawingPreview = read("static/drawing-preview.js");
 const drawingDispatcher = read("static/tools/drawing-dispatcher.js");
 const circleTool = read("static/tools/circle-tool.js");
@@ -161,6 +166,11 @@ for (const asset of [
   "render/viewport-renderer.js",
   "render/selection-overlay.js",
   "render/hit-test.js",
+  "ui/modal-controller.js",
+  "ui/labels-controller.js",
+  "ui/instance-list.js",
+  "ui/selection-controller.js",
+  "ui/render-orchestrator.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 assert(i18nCore.includes("HelloLabelI18n"), "i18n core must expose HelloLabelI18n");
@@ -185,6 +195,14 @@ assert(renderCache.includes("HelloLabelRenderCache"), "render cache must be extr
 assert(viewportRenderer.includes("HelloLabelViewportRenderer"), "viewport renderer must be extracted");
 assert(selectionOverlay.includes("HelloLabelSelectionOverlay"), "selection overlay must be extracted");
 assert(hitTest.includes("HelloLabelHitTest"), "hit testing must be extracted");
+assert(modalController.includes("HelloLabelModal"), "modal controller must be extracted");
+assert(labelsController.includes("HelloLabelLabels"), "labels controller must be extracted");
+assert(instanceList.includes("HelloLabelInstances"), "instance list must be extracted");
+assert(selectionController.includes("HelloLabelSelection"), "selection controller must be extracted");
+assert(renderOrchestrator.includes("HelloLabelRenderAll"), "render orchestration must be extracted");
+assert(!appCore.includes("function showModal({title,body,buttons})"), "modal implementation must not remain inline in app core");
+assert(!appCore.includes("function renderLabelList(){\n  if(!state.data)"), "label rendering must not remain inline in app core");
+assert(!appCore.includes("function rebuildInstanceList(){state.instanceIds"), "instance list implementation must not remain inline in app core");
 assert(!appCore.includes("lineVs="), "WebGL shader implementation must not remain inline in app core");
 assert(!appCore.includes("state.shapeById.clear();state.indexById.clear();state.shapeGrid.clear();"), "render cache implementation must not remain inline in app core");
 assert(!appCore.includes("async function requestFolder(){"), "folder workflow must not remain inline in app core");
@@ -252,6 +270,11 @@ const required = [
   "static/render/viewport-renderer.js",
   "static/render/selection-overlay.js",
   "static/render/hit-test.js",
+  "static/ui/modal-controller.js",
+  "static/ui/labels-controller.js",
+  "static/ui/instance-list.js",
+  "static/ui/selection-controller.js",
+  "static/ui/render-orchestrator.js",
   "static/app-core.js",
   "static/telemetry.js",
   "static/annotation-telemetry.js",

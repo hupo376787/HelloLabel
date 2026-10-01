@@ -152,64 +152,49 @@ window.HelloLabelHitTest.configure({
 function findShapeAt(x,y,pointerType=null){return window.HelloLabelHitTest.findShapeAt(x,y,pointerType);}
 
 // ---------- Labels, instances, selection ----------
-function renderAll({excludeSelected=false}={}){
-  if(!state.data)return;ensureHelloLabel();ensureDataImageFields();const ex=excludeSelected&&state.primaryId?new Set([state.primaryId]):null;buildRenderCache(ex);buildLabelAtlas();renderLabelList();rebuildInstanceList();updateSelectionPanel();updateActionButtons();scheduleViewportRender();
-}
-function labelUsage(){const m=new Map();for(const s of state.data?.shapes||[])m.set(s.label,(m.get(s.label)||0)+1);return m;}
-function renderLabelList(){
-  if(!state.data){els.labelList.replaceChildren();els.labelCount.textContent="0";return;}const labels=state.data.hellolabel.labels,usage=labelUsage();els.labelList.replaceChildren();const names=Object.keys(labels);els.labelCount.textContent=String(names.length);
-  for(const name of names){const row=document.createElement("div");row.className="label-row"+(state.activeLabel===name?" active":"");row.dataset.label=name;
-    const color=document.createElement("input");color.type="color";color.className="label-color";color.value=labels[name].color;color.title=t("changeLabelColor");color.addEventListener("click",ev=>ev.stopPropagation());color.addEventListener("change",ev=>{ev.stopPropagation();changeLabelColor(name,color.value);});
-    const text=document.createElement("div");text.className="label-name";text.textContent=name;text.title=name;const count=document.createElement("div");count.className="label-count";count.textContent=String(usage.get(name)||0);
-    const rename=document.createElement("button");rename.className="icon-btn";rename.title=t("rename");rename.textContent="✎";rename.addEventListener("click",ev=>{ev.stopPropagation();renameLabel(name);});
-    const del=document.createElement("button");del.className="icon-btn danger";del.title=t("deleteLabel");del.textContent="×";del.addEventListener("click",ev=>{ev.stopPropagation();deleteLabel(name);});
-    row.append(color,text,count,rename,del);row.addEventListener("click",()=>{state.activeLabel=name;renderLabelList();setStatus(t("currentDrawLabel",{name}));});els.labelList.appendChild(row);
-  }
-}
-function changeLabelColor(name,color){if(!state.data?.hellolabel?.labels?.[name])return;pushHistory();state.data.hellolabel.labels[name].color=color;markDirty(t("labelColorChanged",{name}));buildRenderCache();buildLabelAtlas();renderSelectedOverlay();scheduleViewportRender();}
+window.HelloLabelModal.configure({state,els,escapeHtml,t,$,labelColor});
+function showModal(options){return window.HelloLabelModal.showModal(options);}
+function closeModal(value=null){return window.HelloLabelModal.closeModal(value);}
+function promptText(title,message,value=""){return window.HelloLabelModal.promptText(title,message,value);}
+function confirmModal(title,message,confirmText=t("ok"),danger=false){return window.HelloLabelModal.confirmModal(title,message,confirmText,danger);}
+function chooseLabelModal(){return window.HelloLabelModal.chooseLabelModal();}
 
-function showModal({title,body,buttons}){
-  if(state.modalResolve){state.modalResolve(null);state.modalResolve=null;}els.modalTitle.textContent=title;els.modalBody.innerHTML=body;els.modalActions.replaceChildren();els.modalBackdrop.classList.remove("hidden");els.modalBackdrop.setAttribute("aria-hidden","false");
-  return new Promise(resolve=>{state.modalResolve=resolve;for(const b of buttons){const btn=document.createElement("button");btn.textContent=b.label;if(b.className)btn.className=b.className;btn.addEventListener("click",()=>closeModal(b.value));els.modalActions.appendChild(btn);}requestAnimationFrame(()=>els.modalBody.querySelector("input,select,button")?.focus());});
-}
-function closeModal(value=null){els.modalBackdrop.classList.add("hidden");els.modalBackdrop.setAttribute("aria-hidden","true");const r=state.modalResolve;state.modalResolve=null;if(r)r(value);}
-async function promptText(title,message,value=""){const result=await showModal({title,body:`<div>${escapeHtml(message)}</div><input id="modalTextValue" type="text" value="${escapeHtml(value)}" autocomplete="off" />`,buttons:[{label:t("cancel"),value:null},{label:t("ok"),value:"ok",className:"primary"}]});if(result!=="ok")return null;return String($("modalTextValue")?.value||"").trim();}
-async function confirmModal(title,message,confirmText=t("ok"),danger=false){return (await showModal({title,body:`<div>${message}</div>`,buttons:[{label:t("cancel"),value:false},{label:confirmText,value:true,className:danger?"danger-button":"primary"}]}))===true;}
-async function chooseLabelModal(){
-  const labels=Object.keys(state.data?.hellolabel?.labels||{}),html=`<div>${escapeHtml(t("chooseOrCreateLabel"))}</div><div id="modalLabelList" class="modal-label-list">${labels.map(n=>`<div class="modal-label-option" data-label="${escapeHtml(n)}"><span class="dot" style="background:${labelColor(n)}"></span><span>${escapeHtml(n)}</span></div>`).join("")||`<div class="muted">${escapeHtml(t("noLabelsYet"))}</div>`}</div><label>${escapeHtml(t("newLabel"))}<input id="modalNewLabel" type="text" placeholder="${escapeHtml(t("newLabelPlaceholder"))}" /></label>`;
-  let picked=null;const p=showModal({title:t("chooseLabel"),body:html,buttons:[{label:t("cancel"),value:null},{label:t("ok"),value:"ok",className:"primary"}]});
-  requestAnimationFrame(()=>{const list=$("modalLabelList"),selectRow=row=>{if(!row)return;picked=row.dataset.label;list?.querySelectorAll(".modal-label-option").forEach(x=>x.classList.toggle("active",x===row));const input=$("modalNewLabel");if(input)input.value="";};list?.addEventListener("click",ev=>selectRow(ev.target.closest("[data-label]")));list?.addEventListener("dblclick",ev=>{const row=ev.target.closest("[data-label]");if(!row)return;selectRow(row);ev.preventDefault();closeModal("ok");});$("modalNewLabel")?.addEventListener("input",()=>{picked=null;list?.querySelectorAll(".modal-label-option").forEach(x=>x.classList.remove("active"));});});
-  const result=await p;if(result!=="ok")return null;const typed=String($("modalNewLabel")?.value||"").trim();const label=typed||picked;if(!label)return null;return label;
-}
-async function resolveNewShapeLabel(){if(state.activeLabel&&state.data?.hellolabel?.labels?.[state.activeLabel])return state.activeLabel;return chooseLabelModal();}
-async function addLabel(){const name=await promptText(t("addLabel"),t("enterNewLabel"),"");if(!name)return;if(state.data.hellolabel.labels[name]){state.activeLabel=name;renderLabelList();return;}pushHistory();state.data.hellolabel.labels[name]={color:stableColor(name)};state.activeLabel=name;markDirty(t("labelAdded",{name}));renderLabelList();}
-async function renameLabel(oldName){
-  const count=labelUsage().get(oldName)||0,newName=await promptText(t("renameLabel"),t("renameSyncHint",{count}),oldName);if(!newName||newName===oldName)return;const exists=!!state.data.hellolabel.labels[newName];const msg=exists?t("renameExistingMsg",{newName:escapeHtml(newName),oldName:escapeHtml(oldName),count}):t("renameMsg",{oldName:escapeHtml(oldName),newName:escapeHtml(newName),count});if(!await confirmModal(t("confirmRename"),msg,exists?t("mergeRename"):t("renameAction")))return;
-  pushHistory();const oldColor=state.data.hellolabel.labels[oldName]?.color||stableColor(oldName);if(!exists)state.data.hellolabel.labels[newName]={color:oldColor};delete state.data.hellolabel.labels[oldName];for(const s of state.data.shapes)if(s.label===oldName)s.label=newName;if(state.activeLabel===oldName)state.activeLabel=newName;markDirty(t("renameSynced"));renderAll();
-}
-async function deleteLabel(name){
-  const usage=labelUsage(),count=usage.get(name)||0;if(count===0){if(!await confirmModal(t("deleteLabel"),t("deleteLabelConfirm",{name:escapeHtml(name)}),t("deleteAction"),true))return;pushHistory();delete state.data.hellolabel.labels[name];if(state.activeLabel===name)state.activeLabel=null;markDirty(t("labelDeleted",{name}));renderLabelList();return;}
-  const alternatives=Object.keys(state.data.hellolabel.labels).filter(x=>x!==name);const body=`<div class="danger-note">${t("labelInUse",{name:escapeHtml(name),count})}</div><label>${escapeHtml(t("replacementLabel"))}<select id="replacementLabel"><option value="">${escapeHtml(t("choosePlaceholder"))}</option>${alternatives.map(x=>`<option value="${escapeHtml(x)}">${escapeHtml(x)}</option>`).join("")}</select></label><label style="display:block;margin-top:10px">${escapeHtml(t("newReplacement"))}<input id="replacementNew" type="text" placeholder="${escapeHtml(t("newLabelName"))}" /></label><label style="display:flex;gap:7px;align-items:center;margin-top:12px;color:var(--danger)"><input id="deleteAssociated" type="checkbox" /> ${escapeHtml(t("deleteAssociated",{count}))}</label>`;
-  const result=await showModal({title:t("deleteLabel"),body,buttons:[{label:t("cancel"),value:null},{label:t("execute"),value:"ok",className:"primary"}]});if(result!=="ok")return;const remove=!!$("deleteAssociated")?.checked;let replacement=String($("replacementNew")?.value||"").trim()||String($("replacementLabel")?.value||"");if(!remove&&!replacement){alert(t("chooseReplacement"));return;}pushHistory();
-  if(remove){const oldIds=[...shapeIds()];for(let i=state.data.shapes.length-1;i>=0;i--)if(state.data.shapes[i].label===name){const id=oldIds[i];state.data.shapes.splice(i,1);state.runtimeIds.splice(i,1);delete state.runtimeMeta[id];}}
-  else{if(!state.data.hellolabel.labels[replacement])state.data.hellolabel.labels[replacement]={color:stableColor(replacement)};for(const s of state.data.shapes)if(s.label===name)s.label=replacement;}
-  delete state.data.hellolabel.labels[name];if(state.activeLabel===name)state.activeLabel=remove?null:replacement;clearSelection();markDirty(remove?t("labelAndInstancesDeleted",{name,count}):t("instancesReplaced",{count,replacement}));renderAll();
-}
+window.HelloLabelLabels.configure({
+  state,els,t,setStatus,pushHistory,markDirty,buildRenderCache,buildLabelAtlas,
+  renderSelectedOverlay,scheduleViewportRender,chooseLabelModal,promptText,stableColor,
+  escapeHtml,confirmModal,renderAll,showModal,$,shapeIds,clearSelection
+});
+function labelUsage(){return window.HelloLabelLabels.labelUsage();}
+function renderLabelList(){return window.HelloLabelLabels.renderLabelList();}
+function changeLabelColor(name,color){return window.HelloLabelLabels.changeLabelColor(name,color);}
+function resolveNewShapeLabel(){return window.HelloLabelLabels.resolveNewShapeLabel();}
+function addLabel(){return window.HelloLabelLabels.addLabel();}
+function renameLabel(oldName){return window.HelloLabelLabels.renameLabel(oldName);}
+function deleteLabel(name){return window.HelloLabelLabels.deleteLabel(name);}
 
-function rebuildInstanceList(){state.instanceIds=[...shapeIds()];els.instanceCount.textContent=String(state.instanceIds.length);els.instanceListInner.style.height=`${state.instanceIds.length*INSTANCE_ROW_H}px`;scheduleInstanceListRender();}
-function scheduleInstanceListRender(){if(state.instanceListRaf)return;state.instanceListRaf=requestAnimationFrame(()=>{state.instanceListRaf=0;renderInstanceListWindow();});}
-function renderInstanceListWindow(){
-  const count=state.instanceIds.length,viewH=els.instanceList.clientHeight||300,scroll=els.instanceList.scrollTop||0,start=Math.max(0,Math.floor(scroll/INSTANCE_ROW_H)-INSTANCE_OVERSCAN),end=Math.min(count,Math.ceil((scroll+viewH)/INSTANCE_ROW_H)+INSTANCE_OVERSCAN),frag=document.createDocumentFragment();
-  for(let i=start;i<end;i++){const id=state.instanceIds[i],shape=shapeAtId(id);if(!shape)continue;const row=document.createElement("div");row.className="instance-row"+(state.selectedIds.has(id)?" active":"");row.style.top=`${i*INSTANCE_ROW_H}px`;row.dataset.shapeId=id;row.innerHTML=`<span class="instance-no">#${i+1}</span><span class="instance-label" title="${escapeHtml(shape.label)}">${escapeHtml(shape.label)}</span><span class="shape-chip">${escapeHtml(shapeTypeText(shape.shape_type))}</span>`;frag.appendChild(row);}els.instanceListInner.replaceChildren(frag);
-}
-function scrollInstanceToId(id){const idx=state.instanceIds.indexOf(id);if(idx<0)return;const top=idx*INSTANCE_ROW_H,bottom=top+INSTANCE_ROW_H,st=els.instanceList.scrollTop,vh=els.instanceList.clientHeight;if(top<st)els.instanceList.scrollTop=top;else if(bottom>st+vh)els.instanceList.scrollTop=Math.max(0,bottom-vh);scheduleInstanceListRender();}
-function clearSelection(){state.selectedIds.clear();state.primaryId=null;state.activeHandle=null;updateSelectionPanel();renderSelectedOverlay();scheduleInstanceListRender();updateActionButtons();window.HelloLabelDrawingState?.idle?.();}
-function selectId(id,{scroll=false,ensure=false,additive=false}={}){
-  if(!id||!shapeAtId(id)){clearSelection();return;}if(additive){if(state.selectedIds.has(id)){state.selectedIds.delete(id);if(state.primaryId===id)state.primaryId=[...state.selectedIds].at(-1)||null;}else{state.selectedIds.add(id);state.primaryId=id;}}else{state.selectedIds=new Set([id]);state.primaryId=id;}state.activeHandle=null;updateSelectionPanel();renderSelectedOverlay();scheduleInstanceListRender();updateActionButtons();if(scroll)scrollInstanceToId(id);if(ensure)ensureShapeVisible(id);
-  const selected=primaryShape();if(selected&&state.primaryId)window.HelloLabelDrawingState?.selected?.(state.primaryId,selected.label);else window.HelloLabelDrawingState?.idle?.();
-}
-function ensureShapeVisible(id){const shape=shapeAtId(id);if(!shape)return;const a=imageToViewport(...shapeAnchor(shape)),r=els.viewport.getBoundingClientRect(),margin=60;if(a[0]>=margin&&a[0]<=r.width-margin&&a[1]>=margin&&a[1]<=r.height-margin)return;state.panX=r.width/2-shapeAnchor(shape)[0]*state.scale;state.panY=r.height/2-shapeAnchor(shape)[1]*state.scale;scheduleViewportRender();}
-function updateSelectionPanel(){const shape=primaryShape();els.noSelection.classList.toggle("hidden",!!shape);els.selectionInfo.classList.toggle("hidden",!shape);if(!shape)return;const idx=primaryIndex(),meta=shapeMeta(state.primaryId);els.selNumber.textContent=idx>=0?`#${idx+1}`:"--";els.selLabel.textContent=shape.label;els.selType.textContent=shapeTypeText(shape.shape_type);els.selPoints.textContent=String(shape.points?.length||0);els.selSource.textContent=(meta.source&&meta.source!=="manual")?meta.source:t("manual");}
+window.HelloLabelInstances.configure({
+  state,els,shapeIds,INSTANCE_ROW_H,INSTANCE_OVERSCAN,shapeAtId,escapeHtml,shapeTypeText
+});
+function rebuildInstanceList(){return window.HelloLabelInstances.rebuildInstanceList();}
+function scheduleInstanceListRender(){return window.HelloLabelInstances.scheduleInstanceListRender();}
+function renderInstanceListWindow(){return window.HelloLabelInstances.renderInstanceListWindow();}
+function scrollInstanceToId(id){return window.HelloLabelInstances.scrollInstanceToId(id);}
+
+window.HelloLabelSelection.configure({
+  state,els,updateSelectionPanel,renderSelectedOverlay,scheduleInstanceListRender,
+  updateActionButtons,scrollInstanceToId,primaryShape,shapeAtId,imageToViewport,
+  shapeAnchor,scheduleViewportRender,primaryIndex,shapeMeta,shapeTypeText,t
+});
+function clearSelection(){return window.HelloLabelSelection.clearSelection();}
+function selectId(id,options={}){return window.HelloLabelSelection.selectId(id,options);}
+function ensureShapeVisible(id){return window.HelloLabelSelection.ensureShapeVisible(id);}
+function updateSelectionPanel(){return window.HelloLabelSelection.updateSelectionPanel();}
+
+window.HelloLabelRenderAll.configure({
+  state,ensureHelloLabel,ensureDataImageFields,buildRenderCache,buildLabelAtlas,
+  renderLabelList,rebuildInstanceList,updateSelectionPanel,updateActionButtons,scheduleViewportRender
+});
+function renderAll(options={}){return window.HelloLabelRenderAll.renderAll(options);}
 
 // ---------- Manual drawing + pointer editing ----------
 window.HelloLabelAnnotationCommit.configure({
