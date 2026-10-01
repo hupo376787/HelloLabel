@@ -1,23 +1,31 @@
 "use strict";
 
-const $ = id => document.getElementById(id);
-const els = {
-  openFolderBtn:$("openFolderBtn"), pointerBtn:$("pointerBtn"), penBtn:$("penBtn"), polygonBtn:$("polygonBtn"), rectBtn:$("rectBtn"), obbBtn:$("obbBtn"), circleBtn:$("circleBtn"), pointBtn:$("pointBtn"), lineBtn:$("lineBtn"), linestripBtn:$("linestripBtn"),
-  deleteBtn:$("deleteBtn"), undoBtn:$("undoBtn"), redoBtn:$("redoBtn"), saveBtn:$("saveBtn"), deleteJsonBtn:$("deleteJsonBtn"), fitBtn:$("fitBtn"), actualBtn:$("actualBtn"), zoomOutBtn:$("zoomOutBtn"), zoomInBtn:$("zoomInBtn"), zoomLabel:$("zoomLabel"), showLabelsCheck:$("showLabelsCheck"), labelDisplayMode:$("labelDisplayMode"), aiToolbarToggle:$("aiToolbarToggle"), languageSelect:$("languageSelect"), themeBtn:$("themeBtn"),
-  samModelSelect:$("samModelSelect"), samOutputSelect:$("samOutputSelect"), samModeBtn:$("samModeBtn"), samAcceptBtn:$("samAcceptBtn"), samCancelBtn:$("samCancelBtn"), yoloModelSelect:$("yoloModelSelect"), yoloTextInput:$("yoloTextInput"), yoloOutputSelect:$("yoloOutputSelect"), yoloConf:$("yoloConf"), yoloIou:$("yoloIou"), yoloRunBtn:$("yoloRunBtn"), modelStatusBtn:$("modelStatusBtn"),
-  folderName:$("folderName"), imageCount:$("imageCount"), fileFilterInput:$("fileFilterInput"), clearFileFilterBtn:$("clearFileFilterBtn"), fileList:$("fileList"), emptyState:$("emptyState"), viewport:$("viewport"), stage:$("stage"), imageView:$("imageView"), shapeCanvas:$("shapeCanvas"), interactionSvg:$("interactionSvg"), selectedPath:$("selectedPath"), controlHandles:$("controlHandles"), drawingPath:$("drawingPath"), drawingStart:$("drawingStart"), aiPreviewPath:$("aiPreviewPath"), samPrompts:$("samPrompts"), samDragBox:$("samDragBox"), selectedLabelText:$("selectedLabelText"), busy:$("busy"), busyText:$("busyText"),
-  labelCount:$("labelCount"), addLabelBtn:$("addLabelBtn"), labelList:$("labelList"), instanceCount:$("instanceCount"), instanceList:$("instanceList"), instanceListInner:$("instanceListInner"), brightnessSlider:$("brightnessSlider"), brightnessValue:$("brightnessValue"), contrastSlider:$("contrastSlider"), contrastValue:$("contrastValue"), resetDisplayBtn:$("resetDisplayBtn"),
-  noSelection:$("noSelection"), selectionInfo:$("selectionInfo"), selNumber:$("selNumber"), selLabel:$("selLabel"), selType:$("selType"), selPoints:$("selPoints"), selSource:$("selSource"), saveState:$("saveState"), statusText:$("statusText"),
-  modalBackdrop:$("modalBackdrop"), modalCard:$("modalCard"), modalTitle:$("modalTitle"), modalBody:$("modalBody"), modalActions:$("modalActions"),
-  appGrid:$("appGrid"), leftSidebar:$("leftSidebar"), rightSidebar:$("rightSidebar"), leftSidebarToggle:$("leftSidebarToggle"), rightSidebarToggle:$("rightSidebarToggle"),
-  appMenuBtn:$("appMenuBtn"), appMenu:$("appMenu"),
+const $ = window.HelloLabelDOM.$;
+const els = window.HelloLabelDOM.createElements();
+const {
+  IMAGE_EXTS,
+  SHAPE_TYPES,
+  HIT_GRID,
+  INSTANCE_ROW_H,
+  INSTANCE_OVERSCAN,
+  CANVAS_MAX_DPR,
+  LABEL_ATLAS_W,
+  OUTLINE_PX,
+  POINT_PX,
+  LABEL_FONT_PX
+} = window.HelloLabelConstants;
+const MODE_BUTTONS = {
+  pointer:els.pointerBtn,
+  pen:els.penBtn,
+  polygon:els.polygonBtn,
+  rectangle:els.rectBtn,
+  oriented_rectangle:els.obbBtn,
+  circle:els.circleBtn,
+  point:els.pointBtn,
+  line:els.lineBtn,
+  linestrip:els.linestripBtn,
+  sam:els.samModeBtn
 };
-
-const IMAGE_EXTS=[".jpg",".jpeg",".png",".bmp",".tif",".tiff",".webp"];
-const SHAPE_TYPES=new Set(["polygon","rectangle","oriented_rectangle","circle","point","line","linestrip"]);
-const MODE_BUTTONS={pointer:els.pointerBtn,pen:els.penBtn,polygon:els.polygonBtn,rectangle:els.rectBtn,oriented_rectangle:els.obbBtn,circle:els.circleBtn,point:els.pointBtn,line:els.lineBtn,linestrip:els.linestripBtn,sam:els.samModeBtn};
-const HIT_GRID=256, INSTANCE_ROW_H=34, INSTANCE_OVERSCAN=8, CANVAS_MAX_DPR=2, LABEL_ATLAS_W=2048;
-const OUTLINE_PX=2.4, POINT_PX=4.2, LABEL_FONT_PX=13;
 
 const I18N={
   zh:{
@@ -41,20 +49,7 @@ function currentLanguage(){try{return localStorage.getItem("hellolabel-language"
 function t(key,vars={}){const lang=state?.language||currentLanguage();let text=(I18N[lang]&&I18N[lang][key])??I18N.zh[key]??key;for(const [k,v] of Object.entries(vars||{}))text=text.replaceAll(`{${k}}`,String(v));return text;}
 function shapeTypeText(type){const key={polygon:"polygon",rectangle:"rectangle",oriented_rectangle:"orientedRectangle",circle:"circle",point:"point",line:"line",linestrip:"linestrip"}[type];return key?t(key):String(type||"");}
 
-const state={
-  dirHandle:null, entries:[], fileFilter:"", imageHandle:null, imageFile:null, imageName:"", jsonHandle:null, data:null,
-  width:0,height:0,previewUrl:null,previewBlob:null,aiImageToken:null,
-  selectedIds:new Set(), primaryId:null, activeHandle:null, activeLabel:null,
-  mode:"pointer", dirty:false, revision:0, savedRevision:0, history:[], future:[], saveTimer:0, saveInFlight:false, saveQueued:false, savePromise:null,
-  scale:1,panX:0,panY:0,panning:false,panStart:null,spaceDown:false,transformRaf:0,
-  drawing:null, editing:null,
-  shapeById:new Map(), indexById:new Map(), shapeGrid:new Map(), boundsById:new Map(), runtimeIds:[], runtimeMeta:{},
-  glRenderer:null,webglReady:false,labelAtlas:null,labelInstances:null,
-  instanceIds:[],instanceListRaf:0,
-  brightness:0,contrast:100,
-  sam:{points:[],labels:[],box:null,history:[],preview:null,drag:null,requestSeq:0},
-  modalResolve:null, language:currentLanguage(), aiToolbarVisible:true, leftPanelVisible:true, rightPanelVisible:true, aiInstallerLaunching:false,
-};
+const state=window.HelloLabelState.create({language:currentLanguage()});
 
 function deepClone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
@@ -730,9 +725,19 @@ function zoomAt(factor,clientX=null,clientY=null){if(!state.data)return;const r=
 function startPan(ev){if(!(ev.button===1||(state.spaceDown&&ev.button===0)))return false;state.panning=true;state.panStart={x:ev.clientX,y:ev.clientY,panX:state.panX,panY:state.panY,pointerId:ev.pointerId};els.viewport.classList.add("panning");(window.helloLabelPointerInput?.capture?.(ev) ?? (els.viewport.setPointerCapture?.(ev.pointerId),true));ev.preventDefault();return true;}
 function movePan(ev){if(!state.panning)return false;state.panX=state.panStart.panX+(ev.clientX-state.panStart.x);state.panY=state.panStart.panY+(ev.clientY-state.panStart.y);scheduleViewportRender();return true;}
 function endPan(){if(!state.panning)return false;const pointerId=state.panStart?.pointerId;state.panning=false;state.panStart=null;els.viewport.classList.remove("panning");window.helloLabelPointerInput?.release?.(pointerId);return true;}
-function setMode(mode,{keepSam=false}={}){
-  if(!MODE_BUTTONS[mode])return;if(state.drawing)cancelDrawing(false);if(state.mode==="sam"&&mode!=="sam"&&!keepSam)resetSamState();state.mode=mode;for(const [m,b] of Object.entries(MODE_BUTTONS))b?.classList.toggle("active",m===mode);els.viewport.classList.toggle("draw-mode",!['pointer','sam'].includes(mode));els.viewport.classList.toggle("sam-mode",mode==="sam");state.activeHandle=null;renderSelectedOverlay();updateActionButtons();
-  const key={pointer:"modePointer",pen:"modePen",polygon:"modePolygon",rectangle:"modeRectangle",oriented_rectangle:"modeObb",circle:"modeCircle",point:"modePoint",line:"modeLine",linestrip:"modeLinestrip",sam:"modeSam"}[mode];setStatus(t(key));
+window.HelloLabelMode.configure({
+  state,
+  buttons: MODE_BUTTONS,
+  viewport: els.viewport,
+  cancelDrawing,
+  resetSamState,
+  renderSelectedOverlay,
+  updateActionButtons,
+  setStatus,
+  t
+});
+function setMode(mode, options={}) {
+  return window.HelloLabelMode.set(mode, options);
 }
 
 // ---------- Events ----------
@@ -741,7 +746,7 @@ els.leftSidebarToggle?.addEventListener("click",()=>togglePanel("left"));els.rig
 els.appMenuBtn?.addEventListener("click",ev=>{ev.stopPropagation();toggleAppMenu();});
 els.appMenu?.addEventListener("click",ev=>{const command=ev.target.closest("[data-command]")?.dataset.command;if(command){ev.stopPropagation();runMenuCommand(command);return;}const root=ev.target.closest(".menu-root");if(root){const entry=root.closest(".menu-entry");els.appMenu.querySelectorAll(".menu-entry.open").forEach(x=>{if(x!==entry)x.classList.remove("open")});entry?.classList.toggle("open");ev.stopPropagation();}});
 document.addEventListener("pointerdown",ev=>{if(!els.appMenu?.classList.contains("hidden")&&!els.appMenu.contains(ev.target)&&ev.target!==els.appMenuBtn)closeAppMenu();});
-for(const [mode,btn] of Object.entries(MODE_BUTTONS))btn?.addEventListener("click",()=>setMode(mode));
+window.HelloLabelEvents.init({buttons:MODE_BUTTONS,setMode});
 els.deleteBtn.addEventListener("click",deleteSelected);els.undoBtn.addEventListener("click",undo);els.redoBtn.addEventListener("click",redo);els.saveBtn.addEventListener("click",()=>saveJsonToFolder(true).catch(e=>{setSaveState(t("saveFailed"),"error");setStatus(e.message,true);}));els.deleteJsonBtn?.addEventListener("click",deleteCurrentJson);
 els.fitBtn.addEventListener("click",fitToWindow);els.actualBtn.addEventListener("click",actualSize);els.zoomOutBtn.addEventListener("click",()=>zoomAt(.8));els.zoomInBtn.addEventListener("click",()=>zoomAt(1.25));
 els.showLabelsCheck.addEventListener("change",scheduleViewportRender);els.labelDisplayMode.addEventListener("change",scheduleViewportRender);els.themeBtn.addEventListener("click",cycleTheme);

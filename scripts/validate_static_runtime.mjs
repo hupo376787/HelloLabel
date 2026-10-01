@@ -108,6 +108,11 @@ const staticReferences = [...app.matchAll(/`\/static\/([^?`]+)\?v=/g)].map(match
 for (const relative of staticReferences) assert(exists(relative), `bootstrap references missing file: ${relative}`);
 
 const required = [
+  "static/core/dom-elements.js",
+  "static/core/constants.js",
+  "static/core/app-state.js",
+  "static/core/mode-manager.js",
+  "static/core/event-manager.js",
   "static/app-core.js",
   "static/telemetry.js",
   "static/annotation-telemetry.js",

@@ -1,20 +1,17 @@
 "use strict";
 
-window.HelloLabelEvents = window.HelloLabelEvents || {
-  init() {
-    const els = window.HelloLabelDOM?.createElements();
-    if (!els) return;
+(() => {
+  const boundButtons = new WeakSet();
 
-    window.HelloLabelMode?.init({
-      pointer: els.pointerBtn,
-      pen: els.penBtn,
-      polygon: els.polygonBtn,
-      rectangle: els.rectBtn,
-      oriented_rectangle: els.obbBtn,
-      circle: els.circleBtn,
-      point: els.pointBtn,
-      line: els.lineBtn,
-      linestrip: els.linestripBtn
-    });
+  function init({ buttons, setMode } = {}) {
+    if (!buttons || typeof setMode !== "function") return;
+
+    for (const [mode, button] of Object.entries(buttons)) {
+      if (!button || boundButtons.has(button)) continue;
+      button.addEventListener("click", () => setMode(mode));
+      boundButtons.add(button);
+    }
   }
-};
+
+  window.HelloLabelEvents = { init };
+})();

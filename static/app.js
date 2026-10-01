@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v220-t2";
+  const VERSION = "hellolabel-v220-t3";
 
   try {
     let theme = localStorage.getItem("hellolabel-theme") || localStorage.getItem("labelit-theme");
@@ -26,7 +26,15 @@
   ];
   const scripts = [
     `/static/telemetry.js?v=${VERSION}`,
+    `/static/core/dom-elements.js?v=${VERSION}`,
+    `/static/core/constants.js?v=${VERSION}`,
+    `/static/core/app-state.js?v=${VERSION}`,
+    `/static/core/mode-manager.js?v=${VERSION}`,
+    `/static/core/event-manager.js?v=${VERSION}`,
     `/static/app-core.js?v=${VERSION}`,
+    `/static/drawing-state-bridge.js?v=${VERSION}`,
+    `/static/mobile-touch-ui.js?v=${VERSION}`,
+    `/static/mobile-toolbar-state.js?v=${VERSION}`,
     `/static/pointer-input.js?v=${VERSION}`,
     `/static/annotation-telemetry.js?v=${VERSION}`,
     `/static/browser-file-guard.js?v=${VERSION}`,
