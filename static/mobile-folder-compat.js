@@ -203,6 +203,7 @@
 
     ensureDataImageFields();
     ensureHelloLabel();
+    validateLabelme(state.data);
     const imageName = state.imageName;
     const saveRevision = state.revision;
     const payload = JSON.stringify(state.data, null, 2);

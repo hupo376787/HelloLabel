@@ -19,7 +19,7 @@ window.HelloLabelHistory.configure({
 window.HelloLabelJsonStorage.configure({
   state,ensureDataImageFields,ensureHelloLabel,stemOf,setSaveState,t,setStatus,
   updateActionButtons,els,scheduleAutoSave,confirmModal,escapeHtml,
-  createEmptyLabelme,renderFileList,renderAll
+  createEmptyLabelme,renderFileList,renderAll,validateLabelme
 });
 
 window.HelloLabelFolder.configure({

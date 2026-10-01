@@ -191,6 +191,11 @@ for (const asset of [
   "core/app-initializer.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
+const cacheToken = app.match(/const VERSION = "(hellolabel-v[0-9A-Za-z-]+)"/)?.[1];
+assert(!!cacheToken, "app bootstrap cache token must be detectable");
+assert(index.includes(cacheToken), "static/index.html must use the same cache token as static/app.js");
+assert(read("build_web.bat").includes(cacheToken), "build_web.bat must use the same cache token as static/app.js");
+assert(read("build_web.sh").includes(cacheToken), "build_web.sh must use the same cache token as static/app.js");
 assert(app.includes("bootstrap/core-services.js"), "app bootstrap must load bootstrap/core-services.js");
 assert(app.includes("bootstrap/render-services.js"), "app bootstrap must load bootstrap/render-services.js");
 assert(app.includes("bootstrap/ui-services.js"), "app bootstrap must load bootstrap/ui-services.js");
@@ -207,6 +212,11 @@ assert(i18nMenuEn.includes("HelloLabelI18nMessages.en"), "English menu messages 
 assert(!appCore.includes("I18N."), "legacy I18N references must not remain in app core");
 assert(coreUtils.includes("HelloLabelUtils"), "core utils must expose HelloLabelUtils");
 assert(labelmeModel.includes("HelloLabelModel"), "Labelme model must expose HelloLabelModel");
+assert(labelmeModel.includes("exactPointCounts") && labelmeModel.includes("oriented_rectangle:4"), "Labelme validation must enforce shape point-count semantics");
+assert(labelmeModel.includes("Number.isFinite(value)") && labelmeModel.includes("Number.isInteger(shape.group_id)"), "Labelme validation must enforce finite coordinates and integer group_id");
+assert(labelmeModel.includes('typeof flag !== "boolean"'), "Labelme validation must enforce boolean flag values");
+assert(labelmeModel.includes('data.imageData !== null && typeof data.imageData !== "string"'), "Labelme validation must require Labelme-compatible imageData");
+assert(labelmeModel.includes("imageHeight mismatch") && labelmeModel.includes("imageWidth mismatch"), "Labelme validation must reject image dimension mismatches");
 assert(annotationCommit.includes("HelloLabelAnnotationCommit"), "annotation commit must expose HelloLabelAnnotationCommit");
 assert(samController.includes("HelloLabelSamController"), "SAM controller must be extracted");
 assert(yoloController.includes("HelloLabelYoloController"), "YOLO controller must be extracted");
@@ -217,6 +227,8 @@ assert(viewportController.includes("HelloLabelViewport"), "viewport controller m
 assert(statusUi.includes("HelloLabelStatusUI"), "status UI must be extracted");
 assert(historyManager.includes("HelloLabelHistory"), "history manager must be extracted");
 assert(jsonStorage.includes("HelloLabelJsonStorage"), "JSON storage must be extracted");
+assert(jsonStorage.includes("validateLabelme(state.data);"), "JSON save must validate the final Labelme payload before writing");
+assert(mobileFolderCompat.includes("validateLabelme(state.data);"), "mobile JSON save must validate the final Labelme payload before download");
 assert(folderController.includes("HelloLabelFolder"), "folder controller must be extracted");
 assert(geometryUtils.includes("HelloLabelGeometry"), "geometry utils must be extracted");
 assert(webglRenderer.includes("HelloLabelWebGL"), "WebGL renderer must be extracted");

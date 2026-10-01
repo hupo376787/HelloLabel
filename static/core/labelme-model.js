@@ -115,26 +115,109 @@
     data.imageWidth = state.width;
   }
 
+  function isPlainObject(value) {
+    return !!value && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function validateFlags(value, fail) {
+    if (value == null) return {};
+    if (!isPlainObject(value) || Object.values(value).some(flag => typeof flag !== "boolean")) {
+      fail("flags must be an object of boolean values");
+    }
+    return value;
+  }
+
   function validateLabelme(data) {
-    const { SHAPE_TYPES, t } = context;
-    if (!data || !Array.isArray(data.shapes)) throw new Error(t("invalidLabelme"));
+    const { SHAPE_TYPES, t, state } = context;
+    const failFile = detail => {
+      throw new Error(`${t("invalidLabelme")} ${detail}`);
+    };
+    const failShape = (index, detail) => {
+      throw new Error(`${t("unsupportedShape", { index:index + 1 })} ${detail}`);
+    };
+
+    if (!isPlainObject(data) || !Array.isArray(data.shapes)) {
+      failFile("shapes must be an array.");
+    }
+    if (typeof data.imagePath !== "string" || !data.imagePath.trim()) {
+      failFile("imagePath must be a non-empty string.");
+    }
+    if (!Object.prototype.hasOwnProperty.call(data, "imageData")
+        || (data.imageData !== null && typeof data.imageData !== "string")) {
+      failFile("imageData must be null or a base64 string.");
+    }
+
+    data.flags = validateFlags(data.flags, message => failFile(message));
+
+    for (const key of ["imageHeight", "imageWidth"]) {
+      const value = data[key];
+      if (value == null) continue;
+      if (!Number.isInteger(value) || value <= 0) {
+        failFile(`${key} must be a positive integer.`);
+      }
+    }
+    if (state?.height > 0 && data.imageHeight != null && data.imageHeight !== state.height) {
+      failFile(`imageHeight mismatch: declared=${data.imageHeight}, actual=${state.height}.`);
+    }
+    if (state?.width > 0 && data.imageWidth != null && data.imageWidth !== state.width) {
+      failFile(`imageWidth mismatch: declared=${data.imageWidth}, actual=${state.width}.`);
+    }
+
+    const exactPointCounts = {
+      point:1,
+      rectangle:2,
+      line:2,
+      circle:2,
+      oriented_rectangle:4
+    };
 
     for (const [index, shape] of data.shapes.entries()) {
-      if (!shape || !Array.isArray(shape.points) || !SHAPE_TYPES.has(String(shape.shape_type || "polygon"))) {
-        throw new Error(t("unsupportedShape", { index:index + 1 }));
+      if (!isPlainObject(shape)) failShape(index, "shape must be an object.");
+      if (!Object.prototype.hasOwnProperty.call(shape, "label") || typeof shape.label !== "string") {
+        failShape(index, "label must be a string.");
+      }
+      if (!Object.prototype.hasOwnProperty.call(shape, "shape_type") || typeof shape.shape_type !== "string") {
+        failShape(index, "shape_type must be a string.");
       }
 
-      shape.shape_type = String(shape.shape_type || "polygon");
-      shape.label = String(shape.label || "unlabeled");
-      if (shape.group_id === undefined) shape.group_id = null;
-      if (shape.description === undefined) shape.description = "";
-      if (!shape.flags) shape.flags = {};
-      if (shape.mask === undefined) shape.mask = null;
+      const shapeType = shape.shape_type;
+      if (!SHAPE_TYPES.has(shapeType)) {
+        failShape(index, `unsupported shape_type=${shapeType}.`);
+      }
+
+      if (!Array.isArray(shape.points) || shape.points.length === 0
+          || !shape.points.every(point =>
+            Array.isArray(point)
+            && point.length === 2
+            && point.every(value => typeof value === "number" && Number.isFinite(value))
+          )) {
+        failShape(index, "points must be a non-empty array of finite [x, y] numbers.");
+      }
+
+      const exactCount = exactPointCounts[shapeType];
+      if (exactCount != null && shape.points.length !== exactCount) {
+        failShape(index, `${shapeType} requires exactly ${exactCount} point${exactCount === 1 ? "" : "s"}.`);
+      }
+      if (shapeType === "polygon" && shape.points.length < 3) {
+        failShape(index, "polygon requires at least 3 points.");
+      }
+      if (shapeType === "linestrip" && shape.points.length < 2) {
+        failShape(index, "linestrip requires at least 2 points.");
+      }
+
+      shape.flags = validateFlags(shape.flags, message => failShape(index, message));
+
+      if (shape.group_id == null) shape.group_id = null;
+      else if (!Number.isInteger(shape.group_id)) failShape(index, "group_id must be an integer or null.");
+
+      if (shape.description == null) shape.description = "";
+      else if (typeof shape.description !== "string") failShape(index, "description must be a string or null.");
+
+      if (shape.mask == null) shape.mask = null;
+      else if (typeof shape.mask !== "string") failShape(index, "mask must be a base64 PNG string or null.");
     }
 
     if (data.version == null) data.version = "7.0.4";
-    if (!data.flags) data.flags = {};
-    ensureDataImageFields(data);
     return data;
   }
 

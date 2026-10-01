@@ -12,7 +12,7 @@
     const {
       state, ensureDataImageFields, ensureHelloLabel, stemOf,
       setSaveState, t, setStatus, updateActionButtons, els,
-      scheduleAutoSave
+      scheduleAutoSave, validateLabelme
     } = c;
 
     if (!state.data || !state.dirHandle) return;
@@ -31,6 +31,7 @@
 
     ensureDataImageFields();
     ensureHelloLabel();
+    validateLabelme(state.data);
 
     const dataRef = state.data;
     const imageName = state.imageName;
