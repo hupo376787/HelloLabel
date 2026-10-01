@@ -12,7 +12,9 @@ const app = read("static/app.js");
 const appCore = read("static/app-core.js");
 const i18nCore = read("static/i18n/i18n.js");
 const i18nZh = read("static/i18n/zh.js");
+const i18nMenuZh = read("static/i18n/menu-zh.js");
 const i18nEn = read("static/i18n/en.js");
+const i18nMenuEn = read("static/i18n/menu-en.js");
 const coreUtils = read("static/core/utils.js");
 const labelmeModel = read("static/core/labelme-model.js");
 const annotationCommit = read("static/annotation/annotation-commit.js");
@@ -150,7 +152,9 @@ for (const asset of [
   "tools/pointer-tool.js",
   "drawing-preview.js",
   "i18n/zh.js",
+  "i18n/menu-zh.js",
   "i18n/en.js",
+  "i18n/menu-en.js",
   "i18n/i18n.js",
   "core/utils.js",
   "core/labelme-model.js",
@@ -185,7 +189,10 @@ for (const asset of [
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 assert(i18nCore.includes("HelloLabelI18n"), "i18n core must expose HelloLabelI18n");
 assert(i18nZh.includes("HelloLabelI18nMessages.zh"), "Chinese messages must be split from app core");
+assert(i18nMenuZh.includes("HelloLabelI18nMessages.zh"), "Chinese menu messages must be split from app core");
 assert(i18nEn.includes("HelloLabelI18nMessages.en"), "English messages must be split from app core");
+assert(i18nMenuEn.includes("HelloLabelI18nMessages.en"), "English menu messages must be split from app core");
+assert(!appCore.includes("I18N."), "legacy I18N references must not remain in app core");
 assert(coreUtils.includes("HelloLabelUtils"), "core utils must expose HelloLabelUtils");
 assert(labelmeModel.includes("HelloLabelModel"), "Labelme model must expose HelloLabelModel");
 assert(annotationCommit.includes("HelloLabelAnnotationCommit"), "annotation commit must expose HelloLabelAnnotationCommit");
@@ -266,7 +273,9 @@ const required = [
   "static/tools/pointer-tool.js",
   "static/drawing-preview.js",
   "static/i18n/zh.js",
+  "static/i18n/menu-zh.js",
   "static/i18n/en.js",
+  "static/i18n/menu-en.js",
   "static/i18n/i18n.js",
   "static/core/utils.js",
   "static/core/labelme-model.js",
@@ -327,6 +336,65 @@ const required = [
   "build_web.sh",
 ];
 for (const relative of required) assert(exists(relative), `required v2.2 file is missing: ${relative}`);
+
+const byteSize = relative => Buffer.byteLength(read(relative), "utf8");
+
+// Keep the composition root small, and prevent extracted feature modules from growing back into monoliths.
+assert(byteSize("static/app-core.js") <= 20 * 1024, "static/app-core.js must stay <= 20 KiB");
+
+const modularRuntimeFiles = [
+  "static/core/dom-elements.js",
+  "static/core/constants.js",
+  "static/core/app-state.js",
+  "static/core/mode-manager.js",
+  "static/core/event-manager.js",
+  "static/core/utils.js",
+  "static/core/labelme-model.js",
+  "static/core/history-manager.js",
+  "static/core/app-initializer.js",
+  "static/annotation/annotation-commit.js",
+  "static/annotation/edit-commands.js",
+  "static/render/geometry-utils.js",
+  "static/render/webgl-renderer.js",
+  "static/render/render-cache.js",
+  "static/render/viewport-renderer.js",
+  "static/render/selection-overlay.js",
+  "static/render/hit-test.js",
+  "static/ui/status-ui.js",
+  "static/ui/language-theme.js",
+  "static/ui/layout-controller.js",
+  "static/ui/help-menu.js",
+  "static/ui/modal-controller.js",
+  "static/ui/labels-controller.js",
+  "static/ui/instance-list.js",
+  "static/ui/selection-controller.js",
+  "static/ui/render-orchestrator.js",
+  "static/io/folder-controller.js",
+  "static/io/json-storage.js",
+  "static/ai/sam-controller.js",
+  "static/ai/yolo-controller.js",
+  "static/events/ui-events.js",
+  "static/events/viewport-events.js",
+  "static/events/keyboard-events.js",
+  "static/tools/polygon-tool.js",
+  "static/tools/rectangle-tool.js",
+  "static/tools/brush-tool.js",
+  "static/tools/obb-tool.js",
+  "static/tools/circle-tool.js",
+  "static/tools/line-tool.js",
+  "static/tools/point-tool.js",
+  "static/tools/pointer-tool.js",
+  "static/tools/drawing-dispatcher.js",
+  "static/drawing-preview.js",
+  "static/i18n/zh.js",
+  "static/i18n/menu-zh.js",
+  "static/i18n/en.js",
+  "static/i18n/menu-en.js",
+  "static/i18n/i18n.js",
+];
+for (const relative of modularRuntimeFiles) {
+  assert(byteSize(relative) <= 12 * 1024, `${relative} must stay <= 12 KiB`);
+}
 
 const forbiddenLegacy = [
   "run.py", "web_api.py", "requirements.txt", "requirements-ai.txt",
