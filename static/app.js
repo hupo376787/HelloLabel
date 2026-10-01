@@ -27,6 +27,7 @@
   const scripts = [
     `/static/telemetry.js?v=${VERSION}`,
     `/static/app-core.js?v=${VERSION}`,
+    `/static/pointer-input.js?v=${VERSION}`,
     `/static/annotation-telemetry.js?v=${VERSION}`,
     `/static/browser-file-guard.js?v=${VERSION}`,
     `/static/mobile-folder-compat.js?v=${VERSION}`,
