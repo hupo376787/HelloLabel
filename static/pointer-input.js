@@ -32,6 +32,19 @@
   });
 
   const TOUCH_DRAG_THRESHOLD_PX = 5;
+  const TOUCH_DRAG_STAGE_MODES = new Set(["rectangle", "circle", "line", "oriented_rectangle"]);
+  const TOUCH_TOOL_POLICY = Object.freeze({
+    pointer: "tap-select / drag-edit",
+    pen: "single-finger trace",
+    polygon: "single-finger vertex taps",
+    rectangle: "tap-tap or drag",
+    circle: "tap-tap or drag",
+    oriented_rectangle: "edge drag/two taps, then width tap",
+    point: "single tap",
+    line: "two taps or drag",
+    linestrip: "single-finger vertex taps",
+    sam: "tap positive / drag box",
+  });
   let lastPointerType = "mouse";
   const activePointers = new Map();
   let touchSession = null;
@@ -128,9 +141,32 @@
     };
   }
 
+  function tryTouchGeometryTap(eventLike) {
+    const geometry = window.helloLabelGeometryEdit;
+    if (!geometry || state.mode === "sam") return false;
+
+    if (state.drawing?.type === "polygon") {
+      const closePoint = geometry.polygonStartSnap?.(eventLike.clientX, eventLike.clientY, "touch");
+      if (closePoint) {
+        state.drawing.cursor = [closePoint[0], closePoint[1]];
+        geometry.clearSnap?.();
+        void finishSequenceDrawing();
+        return true;
+      }
+    }
+
+    if (!state.drawing && (state.mode === "pointer" || state.mode === "polygon" || state.mode === "linestrip")) {
+      const point = clampImagePoint(screenToImage(eventLike.clientX, eventLike.clientY));
+      const candidate = geometry.findEditableEdge?.(point, "touch");
+      if (candidate && geometry.insertSnappedVertex?.(candidate)) return true;
+    }
+    return false;
+  }
+
   function routeSingleDown(eventLike) {
     if (!state?.data) return false;
     if (typeof closeAppMenu === "function") closeAppMenu();
+    if (tryTouchGeometryTap(eventLike)) return true;
     if (state.mode === "sam") return !!samPointerDown(eventLike);
     if (state.mode === "pointer") return !!beginPointerEdit(eventLike);
     return !!handleDrawPointerDown(eventLike);
@@ -182,14 +218,16 @@
       lastClientX: snapshot.clientX,
       lastClientY: snapshot.clientY,
       started: false,
+      completeStageOnUp: false,
       drawingBefore: typeof deepClone === "function" ? deepClone(state?.drawing ?? null) : (state?.drawing ?? null),
     };
     capture(event);
   }
 
-  function startSingleTouch(clientX, clientY) {
+  function startSingleTouch(clientX, clientY, { completeStageOnUp = false } = {}) {
     if (!touchSession || touchSession.started) return;
     touchSession.started = true;
+    touchSession.completeStageOnUp = !!completeStageOnUp;
     routeSingleDown(makeTouchEvent(touchSession, touchSession.startClientX, touchSession.startClientY, 1));
     routeSingleMove(makeTouchEvent(touchSession, clientX, clientY, 1));
   }
@@ -296,10 +334,15 @@
       routeSingleMove(makeTouchEvent(touchSession, event.clientX, event.clientY, 1));
     }
 
-    if (!touchSession.started && moved >= TOUCH_DRAG_THRESHOLD_PX &&
-        (state.mode === "pointer" || state.mode === "pen" || state.mode === "sam")) {
-      startSingleTouch(event.clientX, event.clientY);
-      return;
+    if (!touchSession.started && moved >= TOUCH_DRAG_THRESHOLD_PX) {
+      if (state.mode === "pointer" || state.mode === "pen" || state.mode === "sam") {
+        startSingleTouch(event.clientX, event.clientY);
+        return;
+      }
+      if (!touchSession.drawingBefore && TOUCH_DRAG_STAGE_MODES.has(state.mode)) {
+        startSingleTouch(event.clientX, event.clientY, { completeStageOnUp: true });
+        return;
+      }
     }
 
     if (touchSession.started) {
@@ -323,11 +366,14 @@
     }
 
     if (!touchSession || touchSession.pointerId !== event.pointerId) return;
+    const upEvent = makeTouchEvent(snapshot, event.clientX, event.clientY, 0);
     if (!touchSession.started) {
-      routeSingleDown(makeTouchEvent(snapshot, event.clientX, event.clientY, 0));
-      routeSingleUp(makeTouchEvent(snapshot, event.clientX, event.clientY, 0));
+      routeSingleDown(upEvent);
+      routeSingleUp(upEvent);
     } else {
-      routeSingleUp(makeTouchEvent(snapshot, event.clientX, event.clientY, 0));
+      routeSingleMove(makeTouchEvent(snapshot, event.clientX, event.clientY, 1));
+      if (touchSession.completeStageOnUp) routeSingleDown(upEvent);
+      routeSingleUp(upEvent);
     }
     touchSession = null;
   }
@@ -364,6 +410,7 @@
 
   window.helloLabelPointerInput = {
     profiles: PROFILES,
+    touchToolPolicy: TOUCH_TOOL_POLICY,
     profileFor,
     normalizePointerType,
     capture,

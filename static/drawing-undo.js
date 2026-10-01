@@ -32,6 +32,11 @@
     return true;
   }
 
+  window.helloLabelDrawingUndo = {
+    activeSequenceDrawing,
+    undoDrawingPoint,
+  };
+
   const viewport = document.getElementById("viewport");
   if (!viewport) return;
 

@@ -359,4 +359,12 @@
 
   viewport.addEventListener("pointerleave", clearSnap, { passive: true });
   viewport.addEventListener("wheel", clearSnap, { passive: true });
+
+  window.helloLabelGeometryEdit = {
+    findEditableEdge,
+    insertSnappedVertex,
+    polygonStartSnap,
+    reopenCompletedShape,
+    clearSnap,
+  };
 })();
