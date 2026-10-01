@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v220-t6";
+  const VERSION = "hellolabel-v220-t7";
 
   try {
     let theme = localStorage.getItem("hellolabel-theme") || localStorage.getItem("labelit-theme");
@@ -28,7 +28,12 @@
     `/static/telemetry.js?v=${VERSION}`,
     `/static/core/dom-elements.js?v=${VERSION}`,
     `/static/core/constants.js?v=${VERSION}`,
+    `/static/i18n/zh.js?v=${VERSION}`,
+    `/static/i18n/en.js?v=${VERSION}`,
+    `/static/i18n/i18n.js?v=${VERSION}`,
+    `/static/core/utils.js?v=${VERSION}`,
     `/static/core/app-state.js?v=${VERSION}`,
+    `/static/core/labelme-model.js?v=${VERSION}`,
     `/static/core/mode-manager.js?v=${VERSION}`,
     `/static/core/event-manager.js?v=${VERSION}`,
     `/static/drawing-state-bridge.js?v=${VERSION}`,
@@ -41,6 +46,7 @@
     `/static/tools/point-tool.js?v=${VERSION}`,
     `/static/tools/drawing-dispatcher.js?v=${VERSION}`,
     `/static/tools/pointer-tool.js?v=${VERSION}`,
+    `/static/annotation/annotation-commit.js?v=${VERSION}`,
     `/static/drawing-preview.js?v=${VERSION}`,
     `/static/app-core.js?v=${VERSION}`,
     `/static/mobile-touch-ui.js?v=${VERSION}`,

@@ -10,6 +10,12 @@ const assert = (condition, message) => { if (!condition) errors.push(message); }
 
 const app = read("static/app.js");
 const appCore = read("static/app-core.js");
+const i18nCore = read("static/i18n/i18n.js");
+const i18nZh = read("static/i18n/zh.js");
+const i18nEn = read("static/i18n/en.js");
+const coreUtils = read("static/core/utils.js");
+const labelmeModel = read("static/core/labelme-model.js");
+const annotationCommit = read("static/annotation/annotation-commit.js");
 const drawingPreview = read("static/drawing-preview.js");
 const drawingDispatcher = read("static/tools/drawing-dispatcher.js");
 const circleTool = read("static/tools/circle-tool.js");
@@ -117,8 +123,23 @@ for (const asset of [
   "tools/drawing-dispatcher.js",
   "tools/pointer-tool.js",
   "drawing-preview.js",
+  "i18n/zh.js",
+  "i18n/en.js",
+  "i18n/i18n.js",
+  "core/utils.js",
+  "core/labelme-model.js",
+  "annotation/annotation-commit.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
+assert(i18nCore.includes("HelloLabelI18n"), "i18n core must expose HelloLabelI18n");
+assert(i18nZh.includes("HelloLabelI18nMessages.zh"), "Chinese messages must be split from app core");
+assert(i18nEn.includes("HelloLabelI18nMessages.en"), "English messages must be split from app core");
+assert(coreUtils.includes("HelloLabelUtils"), "core utils must expose HelloLabelUtils");
+assert(labelmeModel.includes("HelloLabelModel"), "Labelme model must expose HelloLabelModel");
+assert(annotationCommit.includes("HelloLabelAnnotationCommit"), "annotation commit must expose HelloLabelAnnotationCommit");
+assert(!appCore.includes("const I18N={"), "translation dictionary must not remain inline in app core");
+assert(!appCore.includes("function ensureHelloLabel()"), "Labelme model logic must not remain inline in app core");
+assert(!appCore.includes("async function commitGeometry("), "annotation commit implementation must not remain inline in app core");
 assert(drawingPreview.includes("HelloLabelDrawingPreview"), "drawing preview must expose HelloLabelDrawingPreview");
 assert(drawingPreview.includes("function currentShape()"), "drawing preview must own current drawing shape construction");
 assert(drawingPreview.includes("function render()"), "drawing preview must own SVG preview rendering");
@@ -153,6 +174,12 @@ const required = [
   "static/tools/drawing-dispatcher.js",
   "static/tools/pointer-tool.js",
   "static/drawing-preview.js",
+  "static/i18n/zh.js",
+  "static/i18n/en.js",
+  "static/i18n/i18n.js",
+  "static/core/utils.js",
+  "static/core/labelme-model.js",
+  "static/annotation/annotation-commit.js",
   "static/app-core.js",
   "static/telemetry.js",
   "static/annotation-telemetry.js",

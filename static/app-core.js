@@ -27,98 +27,46 @@ const MODE_BUTTONS = {
   sam:els.samModeBtn
 };
 
-const I18N={
-  zh:{
-    openFolder:"打开文件夹",pointer:"指针",pen:"画笔",polygon:"多边形",rectangle:"矩形",orientedRectangle:"有向矩形",circle:"圆形",point:"点",line:"直线",linestrip:"折线",delete:"删除",undo:"撤销",redo:"重做",saveJson:"保存 JSON",deleteJson:"删除 JSON",deleteJsonTitle:"删除标注 JSON",deleteJsonConfirm:"确定删除当前图片的同名 JSON 吗？删除后当前图片的所有标注将清空，图片文件不会删除。",jsonDeleted:"已删除 {name}.json，当前标注已清空。",jsonDeleteFailed:"删除 JSON 失败：{message}",noJsonToDelete:"当前图片没有可删除的 JSON。",fitWindow:"适应窗口",actualSizeTitle:"实际大小 (100%)",zoomOutTitle:"缩小",zoomInTitle:"放大",showLabels:"显示标签",smart:"智能",all:"全部",selectedOnly:"仅选中",aiToolbar:"AI 工具栏",aiAssisted:"AI 辅助标注",aiAutoText:"AI 自动 / 文本标注",aiInteractive:"AI 交互",accept:"接受",cancel:"取消",score:"得分",run:"运行",modelStatus:"模型状态",imageList:"图片列表",noFolder:"尚未选择文件夹",filterImages:"过滤图片...",clearFilter:"清除过滤",shortcuts:"快捷操作",helpZoom:"滚轮：缩放",helpPan:"中键 / Space+拖动：平移",helpEnter:"Enter：完成多边形/折线或接受 AI",helpEsc:"Esc：取消当前绘制 / AI",helpDelete:"Delete：删除实例或当前顶点",helpUndo:"Ctrl+Z / Ctrl+Y：撤销 / 重做",helpVertex:"多边形/折线：双击边可插入顶点",openImageFolder:"打开一个包含图片的文件夹",emptyHint:"HelloLabel 会读取同名 Labelme JSON；没有 JSON 时创建空白标注，不会自动运行任何模型。",processing:"处理中...",labels:"标签",add:"新增",instances:"实例",display:"显示",brightness:"亮度",contrast:"对比度",resetDisplay:"重置显示",currentInstance:"当前实例",selectHint:"点击图形或实例列表进行选择。",number:"编号",label:"标签",type:"类型",points:"点数",source:"来源",status:"状态",manual:"手工",noFileOpen:"未打开文件",waiting:"等待操作",languageTitle:"界面语言",themeTitle:"系统 / 亮色 / 暗色",aiToolbarToggleTitle:"显示或隐藏 AI 工具栏",pointerTitle:"指针 (V)",penTitle:"画笔 (B)",polygonTitle:"多边形 (P)",rectTitle:"矩形 (R)",obbTitle:"有向矩形 (O)",circleTitle:"圆形 (C)",pointTitle:"点 (D)",lineTitle:"直线 (L)",linestripTitle:"折线 (K)",deleteTitle:"删除 (Delete)",undoTitle:"撤销 (Ctrl+Z)",redoTitle:"重做 (Ctrl+Y / Ctrl+Shift+Z)",labelDisplayStrategy:"标签显示策略",samInfo:"左键点=正样本，右键点=负样本；左键拖动=Box Prompt；Enter 接受，Esc 取消，Backspace 撤销最后一个提示。",yoloInfo:"YOLO11 Detect 输出矩形；YOLO11 Seg 可转换为多边形、矩形、有向矩形或最小包围圆。文本框在 YOLO11 中用于可选类别过滤，留空表示全部类别；YOLO-World 中用于文本类别提示。",yoloTextPlaceholder:"例如：dog,cat,bird",yoloFilterPlaceholder:"可选类别过滤，例如：dog,cat,bird",yoloWorldPlaceholder:"输入文本类别，例如：dog,cat,bird",modelStatusTitle:"查看模型安装/加载状态",polygonEn:"多边形",rectangleEn:"矩形",orientedRectangleEn:"有向矩形",circleEn:"圆形",
-    systemTheme:"◐ 系统",lightTheme:"☀ 亮色",darkTheme:"● 暗色",noMatchingImages:"没有匹配的图片",folderOpened:"已打开文件夹，共 {count} 张图片。",folderOpenedFiltered:"已显示 {shown} / {total} 张图片。",saveFailed:"保存失败",saved:"已保存",notCreatedJson:"尚未创建 JSON",unsaved:"未保存",saving:"保存中...",pendingSave:"有新修改待保存",autoSaveFailed:"自动保存失败",modified:"已修改",modifiedWaiting:"已修改，等待自动保存",readImage:"读取图片...",loadedJson:"已加载 {name}.json",emptyJson:"没有同名 JSON：已创建空白标注。",openFailed:"打开失败：{message}",folderSwitchSaveFailed:"切换文件夹前保存失败：{message}",folderSwitchCancelled:"当前标注保存失败，已取消切换文件夹：{message}",imageSwitchSaveFailed:"切换图片前保存失败：{message}",imageSwitchCancelled:"当前标注保存失败，已取消切换图片：{message}",browserUnsupported:"当前浏览器不支持 File System Access API。请使用最新版 Chrome / Edge，并通过 http://127.0.0.1:9010 打开。",folderPermissionDenied:"没有获得文件夹读写权限",invalidLabelme:"同名 JSON 不是 Labelme shapes 格式。",unsupportedShape:"第 {index} 个 shape 格式不受支持。",webglFallback:"WebGL2 不可用，已使用 Canvas 2D 兼容渲染。",currentDrawLabel:"当前绘制标签：{name}",changeLabelColor:"修改标签颜色",rename:"重命名",deleteLabel:"删除标签",labelColorChanged:"标签“{name}”颜色已修改",ok:"确定",chooseLabel:"选择标签",chooseOrCreateLabel:"请选择标签，或输入新标签：",noLabelsYet:"还没有标签",newLabel:"新标签",newLabelPlaceholder:"输入名称后确定",addLabel:"新增标签",enterNewLabel:"输入新标签名称：",renameLabel:"重命名标签",renameSyncHint:"重命名后，关联的 {count} 个标注也会同步修改。",confirmRename:"确认重命名",mergeRename:"合并并重命名",renameAction:"重命名",renameExistingMsg:"标签“{newName}”已经存在。是否将“{oldName}”及其 {count} 个实例合并到已有标签？",renameMsg:"将“{oldName}”重命名为“{newName}”，并同步修改 {count} 个实例？",renameSynced:"标签重命名已同步到关联标注",deleteLabelConfirm:"删除标签“{name}”？",deleteAction:"删除",labelInUse:"标签“{name}”正在被 {count} 个实例使用。请选择替代标签；也可以新建一个替代标签。",replacementLabel:"替代标签",choosePlaceholder:"-- 请选择 --",newReplacement:"或新建替代标签",newLabelName:"新标签名称",deleteAssociated:"同时删除这 {count} 个关联实例（危险操作）",execute:"执行",chooseReplacement:"请选择或输入替代标签。",labelAdded:"已新增标签“{name}”",labelDeleted:"已删除标签“{name}”",labelAndInstancesDeleted:"已删除标签“{name}”和 {count} 个关联实例",instancesReplaced:"已将 {count} 个实例替换为“{replacement}”",newAnnotationCancelled:"已取消新标注",annotationAdded:"已新增 {type} 标注",drawingCancelled:"已取消当前绘制",polygonMin:"多边形至少需要 3 个点",linestripMin:"折线至少需要 2 个点",penHint:"画笔：移动鼠标沿轮廓绘制，回到起点附近自动闭合。Esc 取消。",sequenceHint:"{type}：继续点击添加顶点，Enter 完成。",lineHint:"直线：点击终点完成。",rectSecond:"矩形：移动鼠标实时预览，单击另一角完成。",circleSecond:"圆形：移动鼠标实时预览，单击圆周位置完成。",obbSecond:"有向矩形：点击第二点确定第一条边。",obbWidth:"有向矩形：移动鼠标确定宽度，再点击完成。",tooSmall:"{type}太小，已取消。",instanceMoved:"实例位置已修改",controlPointMoved:"控制点已修改",vertexInserted:"已插入顶点",polygonVertexDeleted:"已删除多边形顶点",linestripVertexDeleted:"已删除折线顶点",instancesDeleted:"已删除 {count} 个实例",aiCancelled:"AI 交互已取消",inferencing:"{model} 推理中...",aiCandidate:"AI 候选已更新{score}。Enter 接受。",aiSegFailed:"AI 分割失败：{message}",aiAccepted:"AI 标注已接受，可继续添加提示创建下一个实例。",worldNeedText:"YOLO-World 需要输入文本类别，例如 dog,cat,bird",noDetections:"AI 未检测到符合阈值的实例。",aiAdded:"AI 已新增 {count} 个实例",aiAutoFailed:"AI 自动标注失败：{message}",readModelStatus:"读取模型状态...",aiModelStatus:"AI 模型状态",model:"模型",installed:"安装",memory:"内存",detail:"说明",available:"可用",missing:"缺失",loaded:"已加载",notLoaded:"未加载",close:"关闭",modelStatusNote:"模型采用延迟加载；“未加载”不代表不可用。SAM3 首次使用可能需要 Hugging Face 权限和登录。",detectOutputTitle:"Detect / YOLO-World 输出 Labelme rectangle",segOutputTitle:"分割 Mask 转换类型",fileAccessNeeded:"文件夹自动 JSON 功能需要 Chrome / Edge 的 File System Access API。",
-    modePointer:"指针：点击选择并拖动实例；拖动控制点可修改标注。",modePen:"画笔：单击开始，移动鼠标绘制，靠近起点自动闭合。",modePolygon:"多边形：依次点击顶点，Enter 或双击完成。",modeRectangle:"矩形：单击一个角开始，移动鼠标实时预览，再单击另一角完成。",modeObb:"有向矩形：点击两点确定第一条边，再点击确定宽度。",modeCircle:"圆形：单击圆心开始，移动鼠标实时预览，再单击圆周位置完成。",modePoint:"点：单击创建。",modeLine:"直线：点击起点和终点。",modeLinestrip:"折线：依次点击顶点，Enter 或双击完成。",modeSam:"AI 交互：左键单击=正点，右键=负点，左键拖动=Box Prompt；Enter 接受。"
-  },
-  en:{
-    openFolder:"Open Folder",pointer:"Pointer",pen:"Brush",polygon:"Polygon",rectangle:"Rectangle",orientedRectangle:"Oriented Rectangle",circle:"Circle",point:"Point",line:"Line",linestrip:"Polyline",delete:"Delete",undo:"Undo",redo:"Redo",saveJson:"Save JSON",deleteJson:"Delete JSON",deleteJsonTitle:"Delete annotation JSON",deleteJsonConfirm:"Delete the same-name JSON for the current image? All annotations for this image will be cleared, while the image file itself will remain untouched.",jsonDeleted:"Deleted {name}.json and cleared the current annotations.",jsonDeleteFailed:"Failed to delete JSON: {message}",noJsonToDelete:"The current image has no JSON file to delete.",fitWindow:"Fit",actualSizeTitle:"Actual size (100%)",zoomOutTitle:"Zoom out",zoomInTitle:"Zoom in",showLabels:"Show labels",smart:"Smart",all:"All",selectedOnly:"Selected",aiToolbar:"AI Toolbar",aiAssisted:"AI Assisted",aiAutoText:"AI Auto / Text Annotation",aiInteractive:"AI Interactive",accept:"Accept",cancel:"Cancel",score:"Score",run:"Run",modelStatus:"Model Status",imageList:"Image List",noFolder:"No folder selected",filterImages:"Filter images...",clearFilter:"Clear filter",shortcuts:"Shortcuts",helpZoom:"Wheel: zoom",helpPan:"Middle button / Space+drag: pan",helpEnter:"Enter: finish polygon/polyline or accept AI",helpEsc:"Esc: cancel drawing / AI",helpDelete:"Delete: remove instance or active vertex",helpUndo:"Ctrl+Z / Ctrl+Y: undo / redo",helpVertex:"Polygon/polyline: double-click edge to insert vertex",openImageFolder:"Open a folder containing images",emptyHint:"HelloLabel reads same-name Labelme JSON files. If none exists, it starts with empty annotations and never runs a model automatically.",processing:"Processing...",labels:"Labels",add:"Add",instances:"Instances",display:"Display",brightness:"Brightness",contrast:"Contrast",resetDisplay:"Reset display",currentInstance:"Current Instance",selectHint:"Click a shape or an instance in the list to select it.",number:"No.",label:"Label",type:"Type",points:"Points",source:"Source",status:"Status",manual:"Manual",noFileOpen:"No file open",waiting:"Waiting",languageTitle:"Interface language",themeTitle:"System / Light / Dark",aiToolbarToggleTitle:"Show or hide the AI toolbar",pointerTitle:"Pointer (V)",penTitle:"Brush (B)",polygonTitle:"Polygon (P)",rectTitle:"Rectangle (R)",obbTitle:"Oriented Rectangle (O)",circleTitle:"Circle (C)",pointTitle:"Point (D)",lineTitle:"Line (L)",linestripTitle:"Polyline (K)",deleteTitle:"Delete (Delete)",undoTitle:"Undo (Ctrl+Z)",redoTitle:"Redo (Ctrl+Y / Ctrl+Shift+Z)",labelDisplayStrategy:"Label display strategy",samInfo:"Left click = positive point; right click = negative point; left-drag = Box Prompt; Enter accepts; Esc cancels; Backspace removes the last prompt.",yoloInfo:"YOLO11 Detect outputs rectangles; YOLO11 Seg can convert masks to polygons, rectangles, oriented rectangles, or minimum enclosing circles. For YOLO11 the text box is an optional class filter (blank = all classes); for YOLO-World it is the text class prompt.",yoloTextPlaceholder:"e.g. dog,cat,bird",yoloFilterPlaceholder:"Optional class filter, e.g. dog,cat,bird",yoloWorldPlaceholder:"Text classes, e.g. dog,cat,bird",modelStatusTitle:"View model installation/loading status",polygonEn:"Polygon",rectangleEn:"Rectangle",orientedRectangleEn:"Oriented Rectangle",circleEn:"Circle",
-    systemTheme:"◐ System",lightTheme:"☀ Light",darkTheme:"● Dark",noMatchingImages:"No matching images",folderOpened:"Folder opened: {count} images.",folderOpenedFiltered:"Showing {shown} / {total} images.",saveFailed:"Save failed",saved:"Saved",notCreatedJson:"JSON not created yet",unsaved:"Unsaved",saving:"Saving...",pendingSave:"New changes pending save",autoSaveFailed:"Auto-save failed",modified:"Modified",modifiedWaiting:"Modified; waiting for auto-save",readImage:"Loading image...",loadedJson:"Loaded {name}.json",emptyJson:"No same-name JSON; created empty annotations.",openFailed:"Open failed: {message}",folderSwitchSaveFailed:"Save failed before switching folder: {message}",folderSwitchCancelled:"Current annotations could not be saved, so folder switching was cancelled: {message}",imageSwitchSaveFailed:"Save failed before switching image: {message}",imageSwitchCancelled:"Current annotations could not be saved, so image switching was cancelled: {message}",browserUnsupported:"This browser does not support the File System Access API. Use the latest Chrome / Edge and open http://127.0.0.1:9010.",folderPermissionDenied:"Folder read/write permission was not granted",invalidLabelme:"The same-name JSON is not in Labelme shapes format.",unsupportedShape:"Shape #{index} uses an unsupported format.",webglFallback:"WebGL2 is unavailable; using Canvas 2D fallback rendering.",currentDrawLabel:"Current drawing label: {name}",changeLabelColor:"Change label color",rename:"Rename",deleteLabel:"Delete label",labelColorChanged:"Color for label “{name}” changed",ok:"OK",chooseLabel:"Choose Label",chooseOrCreateLabel:"Choose an existing label or enter a new one:",noLabelsYet:"No labels yet",newLabel:"New label",newLabelPlaceholder:"Enter a name, then confirm",addLabel:"Add Label",enterNewLabel:"Enter a new label name:",renameLabel:"Rename Label",renameSyncHint:"Renaming will also update the {count} linked annotations.",confirmRename:"Confirm Rename",mergeRename:"Merge and Rename",renameAction:"Rename",renameExistingMsg:"Label “{newName}” already exists. Merge “{oldName}” and its {count} instances into it?",renameMsg:"Rename “{oldName}” to “{newName}” and update {count} instances?",renameSynced:"Label rename synced to linked annotations",deleteLabelConfirm:"Delete label “{name}”?",deleteAction:"Delete",labelInUse:"Label “{name}” is used by {count} instances. Choose a replacement label or create a new replacement.",replacementLabel:"Replacement label",choosePlaceholder:"-- Choose --",newReplacement:"Or create a replacement label",newLabelName:"New label name",deleteAssociated:"Also delete these {count} linked instances (dangerous)",execute:"Apply",chooseReplacement:"Choose or enter a replacement label.",labelAdded:"Added label “{name}”",labelDeleted:"Deleted label “{name}”",labelAndInstancesDeleted:"Deleted label “{name}” and {count} linked instances",instancesReplaced:"Reassigned {count} instances to “{replacement}”",newAnnotationCancelled:"New annotation cancelled",annotationAdded:"Added {type} annotation",drawingCancelled:"Drawing cancelled",polygonMin:"A polygon needs at least 3 points",linestripMin:"A polyline needs at least 2 points",penHint:"Brush: move the mouse along the outline; return near the start point to close automatically. Esc cancels.",sequenceHint:"{type}: click to add vertices; Enter finishes.",lineHint:"Line: click the end point to finish.",rectSecond:"Rectangle: move the mouse for a live preview, then click the opposite corner to finish.",circleSecond:"Circle: move the mouse for a live preview, then click the circumference to finish.",obbSecond:"Oriented rectangle: click the second point to define the first edge.",obbWidth:"Oriented rectangle: move to set width, then click to finish.",tooSmall:"{type} is too small and was cancelled.",instanceMoved:"Instance position changed",controlPointMoved:"Control point changed",vertexInserted:"Vertex inserted",polygonVertexDeleted:"Polygon vertex deleted",linestripVertexDeleted:"Polyline vertex deleted",instancesDeleted:"Deleted {count} instances",aiCancelled:"AI interaction cancelled",inferencing:"Running {model}...",aiCandidate:"AI candidate updated{score}. Press Enter to accept.",aiSegFailed:"AI segmentation failed: {message}",aiAccepted:"AI annotation accepted. Add more prompts to create the next instance.",worldNeedText:"YOLO-World needs text classes, e.g. dog,cat,bird",noDetections:"AI found no instances above the threshold.",aiAdded:"AI added {count} instances",aiAutoFailed:"AI auto-annotation failed: {message}",readModelStatus:"Reading model status...",aiModelStatus:"AI Model Status",model:"Model",installed:"Installed",memory:"Memory",detail:"Details",available:"Available",missing:"Missing",loaded:"Loaded",notLoaded:"Not loaded",close:"Close",modelStatusNote:"Models are loaded lazily; “Not loaded” does not mean unavailable. SAM3 may require Hugging Face access and login on first use.",detectOutputTitle:"Detect / YOLO-World outputs Labelme rectangles",segOutputTitle:"Mask conversion shape",fileAccessNeeded:"Automatic folder JSON access requires the File System Access API in Chrome / Edge.",
-    modePointer:"Pointer: click to select and drag an instance; drag control points to edit it.",modePen:"Brush: click once to start, then move the mouse; return near the start point to close automatically.",modePolygon:"Polygon: click vertices; press Enter or double-click to finish.",modeRectangle:"Rectangle: click one corner to start, move for a live preview, then click the opposite corner to finish.",modeObb:"Oriented rectangle: click two points for the first edge, then click again to set width.",modeCircle:"Circle: click the center to start, move for a live preview, then click the circumference to finish.",modePoint:"Point: click to create.",modeLine:"Line: click start and end points.",modeLinestrip:"Polyline: click vertices; press Enter or double-click to finish.",modeSam:"AI interactive: left click = positive point, right click = negative point, left-drag = Box Prompt; Enter accepts."
-  }
-};
+
 Object.assign(I18N.zh,{
   mainMenu:"主菜单",menuFile:"文件",menuView:"视图",menuEdit:"编辑",menuAI:"AI",menuSettings:"设置",menuAbout:"关于",menuClose:"关闭窗口",installAI:"安装 AI",installAIConfirmTitle:"安装 AI 依赖",installAIConfirmText:"安装 AI 会先关闭当前 HelloLabel 后端并启动独立安装窗口。桌面安装版会使用程序自带 Python 创建 HelloLabel 私有 AI Runtime，不需要系统 Python；源码版仍使用项目 .venv。安装完成后请重新启动 HelloLabel。是否继续？",installAILaunching:"正在启动 AI 安装程序…",installAIStarted:"AI 安装程序正在启动。HelloLabel 将关闭；请在独立安装窗口中等待完成，然后重新启动 HelloLabel。",installAIUnavailable:"当前运行环境无法启动 HelloLabel AI 安装程序。",installAIError:"启动 AI 安装程序失败：{message}",menuLeftPanel:"左侧图片栏",menuRightPanel:"右侧标注栏",menuTheme:"切换主题",menuAboutHelloLabel:"关于 HelloLabel",collapseLeftPanel:"折叠/展开左侧图片栏",collapseRightPanel:"折叠/展开右侧标注栏",aboutText:"HelloLabel · AI 辅助图像标注工具\n兼容 Labelme JSON，支持 WebGL2 高性能标注、SAM / YOLO 辅助标注。",shortcutsText:"V 指针 · B 画笔 · P 多边形 · R 矩形 · O 有向矩形 · C 圆形 · D 点 · L 直线 · K 折线\nCtrl+O 打开文件夹 · Ctrl+S 保存 · Ctrl+Z 撤销 · Ctrl+Y 重做"
 });
 Object.assign(I18N.en,{
   mainMenu:"Main menu",menuFile:"File",menuView:"View",menuEdit:"Edit",menuAI:"AI",menuSettings:"Settings",menuAbout:"About",menuClose:"Close window",installAI:"Install AI",installAIConfirmTitle:"Install AI dependencies",installAIConfirmText:"Installing AI will stop the current HelloLabel backend and open a separate installer. Packaged desktop builds use HelloLabel’s bundled Python to create a private AI runtime, so no system Python is required; source mode continues to use the project .venv. Restart HelloLabel when installation finishes. Continue?",installAILaunching:"Launching the AI installer…",installAIStarted:"The AI installer is starting. HelloLabel will close; wait for the separate installer window to finish, then restart HelloLabel.",installAIUnavailable:"This environment could not start the HelloLabel AI installer.",installAIError:"Failed to start the AI installer: {message}",menuLeftPanel:"Left image panel",menuRightPanel:"Right annotation panel",menuTheme:"Switch theme",menuAboutHelloLabel:"About HelloLabel",collapseLeftPanel:"Collapse/expand left image panel",collapseRightPanel:"Collapse/expand right annotation panel",aboutText:"HelloLabel · AI-assisted image annotation\nLabelme-compatible JSON, WebGL2 rendering, SAM / YOLO assisted annotation.",shortcutsText:"V Pointer · B Brush · P Polygon · R Rectangle · O Oriented Rectangle · C Circle · D Point · L Line · K Polyline\nCtrl+O Open folder · Ctrl+S Save · Ctrl+Z Undo · Ctrl+Y Redo"
 });
-function currentLanguage(){try{return localStorage.getItem("hellolabel-language")||localStorage.getItem("labelit-language")||"zh";}catch{return "zh";}}
-function t(key,vars={}){const lang=state?.language||currentLanguage();let text=(I18N[lang]&&I18N[lang][key])??I18N.zh[key]??key;for(const [k,v] of Object.entries(vars||{}))text=text.replaceAll(`{${k}}`,String(v));return text;}
-function shapeTypeText(type){const key={polygon:"polygon",rectangle:"rectangle",oriented_rectangle:"orientedRectangle",circle:"circle",point:"point",line:"line",linestrip:"linestrip"}[type];return key?t(key):String(type||"");}
+const {currentLanguage,t,shapeTypeText}=window.HelloLabelI18n;
+const {
+  deepClone,escapeHtml,stemOf,extOf,isImage,clamp,dist2,uid,
+  hashString,hslToHex,stableColor,hexToRgba
+}=window.HelloLabelUtils;
 
 const state=window.HelloLabelState.create({language:currentLanguage()});
 
-function deepClone(v){return v==null?v:JSON.parse(JSON.stringify(v));}
-function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
-function stemOf(name){const i=name.lastIndexOf(".");return i>0?name.slice(0,i):name;}
-function extOf(name){const i=name.lastIndexOf(".");return i>=0?name.slice(i).toLowerCase():"";}
-function isImage(name){return IMAGE_EXTS.includes(extOf(name));}
-function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
-function dist2(a,b){const dx=a[0]-b[0],dy=a[1]-b[1];return dx*dx+dy*dy;}
-function uid(){return globalThis.crypto?.randomUUID?.() || `shape-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;}
 function setStatus(text,error=false){els.statusText.textContent=text;els.statusText.style.color=error?"var(--danger)":"";}
 function setBusy(on,text=t("processing")){els.busy.classList.toggle("hidden",!on);els.busyText.textContent=text;}
 function setSaveState(text,kind=""){els.saveState.textContent=text;els.saveState.className=`save-state ${kind}`.trim();}
 function responseError(res){return res.json().then(j=>j.detail||JSON.stringify(j)).catch(()=>`${res.status} ${res.statusText}`);}
 
-function hashString(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
-function hslToHex(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)));return `#${[f(0),f(8),f(4)].map(x=>Math.round(255*x).toString(16).padStart(2,"0")).join("")}`;}
-function stableColor(label){const h=hashString(label)%360;return hslToHex(h,72,55);}
-function hexToRgba(hex,alpha=1){const m=String(hex).match(/^#([0-9a-f]{6})$/i);if(!m)return [0.2,0.8,0.4,alpha];const n=parseInt(m[1],16);return [((n>>16)&255)/255,((n>>8)&255)/255,(n&255)/255,alpha];}
-
-function ensureHelloLabel(){
-  if(!state.data)return;
-  // Read legacy Labelit JSONs, but normalize all future saves to the HelloLabel extension key.
-  if((!state.data.hellolabel||typeof state.data.hellolabel!=="object"||Array.isArray(state.data.hellolabel))
-      && state.data.labelit&&typeof state.data.labelit==="object"&&!Array.isArray(state.data.labelit)){
-    state.data.hellolabel=deepClone(state.data.labelit);
-  }
-  delete state.data.labelit;
-  if(!state.data.hellolabel||typeof state.data.hellolabel!=="object"||Array.isArray(state.data.hellolabel))state.data.hellolabel={};
-  const hl=state.data.hellolabel;
-  if(!hl.labels||typeof hl.labels!=="object"||Array.isArray(hl.labels))hl.labels={};
-  // Migrate early development JSONs without persisting internal instance IDs/metadata.
-  if(Array.isArray(hl.shapeIds)&&state.runtimeIds.length===0)state.runtimeIds=hl.shapeIds.map(x=>String(x||""));
-  if(hl.shapeMeta&&typeof hl.shapeMeta==="object"&&!Array.isArray(hl.shapeMeta)&&Object.keys(state.runtimeMeta).length===0)state.runtimeMeta=deepClone(hl.shapeMeta);
-  delete hl.shapeIds;delete hl.shapeMeta;delete hl.version;
-  const shapes=state.data.shapes||[];
-  while(state.runtimeIds.length<shapes.length)state.runtimeIds.push(uid());
-  if(state.runtimeIds.length>shapes.length)state.runtimeIds.length=shapes.length;
-  const seen=new Set();
-  for(let i=0;i<state.runtimeIds.length;i++){
-    let id=String(state.runtimeIds[i]||"");if(!id||seen.has(id)){id=uid();state.runtimeIds[i]=id;}seen.add(id);
-  }
-  for(const shape of shapes){
-    const label=String(shape.label||"").trim()||"unlabeled";shape.label=label;
-    if(!hl.labels[label])hl.labels[label]={color:stableColor(label)};
-    if(!/^#[0-9a-f]{6}$/i.test(hl.labels[label]?.color||""))hl.labels[label].color=stableColor(label);
-  }
-}
-
-function shapeIds(){return state.runtimeIds;}
-function shapeMeta(id){return state.runtimeMeta?.[id]||{};}
-function labelColor(label){return state.data?.hellolabel?.labels?.[label]?.color||stableColor(label);}
-function shapeAtId(id){const idx=state.indexById.get(id);return idx==null?null:state.data?.shapes?.[idx]||null;}
-function primaryShape(){return state.primaryId?shapeAtId(state.primaryId):null;}
-function primaryIndex(){return state.primaryId?state.indexById.get(state.primaryId):-1;}
-
-function createEmptyLabelme(){
-  return {version:"7.0.4",flags:{},shapes:[],imagePath:state.imageName,imageData:null,imageHeight:state.height,imageWidth:state.width,hellolabel:{labels:{}}};
-}
-function validateLabelme(data){
-  if(!data||!Array.isArray(data.shapes))throw new Error(t("invalidLabelme"));
-  for(const [i,s] of data.shapes.entries()){
-    if(!s||!Array.isArray(s.points)||!SHAPE_TYPES.has(String(s.shape_type||"polygon")))throw new Error(t("unsupportedShape",{index:i+1}));
-    s.shape_type=String(s.shape_type||"polygon");s.label=String(s.label||"unlabeled");
-    if(s.group_id===undefined)s.group_id=null;if(s.description===undefined)s.description="";if(!s.flags)s.flags={};if(s.mask===undefined)s.mask=null;
-  }
-  if(data.version==null)data.version="7.0.4";if(!data.flags)data.flags={};
-  ensureDataImageFields(data);return data;
-}
-function ensureDataImageFields(data=state.data){if(!data)return;data.imagePath=state.imageName;data.imageData=null;data.imageHeight=state.height;data.imageWidth=state.width;}
+window.HelloLabelModel.configure({
+  state,
+  deepClone,
+  uid,
+  stableColor,
+  SHAPE_TYPES,
+  t
+});
+const {
+  ensureHelloLabel,
+  shapeIds,
+  shapeMeta,
+  labelColor,
+  shapeAtId,
+  primaryShape,
+  primaryIndex,
+  createEmptyLabelme,
+  validateLabelme,
+  ensureDataImageFields
+}=window.HelloLabelModel;
 
 function updateActionButtons(){
   const has=!!state.data, selected=!!primaryShape();
@@ -440,12 +388,25 @@ function ensureShapeVisible(id){const shape=shapeAtId(id);if(!shape)return;const
 function updateSelectionPanel(){const shape=primaryShape();els.noSelection.classList.toggle("hidden",!!shape);els.selectionInfo.classList.toggle("hidden",!shape);if(!shape)return;const idx=primaryIndex(),meta=shapeMeta(state.primaryId);els.selNumber.textContent=idx>=0?`#${idx+1}`:"--";els.selLabel.textContent=shape.label;els.selType.textContent=shapeTypeText(shape.shape_type);els.selPoints.textContent=String(shape.points?.length||0);els.selSource.textContent=(meta.source&&meta.source!=="manual")?meta.source:t("manual");}
 
 // ---------- Manual drawing + pointer editing ----------
-function makeShape(label,type,points){return {label,points:points.map(p=>[roundCoord(p[0]),roundCoord(p[1])]),group_id:null,description:"",shape_type:type,flags:{},mask:null};}
-function roundCoord(v){return Math.round(Number(v)*1000)/1000;}
-async function commitGeometry(type,points,meta={source:"manual"}){
-  if(!state.data||!points?.length)return;const label=await resolveNewShapeLabel();if(!label){setStatus(t("newAnnotationCancelled"));return;}pushHistory();if(!state.data.hellolabel.labels[label])state.data.hellolabel.labels[label]={color:stableColor(label)};state.activeLabel=label;const id=uid(),shape=makeShape(label,type,points);state.data.shapes.push(shape);state.runtimeIds.push(id);state.runtimeMeta[id]={...meta};markDirty(t("annotationAdded",{type:shapeTypeText(type)}));renderAll();selectId(id,{scroll:true});
-}
-function cancelDrawing(status=true){state.drawing=null;renderDrawingOverlay();window.HelloLabelDrawingState?.idle?.();if(status)setStatus(t("drawingCancelled"));}
+window.HelloLabelAnnotationCommit.configure({
+  state,
+  resolveNewShapeLabel,
+  setStatus,
+  t,
+  pushHistory,
+  stableColor,
+  uid,
+  markDirty,
+  shapeTypeText,
+  renderAll,
+  selectId,
+  renderDrawingOverlay
+});
+function roundCoord(value){return window.HelloLabelAnnotationCommit.roundCoord(value);}
+function makeShape(label,type,points){return window.HelloLabelAnnotationCommit.makeShape(label,type,points);}
+function commitGeometry(type,points,meta){return window.HelloLabelAnnotationCommit.commitGeometry(type,points,meta);}
+function cancelDrawing(status=true){return window.HelloLabelAnnotationCommit.cancelDrawing(status);}
+
 function orientedRectFromEdge(a,b,c){return window.HelloLabelObbTool.fromEdge(a,b,c);}
 window.HelloLabelDrawingPreview.configure({
   state,
@@ -458,22 +419,7 @@ window.HelloLabelDrawingPreview.configure({
 });
 function renderDrawingOverlay(){return window.HelloLabelDrawingPreview.render();}
 
-async function finishSequenceDrawing(){
-  const d=state.drawing;if(!d)return;
-  const sourceType=d.type;
-  let type=d.type,points=d.points||[];
-  if(type==="pen"){points=window.HelloLabelBrushTool.finalize(points,state.scale);type="polygon";}
-  if(type==="polygon"&&points.length<3){setStatus(t("polygonMin"),true);return;}
-  if(type==="linestrip"&&points.length<2){setStatus(t("linestripMin"),true);return;}
-  if(type==="line"&&points.length<2)return;
-  if(type==="oriented_rectangle"&&points.length<4)return;
-  state.drawing=null;
-  renderDrawingOverlay();
-  if(sourceType==="pen")window.HelloLabelBrushTool.completed();
-  else if(sourceType==="polygon"||sourceType==="linestrip")window.HelloLabelPolygonTool.completed(sourceType,points.length);
-  else if(sourceType==="oriented_rectangle")window.HelloLabelObbTool.completed();
-  await commitGeometry(type,points);
-}
+function finishSequenceDrawing(){return window.HelloLabelAnnotationCommit.finishSequenceDrawing();}
 function handleDrawPointerDown(ev){return window.HelloLabelDrawingDispatcher.pointerDown(ev);}
 function handleDrawPointerMove(ev){return window.HelloLabelDrawingDispatcher.pointerMove(ev);}
 function handleDrawPointerUp(ev){return window.HelloLabelDrawingDispatcher.pointerUp(ev);}
