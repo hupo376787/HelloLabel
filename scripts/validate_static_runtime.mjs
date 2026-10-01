@@ -16,6 +16,12 @@ const i18nEn = read("static/i18n/en.js");
 const coreUtils = read("static/core/utils.js");
 const labelmeModel = read("static/core/labelme-model.js");
 const annotationCommit = read("static/annotation/annotation-commit.js");
+const samController = read("static/ai/sam-controller.js");
+const yoloController = read("static/ai/yolo-controller.js");
+const languageTheme = read("static/ui/language-theme.js");
+const layoutController = read("static/ui/layout-controller.js");
+const helpMenu = read("static/ui/help-menu.js");
+const viewportController = read("static/view/viewport-controller.js");
 const drawingPreview = read("static/drawing-preview.js");
 const drawingDispatcher = read("static/tools/drawing-dispatcher.js");
 const circleTool = read("static/tools/circle-tool.js");
@@ -129,6 +135,12 @@ for (const asset of [
   "core/utils.js",
   "core/labelme-model.js",
   "annotation/annotation-commit.js",
+  "ai/sam-controller.js",
+  "ai/yolo-controller.js",
+  "ui/language-theme.js",
+  "ui/layout-controller.js",
+  "ui/help-menu.js",
+  "view/viewport-controller.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 assert(i18nCore.includes("HelloLabelI18n"), "i18n core must expose HelloLabelI18n");
@@ -137,6 +149,15 @@ assert(i18nEn.includes("HelloLabelI18nMessages.en"), "English messages must be s
 assert(coreUtils.includes("HelloLabelUtils"), "core utils must expose HelloLabelUtils");
 assert(labelmeModel.includes("HelloLabelModel"), "Labelme model must expose HelloLabelModel");
 assert(annotationCommit.includes("HelloLabelAnnotationCommit"), "annotation commit must expose HelloLabelAnnotationCommit");
+assert(samController.includes("HelloLabelSamController"), "SAM controller must be extracted");
+assert(yoloController.includes("HelloLabelYoloController"), "YOLO controller must be extracted");
+assert(languageTheme.includes("HelloLabelLanguageTheme"), "language/theme controller must be extracted");
+assert(layoutController.includes("HelloLabelLayout"), "layout controller must be extracted");
+assert(helpMenu.includes("HelloLabelHelpMenu"), "help/menu controller must be extracted");
+assert(viewportController.includes("HelloLabelViewport"), "viewport controller must be extracted");
+assert(!appCore.includes("async function runYolo(){"), "YOLO implementation must not remain inline in app core");
+assert(!appCore.includes("function renderSamOverlay(){\n  els.samPrompts"), "SAM rendering must not remain inline in app core");
+assert(!appCore.includes("function fitToWindow(){if(!state.data)"), "viewport implementation must not remain inline in app core");
 assert(!appCore.includes("const I18N={"), "translation dictionary must not remain inline in app core");
 assert(!appCore.includes("function ensureHelloLabel()"), "Labelme model logic must not remain inline in app core");
 assert(!appCore.includes("async function commitGeometry("), "annotation commit implementation must not remain inline in app core");
@@ -180,6 +201,12 @@ const required = [
   "static/core/utils.js",
   "static/core/labelme-model.js",
   "static/annotation/annotation-commit.js",
+  "static/ai/sam-controller.js",
+  "static/ai/yolo-controller.js",
+  "static/ui/language-theme.js",
+  "static/ui/layout-controller.js",
+  "static/ui/help-menu.js",
+  "static/view/viewport-controller.js",
   "static/app-core.js",
   "static/telemetry.js",
   "static/annotation-telemetry.js",

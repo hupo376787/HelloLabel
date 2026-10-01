@@ -461,184 +461,73 @@ function deleteActiveVertex(){const shape=primaryShape(),h=state.activeHandle;if
 function deleteSelected(){if(!state.data||!state.primaryId)return;if(deleteActiveVertex())return;const ids=[...state.selectedIds];pushHistory();for(let i=state.data.shapes.length-1;i>=0;i--){const id=shapeIds()[i];if(ids.includes(id)){state.data.shapes.splice(i,1);state.runtimeIds.splice(i,1);delete state.runtimeMeta[id];}}clearSelection();markDirty(t("instancesDeleted",{count:ids.length}));renderAll();}
 
 // ---------- AI assisted annotation ----------
-function resetSamState(){state.sam.points=[];state.sam.labels=[];state.sam.box=null;state.sam.history=[];state.sam.preview=null;state.sam.drag=null;state.sam.requestSeq++;els.aiPreviewPath.classList.add("hidden-svg");els.samPrompts.replaceChildren();els.samDragBox.classList.add("hidden-svg");els.samAcceptBtn.classList.add("hidden");els.samCancelBtn.classList.add("hidden");}
-function cancelSam(status=true){resetSamState();if(state.mode==="sam")setMode("pointer",{keepSam:true});if(status)setStatus(t("aiCancelled"));}
-function rebuildSamPromptsFromHistory(){state.sam.points=[];state.sam.labels=[];state.sam.box=null;for(const h of state.sam.history){if(h.kind==="point"){state.sam.points.push(h.point);state.sam.labels.push(h.label);}else if(h.kind==="box")state.sam.box=h.box;}renderSamOverlay();}
-function renderSamOverlay(){
-  els.samPrompts.replaceChildren();for(let i=0;i<state.sam.points.length;i++){const p=imageToViewport(...state.sam.points[i]),g=document.createElementNS("http://www.w3.org/2000/svg","g"),c=document.createElementNS("http://www.w3.org/2000/svg","circle");c.setAttribute("cx",p[0]);c.setAttribute("cy",p[1]);c.setAttribute("r",6);c.classList.add(state.sam.labels[i]===1?"sam-positive":"sam-negative");g.appendChild(c);if(state.sam.labels[i]===1){const l1=document.createElementNS("http://www.w3.org/2000/svg","line"),l2=document.createElementNS("http://www.w3.org/2000/svg","line");l1.setAttribute("x1",p[0]-3);l1.setAttribute("x2",p[0]+3);l1.setAttribute("y1",p[1]);l1.setAttribute("y2",p[1]);l2.setAttribute("x1",p[0]);l2.setAttribute("x2",p[0]);l2.setAttribute("y1",p[1]-3);l2.setAttribute("y2",p[1]+3);l1.classList.add("sam-prompt-cross");l2.classList.add("sam-prompt-cross");g.append(l1,l2);}else{const l1=document.createElementNS("http://www.w3.org/2000/svg","line"),l2=document.createElementNS("http://www.w3.org/2000/svg","line");for(const l of [l1,l2])l.classList.add("sam-prompt-cross");l1.setAttribute("x1",p[0]-3);l1.setAttribute("x2",p[0]+3);l1.setAttribute("y1",p[1]-3);l1.setAttribute("y2",p[1]+3);l2.setAttribute("x1",p[0]-3);l2.setAttribute("x2",p[0]+3);l2.setAttribute("y1",p[1]+3);l2.setAttribute("y2",p[1]-3);g.append(l1,l2);}els.samPrompts.appendChild(g);}
-  if(state.sam.box){const [x1,y1,x2,y2]=state.sam.box,a=imageToViewport(x1,y1),b=imageToViewport(x2,y2),r=document.createElementNS("http://www.w3.org/2000/svg","rect");r.setAttribute("x",Math.min(a[0],b[0]));r.setAttribute("y",Math.min(a[1],b[1]));r.setAttribute("width",Math.abs(b[0]-a[0]));r.setAttribute("height",Math.abs(b[1]-a[1]));r.classList.add("sam-box");els.samPrompts.appendChild(r);}
-  if(state.sam.preview){els.aiPreviewPath.setAttribute("d",shapeScreenPath(state.sam.preview));els.aiPreviewPath.classList.remove("hidden-svg");els.samAcceptBtn.classList.remove("hidden");els.samCancelBtn.classList.remove("hidden");}else els.aiPreviewPath.classList.add("hidden-svg");
-  if(state.sam.drag){const a=imageToViewport(...state.sam.drag.start),b=imageToViewport(...state.sam.drag.current);els.samDragBox.setAttribute("x",Math.min(a[0],b[0]));els.samDragBox.setAttribute("y",Math.min(a[1],b[1]));els.samDragBox.setAttribute("width",Math.abs(b[0]-a[0]));els.samDragBox.setAttribute("height",Math.abs(b[1]-a[1]));els.samDragBox.classList.remove("hidden-svg");}else els.samDragBox.classList.add("hidden-svg");
-}
-async function runSamPrediction(){
-  if(!state.imageFile||(state.sam.points.length===0&&!state.sam.box)){state.sam.preview=null;renderSamOverlay();return;}const seq=++state.sam.requestSeq;setBusy(true,t("inferencing",{model:els.samModelSelect.options[els.samModelSelect.selectedIndex].text}));
-  try{
-    const post=async(forceFile=false)=>{const fd=new FormData();if(!forceFile&&state.aiImageToken)fd.append("image_token",state.aiImageToken);else fd.append("file",state.imageFile,state.imageName);fd.append("model",els.samModelSelect.value);fd.append("points",JSON.stringify(state.sam.points));fd.append("point_labels",JSON.stringify(state.sam.labels));fd.append("box",JSON.stringify(state.sam.box));fd.append("output_shape",els.samOutputSelect.value);return fetch("/api/ai/sam",{method:"POST",body:fd});};
-    let res=await post(false);if(res.status===410&&state.aiImageToken){state.aiImageToken=null;res=await post(true);}if(!res.ok)throw new Error(await responseError(res));const json=await res.json();if(seq!==state.sam.requestSeq)return;if(json.image_token)state.aiImageToken=json.image_token;state.sam.preview={label:"",points:json.shape.points,shape_type:json.shape.shape_type,group_id:null,description:"",flags:{},mask:null,_score:json.shape.score,_model:json.shape.model};renderSamOverlay();setStatus(t("aiCandidate",{score:json.shape.score!=null?`, score ${Number(json.shape.score).toFixed(3)}`:""}));
-  }catch(err){if(seq===state.sam.requestSeq){state.sam.preview=null;renderSamOverlay();setStatus(err.message,true);alert(t("aiSegFailed",{message:err.message}));}}finally{if(seq===state.sam.requestSeq)setBusy(false);}
-}
-function samPointerDown(ev){
-  if(state.mode!=="sam")return false;if(ev.button===2){ev.preventDefault();const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY));state.sam.history.push({kind:"point",point:p,label:0});rebuildSamPromptsFromHistory();runSamPrediction();return true;}if(ev.button!==0)return false;const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY));state.sam.drag={start:p,current:p,startClient:[ev.clientX,ev.clientY],pointerId:ev.pointerId};(window.helloLabelPointerInput?.capture?.(ev) ?? (els.viewport.setPointerCapture?.(ev.pointerId),true));renderSamOverlay();return true;
-}
-function samPointerMove(ev){if(state.mode!=="sam"||!state.sam.drag)return false;state.sam.drag.current=clampImagePoint(screenToImage(ev.clientX,ev.clientY));renderSamOverlay();return true;}
-function samPointerUp(ev){if(state.mode!=="sam"||!state.sam.drag)return false;const d=state.sam.drag,p=clampImagePoint(screenToImage(ev.clientX,ev.clientY)),moved=Math.hypot(ev.clientX-d.startClient[0],ev.clientY-d.startClient[1]);state.sam.drag=null;if(moved>=6){const x1=Math.min(d.start[0],p[0]),y1=Math.min(d.start[1],p[1]),x2=Math.max(d.start[0],p[0]),y2=Math.max(d.start[1],p[1]);state.sam.history.push({kind:"box",box:[x1,y1,x2,y2]});}else state.sam.history.push({kind:"point",point:p,label:1});rebuildSamPromptsFromHistory();runSamPrediction();return true;}
-function samUndoPrompt(){if(!state.sam.history.length)return;state.sam.history.pop();rebuildSamPromptsFromHistory();runSamPrediction();}
-async function acceptSam(){const s=state.sam.preview;if(!s)return;const meta={source:s._model||els.samModelSelect.value,score:s._score??null};const type=s.shape_type,points=deepClone(s.points);resetSamState();await commitGeometry(type,points,meta);if(state.mode==="sam")setStatus(t("aiAccepted"));}
-async function runYolo(){
-  if(!state.imageFile)return;const model=els.yoloModelSelect.value;if(model==="yolo-world"&&!els.yoloTextInput.value.trim()){alert(t("worldNeedText"));return;}setBusy(true,t("inferencing",{model:els.yoloModelSelect.options[els.yoloModelSelect.selectedIndex].text}));
-  try{const post=async(forceFile=false)=>{const fd=new FormData();if(!forceFile&&state.aiImageToken)fd.append("image_token",state.aiImageToken);else fd.append("file",state.imageFile,state.imageName);fd.append("model",model);fd.append("text",els.yoloTextInput.value.trim());fd.append("conf",els.yoloConf.value);fd.append("iou",els.yoloIou.value);fd.append("output_shape",model==="yolo11-seg"?els.yoloOutputSelect.value:"rectangle");return fetch("/api/ai/yolo",{method:"POST",body:fd});};let res=await post(false);if(res.status===410&&state.aiImageToken){state.aiImageToken=null;res=await post(true);}if(!res.ok)throw new Error(await responseError(res));const json=await res.json(),items=json.shapes||[];if(json.image_token)state.aiImageToken=json.image_token;if(!items.length){setStatus(t("noDetections"));return;}pushHistory();for(const item of items){const label=String(item.label||"object");if(!state.data.hellolabel.labels[label])state.data.hellolabel.labels[label]={color:stableColor(label)};const id=uid();state.data.shapes.push(makeShape(label,item.shape_type,item.points));state.runtimeIds.push(id);state.runtimeMeta[id]={source:item.model||model,score:item.score??null};}markDirty(t("aiAdded",{count:items.length}));renderAll();if(items.length===1)selectId(shapeIds().at(-1),{scroll:true,ensure:true});}
-  catch(err){setStatus(err.message,true);alert(t("aiAutoFailed",{message:err.message}));}finally{setBusy(false);}
-}
-function updateYoloUi(){const m=els.yoloModelSelect.value;els.yoloTextInput.disabled=false;els.yoloTextInput.placeholder=t(m==="yolo-world"?"yoloWorldPlaceholder":"yoloFilterPlaceholder");els.yoloTextInput.title=m==="yolo-world"?t("yoloWorldPlaceholder"):t("yoloFilterPlaceholder");els.yoloOutputSelect.disabled=m!=="yolo11-seg";if(m!=="yolo11-seg")els.yoloOutputSelect.title=t("detectOutputTitle");else els.yoloOutputSelect.title=t("segOutputTitle");}
-async function showModelStatus(){
-  setBusy(true,t("readModelStatus"));try{const res=await fetch("/api/models");if(!res.ok)throw new Error(await responseError(res));const data=await res.json();const rows=(data.models||[]).map(m=>`<tr><td>${escapeHtml(m.name)}</td><td class="${m.installed?"model-ok":"model-missing"}">${m.installed?t("available"):t("missing")}</td><td>${m.loaded?t("loaded"):t("notLoaded")}</td><td>${escapeHtml(m.detail||"")}</td></tr>`).join("");await showModal({title:t("aiModelStatus"),body:`<table class="model-table"><thead><tr><th>${escapeHtml(t("model"))}</th><th>${escapeHtml(t("installed"))}</th><th>${escapeHtml(t("memory"))}</th><th>${escapeHtml(t("detail"))}</th></tr></thead><tbody>${rows}</tbody></table><p class="muted">${escapeHtml(t("modelStatusNote"))}</p>`,buttons:[{label:t("close"),value:"ok",className:"primary"}]});}catch(err){alert(err.message);}finally{setBusy(false);}
-}
+window.HelloLabelSamController.configure({
+  state,els,setMode,setStatus,t,imageToViewport,shapeScreenPath,setBusy,responseError,
+  clampImagePoint,screenToImage,deepClone,commitGeometry
+});
+function resetSamState(){return window.HelloLabelSamController.reset();}
+function cancelSam(status=true){return window.HelloLabelSamController.cancel(status);}
+function rebuildSamPromptsFromHistory(){return window.HelloLabelSamController.rebuildPrompts();}
+function renderSamOverlay(){return window.HelloLabelSamController.render();}
+function runSamPrediction(){return window.HelloLabelSamController.predict();}
+function samPointerDown(ev){return window.HelloLabelSamController.pointerDown(ev);}
+function samPointerMove(ev){return window.HelloLabelSamController.pointerMove(ev);}
+function samPointerUp(ev){return window.HelloLabelSamController.pointerUp(ev);}
+function samUndoPrompt(){return window.HelloLabelSamController.undoPrompt();}
+function acceptSam(){return window.HelloLabelSamController.accept();}
+
+window.HelloLabelYoloController.configure({
+  state,els,t,setBusy,responseError,pushHistory,stableColor,uid,makeShape,
+  markDirty,renderAll,selectId,shapeIds,setStatus,escapeHtml,showModal
+});
+function runYolo(){return window.HelloLabelYoloController.run();}
+function updateYoloUi(){return window.HelloLabelYoloController.updateUi();}
+function showModelStatus(){return window.HelloLabelYoloController.showModelStatus();}
 
 // ---------- View transform, display, modes ----------
-function applyLanguage(lang,persist=true){
-  lang=lang==="en"?"en":"zh";state.language=lang;if(persist)try{localStorage.setItem("hellolabel-language",lang);}catch{}
-  document.documentElement.lang=lang==="en"?"en":"zh-CN";els.languageSelect.value=lang;els.languageSelect.setAttribute("aria-label",lang==="en"?"Interface language: English; click to switch to Chinese":"界面语言：中文；点击切换 English");
-  document.querySelectorAll("[data-i18n]").forEach(el=>{const key=el.dataset.i18n;if(I18N[lang]?.[key]!=null)el.textContent=t(key);});
-  document.querySelectorAll("[data-i18n-title]").forEach(el=>{const key=el.dataset.i18nTitle;if(I18N[lang]?.[key]!=null){const label=t(key);el.title=label;if(!el.matches("select,input"))el.setAttribute("aria-label",label);}});
-  document.querySelectorAll("[data-i18n-placeholder]").forEach(el=>{const key=el.dataset.i18nPlaceholder;if(I18N[lang]?.[key]!=null)el.placeholder=t(key);});
-  if(!state.dirHandle)els.folderName.textContent=t("noFolder");
-  applyTheme(currentTheme(),false);updateYoloUi();renderFileList();renderLabelList();rebuildInstanceList();updateSelectionPanel();
-  if(!state.data){setSaveState(t("noFileOpen"));setStatus(t("waiting"));}else if(state.dirty)setSaveState(t("unsaved"),"saving");else setSaveState(state.jsonHandle?t("saved"):t("notCreatedJson"),state.jsonHandle?"saved":"");
-}
-function currentAiToolbarVisible(){try{const v=localStorage.getItem("hellolabel-ai-toolbar-visible")??localStorage.getItem("labelit-ai-toolbar-visible");return v!=="0";}catch{return true;}}
-function applyAiToolbarVisibility(visible,persist=true){
-  visible=!!visible;state.aiToolbarVisible=visible;if(persist)try{localStorage.setItem("hellolabel-ai-toolbar-visible",visible?"1":"0");}catch{}
-  if(!visible&&state.mode==="sam")cancelSam(false);document.documentElement.classList.toggle("ai-tools-hidden",!visible);els.aiToolbarToggle.checked=visible;
-  requestAnimationFrame(()=>{resizeOverlay();scheduleViewportRender();scheduleInstanceListRender();});
-}
-function currentPanelVisible(side){try{const v=localStorage.getItem(`hellolabel-${side}-panel-visible`)??localStorage.getItem(`labelit-${side}-panel-visible`);return v!=="0";}catch{return true;}}
-function updatePanelToggleUi(){
-  if(!els.appGrid)return;
-  const left=!!state.leftPanelVisible,right=!!state.rightPanelVisible;
-  els.appGrid.classList.toggle("left-collapsed",!left);els.appGrid.classList.toggle("right-collapsed",!right);
-  if(els.leftSidebarToggle){els.leftSidebarToggle.textContent=left?"‹":"›";els.leftSidebarToggle.setAttribute("aria-expanded",String(left));}
-  if(els.rightSidebarToggle){els.rightSidebarToggle.textContent=right?"›":"‹";els.rightSidebarToggle.setAttribute("aria-expanded",String(right));}
-}
-function applyPanelVisibility(side,visible,persist=true){
-  visible=!!visible;if(side==="left")state.leftPanelVisible=visible;else state.rightPanelVisible=visible;
-  if(persist)try{localStorage.setItem(`hellolabel-${side}-panel-visible`,visible?"1":"0");}catch{}
-  updatePanelToggleUi();requestAnimationFrame(()=>{resizeOverlay();scheduleViewportRender();scheduleInstanceListRender();});
-}
-function togglePanel(side){applyPanelVisibility(side,side==="left"?!state.leftPanelVisible:!state.rightPanelVisible);}
-function closeAppMenu(){els.appMenu?.classList.add("hidden");els.appMenuBtn?.setAttribute("aria-expanded","false");els.appMenu?.querySelectorAll(".menu-entry.open").forEach(x=>x.classList.remove("open"));}
-function toggleAppMenu(){const open=els.appMenu?.classList.contains("hidden");if(!els.appMenu)return;if(open){els.appMenu.classList.remove("hidden");els.appMenuBtn?.setAttribute("aria-expanded","true");}else closeAppMenu();}
-async function showAbout(){await showModal({title:t("menuAboutHelloLabel"),body:`<div style="white-space:pre-line">${escapeHtml(t("aboutText"))}</div><div class="muted" style="padding-left:0">Version 0.2.14</div>`,buttons:[{label:t("close"),value:"ok",className:"primary"}]});}
-async function showShortcuts(){
-  const zh=state.language!=="en";
-  const rows=zh?[
-    ["V","指针：选择标注；拖动标注可移动位置，拖动控制点可修改形状。"],
-    ["B","画笔：单击开始绘制，移动鼠标沿轮廓描绘，靠近起点时自动闭合。"],
-    ["P","多边形：依次单击添加顶点，按 Enter 或双击完成。"],
-    ["R","矩形：单击一个角开始，移动鼠标实时预览，再单击另一角完成。"],
-    ["O","有向矩形：先单击两点确定一条边，再单击确定矩形宽度。"],
-    ["C","圆形：单击圆心开始，移动鼠标实时预览，再单击圆周位置完成。"],
-    ["D","点：单击创建一个点标注。"],
-    ["L","直线：依次单击起点和终点。"],
-    ["K","折线：依次单击添加折点，按 Enter 或双击完成。"],
-    ["鼠标滚轮","缩放图片视图。"],
-    ["鼠标中键拖动","平移图片视图。"],
-    ["Space + 拖动","按住空格键并拖动鼠标，平移图片视图。"],
-    ["Enter","完成当前多边形/折线；AI 交互模式下接受当前分割结果。"],
-    ["Esc","取消当前绘制或取消 AI 交互。"],
-    ["Backspace","AI 交互模式下撤销最后一个提示点或提示框。"],
-    ["Delete","删除选中的实例；编辑多边形/折线顶点时删除当前顶点。"],
-    ["双击边线","在多边形或折线的边上插入一个新顶点。"],
-    ["Ctrl + O","打开图片文件夹。"],
-    ["Ctrl + S","立即保存当前 Labelme JSON。"],
-    ["Ctrl + Z","撤销上一步操作。"],
-    ["Ctrl + Y","重做上一步被撤销的操作。"],
-    ["Ctrl + Shift + Z","重做上一步被撤销的操作。"]
-  ]:[
-    ["V","Pointer: select annotations; drag a shape to move it, or drag handles to edit its geometry."],
-    ["B","Brush: click once to start, move along the outline, and return near the start point to close automatically."],
-    ["P","Polygon: click to add vertices; press Enter or double-click to finish."],
-    ["R","Rectangle: click one corner to start, move the mouse for a live preview, then click the opposite corner to finish."],
-    ["O","Oriented Rectangle: click two points to define an edge, then click again to set the width."],
-    ["C","Circle: click the center to start, move the mouse for a live preview, then click the circumference to finish."],
-    ["D","Point: click once to create a point annotation."],
-    ["L","Line: click the start point and then the end point."],
-    ["K","Polyline: click to add vertices; press Enter or double-click to finish."],
-    ["Mouse wheel","Zoom the image view."],
-    ["Middle-button drag","Pan the image view."],
-    ["Space + drag","Hold Space and drag the mouse to pan the image view."],
-    ["Enter","Finish the current polygon/polyline; in AI mode, accept the current segmentation result."],
-    ["Esc","Cancel the current drawing or AI interaction."],
-    ["Backspace","In AI mode, remove the most recent prompt point or box."],
-    ["Delete","Delete the selected instance; while editing polygon/polyline vertices, delete the active vertex."],
-    ["Double-click edge","Insert a new vertex on a polygon or polyline edge."],
-    ["Ctrl + O","Open an image folder."],
-    ["Ctrl + S","Save the current Labelme JSON immediately."],
-    ["Ctrl + Z","Undo the previous operation."],
-    ["Ctrl + Y","Redo the last undone operation."],
-    ["Ctrl + Shift + Z","Redo the last undone operation."]
-  ];
-  const body=`<div class="shortcut-list">${rows.map(([key,desc])=>`<div class="shortcut-row"><kbd>${escapeHtml(key)}</kbd><span>${escapeHtml(desc)}</span></div>`).join("")}</div>`;
-  await showModal({title:t("shortcuts"),body,buttons:[{label:t("close"),value:"ok",className:"primary"}]});
-}
-async function installAIFromMenu(){
-  if(state.aiInstallerLaunching){
-    setStatus(t("installAIStarted"));
-    return;
-  }
-  const ok=await confirmModal(t("installAIConfirmTitle"),escapeHtml(t("installAIConfirmText")),t("installAI"));
-  if(!ok)return;
-  state.aiInstallerLaunching=true;
-  setStatus(t("installAILaunching"));
-  try{
-    let result=null;
-    if(window.helloLabelDesktop?.installAI){
-      result=await window.helloLabelDesktop.installAI();
-    }else{
-      const response=await fetch("/api/system/install-ai",{method:"POST",headers:{"Accept":"application/json"}});
-      let data={};try{data=await response.json();}catch{}
-      if(!response.ok)throw new Error(data.detail||data.message||`HTTP ${response.status}`);
-      result=data;
-    }
-    if(result&&result.ok===false)throw new Error(result.message||t("installAIUnavailable"));
-    setStatus(t("installAIStarted"));
-    await showModal({title:t("installAIConfirmTitle"),body:`<div>${escapeHtml(t("installAIStarted"))}</div>`,buttons:[{label:t("ok"),value:"ok",className:"primary"}]});
-  }catch(err){
-    state.aiInstallerLaunching=false;
-    const message=err?.message||String(err);
-    setStatus(t("installAIError",{message}),true);
-    await showModal({title:t("installAIConfirmTitle"),body:`<div class="danger-note">${escapeHtml(t("installAIError",{message}))}</div>`,buttons:[{label:t("close"),value:"ok",className:"primary"}]});
-  }
-}
-async function runMenuCommand(cmd){
-  closeAppMenu();
-  if(cmd==="open-folder")return requestFolder();
-  if(cmd==="save")return saveJsonToFolder(true).catch(e=>{setSaveState(t("saveFailed"),"error");setStatus(e.message,true);});
-  if(cmd==="delete-json")return deleteCurrentJson();
-  if(cmd==="close"){if(window.helloLabelDesktop?.quit)return window.helloLabelDesktop.quit();window.close();return;}
-  if(cmd==="toggle-left")return togglePanel("left");if(cmd==="toggle-right")return togglePanel("right");
-  if(cmd==="toggle-ai"){applyAiToolbarVisibility(!state.aiToolbarVisible);return;}
-  if(cmd==="install-ai")return installAIFromMenu();
-  if(cmd==="fit")return fitToWindow();if(cmd==="actual")return actualSize();
-  if(cmd==="undo")return undo();if(cmd==="redo")return redo();if(cmd==="delete")return deleteSelected();
-  if(cmd==="lang-zh")return applyLanguage("zh");if(cmd==="lang-en")return applyLanguage("en");if(cmd==="theme")return cycleTheme();if(cmd==="model-status")return showModelStatus();
-  if(cmd==="about")return showAbout();if(cmd==="shortcuts")return showShortcuts();
-}
-function currentTheme(){try{return localStorage.getItem("hellolabel-theme")||localStorage.getItem("labelit-theme")||"system";}catch{return "system";}}
-function themeIconSvg(mode){
-  if(mode==="light")return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.6"/><path d="M12 2.8v2M12 19.2v2M2.8 12h2M19.2 12h2M5.5 5.5l1.4 1.4M17.1 17.1l1.4 1.4M18.5 5.5l-1.4 1.4M6.9 17.1l-1.4 1.4"/></svg>';
-  if(mode==="dark")return '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.7 15.2A7.7 7.7 0 0 1 8.8 5.3 7.8 7.8 0 1 0 18.7 15.2Z"/></svg>';
-  return '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17M12 3.5a8.5 8.5 0 0 1 0 17"/></svg>';
-}
-function applyTheme(mode,persist=true){if(persist)try{localStorage.setItem("hellolabel-theme",mode);}catch{}const actual=mode==="system"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):mode;document.documentElement.dataset.theme=actual;els.themeBtn.innerHTML=themeIconSvg(mode);const label=mode==="system"?t("systemTheme"):mode==="light"?t("lightTheme"):t("darkTheme");els.themeBtn.title=label;els.themeBtn.setAttribute("aria-label",label);if(state.data){buildLabelAtlas();scheduleViewportRender();}}
-function cycleTheme(){const m=currentTheme();applyTheme(m==="system"?"light":m==="light"?"dark":"system");}
-function applyImageDisplay(){const b=Math.max(0,(100+Number(state.brightness))/100),c=Number(state.contrast)/100;els.imageView.style.filter=`brightness(${b}) contrast(${c})`;els.brightnessValue.textContent=String(state.brightness);els.contrastValue.textContent=c.toFixed(2);}
-function resetDisplay(){state.brightness=0;state.contrast=100;els.brightnessSlider.value="0";els.contrastSlider.value="100";applyImageDisplay();}
-function fitToWindow(){if(!state.data)return;const r=els.viewport.getBoundingClientRect(),pad=20,s=Math.min((r.width-pad*2)/Math.max(1,state.width),(r.height-pad*2)/Math.max(1,state.height));state.scale=clamp(s,.02,40);state.panX=(r.width-state.width*state.scale)/2;state.panY=(r.height-state.height*state.scale)/2;scheduleViewportRender();}
-function actualSize(){if(!state.data)return;const r=els.viewport.getBoundingClientRect();state.scale=1;state.panX=(r.width-state.width)/2;state.panY=(r.height-state.height)/2;scheduleViewportRender();}
-function zoomAt(factor,clientX=null,clientY=null){if(!state.data)return;const r=els.viewport.getBoundingClientRect(),cx=clientX==null?r.left+r.width/2:clientX,cy=clientY==null?r.top+r.height/2:clientY,ix=(cx-r.left-state.panX)/state.scale,iy=(cy-r.top-state.panY)/state.scale,next=clamp(state.scale*factor,.02,80);state.panX=(cx-r.left)-ix*next;state.panY=(cy-r.top)-iy*next;state.scale=next;scheduleViewportRender();}
-function startPan(ev){if(!(ev.button===1||(state.spaceDown&&ev.button===0)))return false;state.panning=true;state.panStart={x:ev.clientX,y:ev.clientY,panX:state.panX,panY:state.panY,pointerId:ev.pointerId};els.viewport.classList.add("panning");(window.helloLabelPointerInput?.capture?.(ev) ?? (els.viewport.setPointerCapture?.(ev.pointerId),true));ev.preventDefault();return true;}
-function movePan(ev){if(!state.panning)return false;state.panX=state.panStart.panX+(ev.clientX-state.panStart.x);state.panY=state.panStart.panY+(ev.clientY-state.panStart.y);scheduleViewportRender();return true;}
-function endPan(){if(!state.panning)return false;const pointerId=state.panStart?.pointerId;state.panning=false;state.panStart=null;els.viewport.classList.remove("panning");window.helloLabelPointerInput?.release?.(pointerId);return true;}
+window.HelloLabelLanguageTheme.configure({
+  state,els,t,updateYoloUi,renderFileList,renderLabelList,rebuildInstanceList,updateSelectionPanel,
+  setSaveState,setStatus,buildLabelAtlas,scheduleViewportRender
+});
+function applyLanguage(lang,persist=true){return window.HelloLabelLanguageTheme.applyLanguage(lang,persist);}
+function currentTheme(){return window.HelloLabelLanguageTheme.currentTheme();}
+function themeIconSvg(mode){return window.HelloLabelLanguageTheme.themeIconSvg(mode);}
+function applyTheme(mode,persist=true){return window.HelloLabelLanguageTheme.applyTheme(mode,persist);}
+function cycleTheme(){return window.HelloLabelLanguageTheme.cycleTheme();}
+
+window.HelloLabelLayout.configure({
+  state,els,cancelSam,resizeOverlay,scheduleViewportRender,scheduleInstanceListRender
+});
+function currentAiToolbarVisible(){return window.HelloLabelLayout.currentAiToolbarVisible();}
+function applyAiToolbarVisibility(visible,persist=true){return window.HelloLabelLayout.applyAiToolbarVisibility(visible,persist);}
+function currentPanelVisible(side){return window.HelloLabelLayout.currentPanelVisible(side);}
+function updatePanelToggleUi(){return window.HelloLabelLayout.updatePanelToggleUi();}
+function applyPanelVisibility(side,visible,persist=true){return window.HelloLabelLayout.applyPanelVisibility(side,visible,persist);}
+function togglePanel(side){return window.HelloLabelLayout.togglePanel(side);}
+function closeAppMenu(){return window.HelloLabelLayout.closeAppMenu();}
+function toggleAppMenu(){return window.HelloLabelLayout.toggleAppMenu();}
+
+window.HelloLabelViewport.configure({state,els,clamp,scheduleViewportRender});
+function applyImageDisplay(){return window.HelloLabelViewport.applyImageDisplay();}
+function resetDisplay(){return window.HelloLabelViewport.resetDisplay();}
+function fitToWindow(){return window.HelloLabelViewport.fitToWindow();}
+function actualSize(){return window.HelloLabelViewport.actualSize();}
+function zoomAt(factor,clientX=null,clientY=null){return window.HelloLabelViewport.zoomAt(factor,clientX,clientY);}
+function startPan(ev){return window.HelloLabelViewport.startPan(ev);}
+function movePan(ev){return window.HelloLabelViewport.movePan(ev);}
+function endPan(){return window.HelloLabelViewport.endPan();}
+
+window.HelloLabelHelpMenu.configure({
+  state,showModal,t,escapeHtml,confirmModal,setStatus,closeAppMenu,requestFolder,
+  saveJsonToFolder,setSaveState,deleteCurrentJson,togglePanel,applyAiToolbarVisibility,
+  installAI:()=>window.HelloLabelHelpMenu.installAIFromMenu(),
+  fitToWindow,actualSize,undo,redo,deleteSelected,applyLanguage,cycleTheme,showModelStatus
+});
+function showAbout(){return window.HelloLabelHelpMenu.showAbout();}
+function showShortcuts(){return window.HelloLabelHelpMenu.showShortcuts();}
+function installAIFromMenu(){return window.HelloLabelHelpMenu.installAIFromMenu();}
+function runMenuCommand(cmd){return window.HelloLabelHelpMenu.runMenuCommand(cmd);}
+
 window.HelloLabelMode.configure({
   state,
   buttons: MODE_BUTTONS,
