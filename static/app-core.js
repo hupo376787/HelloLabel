@@ -447,21 +447,17 @@ async function commitGeometry(type,points,meta={source:"manual"}){
 }
 function cancelDrawing(status=true){state.drawing=null;renderDrawingOverlay();window.HelloLabelDrawingState?.idle?.();if(status)setStatus(t("drawingCancelled"));}
 function orientedRectFromEdge(a,b,c){return window.HelloLabelObbTool.fromEdge(a,b,c);}
-function currentDrawingShape(){
-  const d=state.drawing;if(!d)return null;
-  if(d.type==="pen"||d.type==="polygon"||d.type==="linestrip"){const pts=[...(d.points||[])];if(d.cursor&&d.type!=="pen")pts.push(d.cursor);return makeShape("",d.type==="polygon"?"linestrip":"linestrip",pts);}
-  if(d.type==="line"){const pts=[...(d.points||[])];if(d.cursor)pts.push(d.cursor);return makeShape("","line",pts.slice(0,2));}
-  if(d.type==="rectangle"&&d.start&&d.current)return makeShape("","rectangle",[d.start,d.current]);
-  if(d.type==="circle"&&d.start&&d.current)return makeShape("","circle",[d.start,d.current]);
-  if(d.type==="oriented_rectangle"){
-    if(d.points.length===1&&d.cursor)return makeShape("","line",[d.points[0],d.cursor]);
-    if(d.points.length>=2&&d.cursor)return makeShape("","oriented_rectangle",orientedRectFromEdge(d.points[0],d.points[1],d.cursor));
-  }
-  return null;
-}
-function renderDrawingOverlay(){
-  const shape=currentDrawingShape();if(!shape||!shape.points?.length){els.drawingPath.classList.add("hidden-svg");els.drawingStart.classList.add("hidden-svg");return;}els.drawingPath.setAttribute("d",shapeScreenPath(shape));els.drawingPath.style.fill=isClosedType(shape.shape_type)?"":"none";els.drawingPath.classList.remove("hidden-svg");const first=shape.points[0]?imageToViewport(...shape.points[0]):null;if(first&&(state.drawing.type==="pen"||state.drawing.type==="polygon"||state.drawing.type==="linestrip")){els.drawingStart.setAttribute("cx",first[0]);els.drawingStart.setAttribute("cy",first[1]);els.drawingStart.classList.remove("hidden-svg");}else els.drawingStart.classList.add("hidden-svg");
-}
+window.HelloLabelDrawingPreview.configure({
+  state,
+  els,
+  makeShape,
+  orientedRectFromEdge,
+  shapeScreenPath,
+  isClosedType,
+  imageToViewport
+});
+function renderDrawingOverlay(){return window.HelloLabelDrawingPreview.render();}
+
 async function finishSequenceDrawing(){
   const d=state.drawing;if(!d)return;
   const sourceType=d.type;
