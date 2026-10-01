@@ -100,6 +100,14 @@
     return [x / points.length, y / points.length];
   }
 
+  function pointerDistance(points) {
+    if (points.length < 2) return 0;
+    return Math.hypot(
+      points[1].clientX - points[0].clientX,
+      points[1].clientY - points[0].clientY,
+    );
+  }
+
   function makeTouchEvent(snapshot, clientX = snapshot.clientX, clientY = snapshot.clientY, buttons = 1) {
     return {
       pointerId: snapshot.pointerId,
@@ -187,17 +195,23 @@
   }
 
   function beginTwoFingerPan() {
-    const points = touchPointers();
+    const points = touchPointers().slice(0, 2);
     if (points.length < 2) return false;
     cancelSingleForNavigation();
     touchSession = null;
-    const [cx, cy] = centroid(points.slice(0, 2));
+    const [cx, cy] = centroid(points);
+    const rect = viewport.getBoundingClientRect();
+    const startScale = Math.max(0.0001, Number(state?.scale || 1));
     navigationLock = true;
     navigation = {
       startCentroidX: cx,
       startCentroidY: cy,
+      startDistance: Math.max(1, pointerDistance(points)),
       startPanX: Number(state?.panX || 0),
       startPanY: Number(state?.panY || 0),
+      startScale,
+      anchorImageX: (cx - rect.left - Number(state?.panX || 0)) / startScale,
+      anchorImageY: (cy - rect.top - Number(state?.panY || 0)) / startScale,
     };
     if (state) {
       state.panning = true;
@@ -209,11 +223,19 @@
 
   function updateTwoFingerPan() {
     if (!navigation) return false;
-    const points = touchPointers();
+    const points = touchPointers().slice(0, 2);
     if (points.length < 2) return true;
-    const [cx, cy] = centroid(points.slice(0, 2));
-    state.panX = navigation.startPanX + (cx - navigation.startCentroidX);
-    state.panY = navigation.startPanY + (cy - navigation.startCentroidY);
+    const [cx, cy] = centroid(points);
+    const rect = viewport.getBoundingClientRect();
+    const distance = Math.max(1, pointerDistance(points));
+    const scaleFactor = distance / navigation.startDistance;
+    const nextScale = typeof clamp === "function"
+      ? clamp(navigation.startScale * scaleFactor, 0.02, 80)
+      : Math.max(0.02, Math.min(80, navigation.startScale * scaleFactor));
+
+    state.scale = nextScale;
+    state.panX = (cx - rect.left) - navigation.anchorImageX * nextScale;
+    state.panY = (cy - rect.top) - navigation.anchorImageY * nextScale;
     if (typeof scheduleViewportRender === "function") scheduleViewportRender();
     return true;
   }
