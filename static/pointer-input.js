@@ -50,6 +50,10 @@
   let touchSession = null;
   let navigation = null;
   let navigationLock = false;
+  let seenTouch = false;
+  let samNegativeArmed = false;
+  let touchActionBar = null;
+  let touchActionRefreshRaf = 0;
 
   function normalizePointerType(value) {
     const type = String(value || "").toLowerCase();
@@ -121,14 +125,14 @@
     );
   }
 
-  function makeTouchEvent(snapshot, clientX = snapshot.clientX, clientY = snapshot.clientY, buttons = 1) {
+  function makeTouchEvent(snapshot, clientX = snapshot.clientX, clientY = snapshot.clientY, buttons = 1, button = 0) {
     return {
       pointerId: snapshot.pointerId,
       pointerType: "touch",
       isPrimary: snapshot.isPrimary,
       clientX,
       clientY,
-      button: 0,
+      button,
       buttons,
       target: snapshot.target || viewport,
       ctrlKey: snapshot.ctrlKey,
@@ -139,6 +143,130 @@
       stopPropagation() {},
       stopImmediatePropagation() {},
     };
+  }
+
+  function isTouchActionTarget(target) {
+    return !!target?.closest?.(".hellolabel-touch-actions");
+  }
+
+  function queueTouchActionRefresh() {
+    if (touchActionRefreshRaf) return;
+    touchActionRefreshRaf = requestAnimationFrame(() => {
+      touchActionRefreshRaf = 0;
+      refreshTouchActions();
+    });
+  }
+
+  function touchActionButton(label, action, { primary = false, active = false } = {}) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.touchAction = action;
+    button.textContent = label;
+    if (primary) button.classList.add("primary");
+    if (active) button.classList.add("active");
+    return button;
+  }
+
+  function ensureTouchActionBar() {
+    if (touchActionBar) return touchActionBar;
+    const style = document.createElement("style");
+    style.textContent = `
+      .hellolabel-touch-actions{
+        position:absolute;left:50%;bottom:max(12px,env(safe-area-inset-bottom));
+        transform:translateX(-50%);z-index:20;display:flex;gap:8px;align-items:center;
+        padding:7px;border:1px solid color-mix(in srgb,var(--line2) 88%,transparent);
+        border-radius:14px;background:color-mix(in srgb,var(--panel) 94%,transparent);
+        box-shadow:0 10px 28px rgba(0,0,0,.22);backdrop-filter:blur(10px);
+        pointer-events:auto;
+      }
+      .hellolabel-touch-actions.hidden{display:none}
+      .hellolabel-touch-actions button{
+        min-width:48px;min-height:44px;padding:8px 13px;border-radius:10px;font-size:13px;font-weight:650;
+        touch-action:manipulation;
+      }
+      .hellolabel-touch-actions button.primary{border-color:color-mix(in srgb,var(--accent) 65%,var(--line2));}
+      .hellolabel-touch-actions button.active{background:color-mix(in srgb,var(--accent) 22%,var(--panel2));border-color:var(--accent);}
+    `;
+    document.head.appendChild(style);
+    touchActionBar = document.createElement("div");
+    touchActionBar.className = "hellolabel-touch-actions hidden";
+    touchActionBar.setAttribute("role", "toolbar");
+    touchActionBar.setAttribute("aria-label", "Touch annotation actions");
+    viewport.appendChild(touchActionBar);
+    touchActionBar.addEventListener("click", event => {
+      const button = event.target.closest?.("button[data-touch-action]");
+      if (!button) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const action = button.dataset.touchAction;
+      if (action === "undo-point") {
+        window.helloLabelDrawingUndo?.undoDrawingPoint?.();
+      } else if (action === "finish") {
+        const drawing = state?.drawing;
+        if (drawing?.type === "oriented_rectangle" && drawing.points?.length === 2 && drawing.cursor) {
+          drawing.points = orientedRectFromEdge(drawing.points[0], drawing.points[1], drawing.cursor);
+        }
+        if (state?.drawing) void finishSequenceDrawing();
+      } else if (action === "cancel") {
+        if (state?.mode === "sam") cancelSam();
+        else if (state?.drawing) cancelDrawing();
+      } else if (action === "reopen") {
+        window.helloLabelGeometryEdit?.reopenSelectedShape?.();
+      } else if (action === "sam-negative") {
+        samNegativeArmed = !samNegativeArmed;
+      }
+      queueTouchActionRefresh();
+    });
+    return touchActionBar;
+  }
+
+  function refreshTouchActions() {
+    const bar = ensureTouchActionBar();
+    if (!seenTouch || navigationLock || !state?.data) {
+      bar.classList.add("hidden");
+      bar.replaceChildren();
+      return;
+    }
+    const en = state.language === "en";
+    const buttons = [];
+    const drawing = state.drawing;
+
+    if (state.mode === "sam") {
+      buttons.push(touchActionButton(
+        samNegativeArmed ? (en ? "Negative: on" : "负样本：开") : (en ? "Negative" : "负样本"),
+        "sam-negative",
+        { active: samNegativeArmed },
+      ));
+      buttons.push(touchActionButton(en ? "Cancel" : "取消", "cancel"));
+    } else if (drawing) {
+      if ((drawing.type === "polygon" || drawing.type === "linestrip") && drawing.points?.length) {
+        buttons.push(touchActionButton(en ? "Undo point" : "撤销一点", "undo-point"));
+      }
+      const canFinish =
+        (drawing.type === "polygon" && drawing.points?.length >= 3) ||
+        (drawing.type === "linestrip" && drawing.points?.length >= 2) ||
+        (drawing.type === "pen" && drawing.points?.length >= 3) ||
+        (drawing.type === "line" && drawing.points?.length >= 2) ||
+        (drawing.type === "oriented_rectangle" && (drawing.points?.length >= 4 || (drawing.points?.length === 2 && drawing.cursor)));
+      if (canFinish) buttons.push(touchActionButton(en ? "Finish" : "完成", "finish", { primary: true }));
+      buttons.push(touchActionButton(en ? "Cancel" : "取消", "cancel"));
+    } else if (state.mode === "pointer" && state.primaryId) {
+      const shape = typeof primaryShape === "function" ? primaryShape() : null;
+      if (shape && ["polygon", "linestrip", "rectangle", "circle", "line", "oriented_rectangle"].includes(shape.shape_type)) {
+        buttons.push(touchActionButton(en ? "Re-edit" : "重新编辑", "reopen"));
+      }
+    }
+
+    bar.replaceChildren(...buttons);
+    bar.classList.toggle("hidden", buttons.length === 0);
+  }
+
+  function addTouchSamNegative(snapshot, clientX, clientY) {
+    const negativeEvent = makeTouchEvent(snapshot, clientX, clientY, 0, 2);
+    samNegativeArmed = false;
+    const handled = !!samPointerDown(negativeEvent);
+    queueTouchActionRefresh();
+    return handled;
   }
 
   function tryTouchGeometryTap(eventLike) {
@@ -226,6 +354,7 @@
 
   function startSingleTouch(clientX, clientY, { completeStageOnUp = false } = {}) {
     if (!touchSession || touchSession.started) return;
+    if (state?.mode === "sam" && samNegativeArmed) samNegativeArmed = false;
     touchSession.started = true;
     touchSession.completeStageOnUp = !!completeStageOnUp;
     routeSingleDown(makeTouchEvent(touchSession, touchSession.startClientX, touchSession.startClientY, 1));
@@ -298,9 +427,16 @@
 
   function onPointerDown(event) {
     lastPointerType = normalizePointerType(event.pointerType);
+    if (lastPointerType === "touch" && isTouchActionTarget(event.target)) {
+      seenTouch = true;
+      queueTouchActionRefresh();
+      return;
+    }
     activePointers.set(event.pointerId, pointerSnapshot(event));
     if (lastPointerType !== "touch") return;
 
+    seenTouch = true;
+    queueTouchActionRefresh();
     consumeTouchEvent(event);
     capture(event);
 
@@ -313,6 +449,7 @@
 
   function onPointerMove(event) {
     lastPointerType = normalizePointerType(event.pointerType);
+    if (lastPointerType === "touch" && isTouchActionTarget(event.target)) return;
     if (activePointers.has(event.pointerId)) activePointers.set(event.pointerId, pointerSnapshot(event));
     if (lastPointerType !== "touch") return;
 
@@ -353,6 +490,10 @@
   function onPointerUp(event) {
     lastPointerType = normalizePointerType(event.pointerType);
     const wasTouch = lastPointerType === "touch";
+    if (wasTouch && isTouchActionTarget(event.target)) {
+      queueTouchActionRefresh();
+      return;
+    }
     const snapshot = activePointers.get(event.pointerId) || pointerSnapshot(event);
     activePointers.delete(event.pointerId);
     if (!wasTouch) return;
@@ -368,14 +509,18 @@
     if (!touchSession || touchSession.pointerId !== event.pointerId) return;
     const upEvent = makeTouchEvent(snapshot, event.clientX, event.clientY, 0);
     if (!touchSession.started) {
-      routeSingleDown(upEvent);
-      routeSingleUp(upEvent);
+      if (state.mode === "sam" && samNegativeArmed) addTouchSamNegative(snapshot, event.clientX, event.clientY);
+      else {
+        routeSingleDown(upEvent);
+        routeSingleUp(upEvent);
+      }
     } else {
       routeSingleMove(makeTouchEvent(snapshot, event.clientX, event.clientY, 1));
       if (touchSession.completeStageOnUp) routeSingleDown(upEvent);
       routeSingleUp(upEvent);
     }
     touchSession = null;
+    queueTouchActionRefresh();
   }
 
   function onPointerCancel(event) {
@@ -396,7 +541,12 @@
       touchSession = null;
     }
     endNavigationIfFinished();
+    queueTouchActionRefresh();
   }
+
+  document.addEventListener("click", () => {
+    if (seenTouch) queueTouchActionRefresh();
+  });
 
   viewport.addEventListener("pointerdown", onPointerDown, { capture: true, passive: false });
   viewport.addEventListener("pointermove", onPointerMove, { capture: true, passive: false });
@@ -421,6 +571,10 @@
     },
     get touchPointerCount() {
       return touchPointers().length;
+    },
+    refreshTouchActions,
+    get samNegativeArmed() {
+      return samNegativeArmed;
     },
     get navigationActive() {
       return navigationLock;

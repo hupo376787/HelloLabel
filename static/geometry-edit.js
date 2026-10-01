@@ -360,11 +360,22 @@
   viewport.addEventListener("pointerleave", clearSnap, { passive: true });
   viewport.addEventListener("wheel", clearSnap, { passive: true });
 
+  function reopenSelectedShape() {
+    const id = state?.primaryId;
+    const shape = id ? shapeAtId(id) : null;
+    if (!shape) return false;
+    const anchor = typeof shapeAnchor === "function" ? shapeAnchor(shape) : (shape.points?.[0] || [0, 0]);
+    const viewportPoint = imageToViewport(anchor[0], anchor[1]);
+    const rect = viewport.getBoundingClientRect();
+    return reopenCompletedShape({ id, shape }, rect.left + viewportPoint[0], rect.top + viewportPoint[1]);
+  }
+
   window.helloLabelGeometryEdit = {
     findEditableEdge,
     insertSnappedVertex,
     polygonStartSnap,
     reopenCompletedShape,
+    reopenSelectedShape,
     clearSnap,
   };
 })();
