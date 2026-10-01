@@ -230,7 +230,7 @@
       state.imageName = entry.name;
       markActiveFile(entry.name);
 
-      await loadPreview(state.imageFile);
+      await api.loadPreview(state.imageFile);
       state.jsonHandle = await siblingJsonHandle(entry.name, false);
 
       if (state.jsonHandle) {

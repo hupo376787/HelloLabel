@@ -127,7 +127,7 @@
     }
   }
 
-  loadPreview = async function(file) {
+  window.HelloLabelFolder.loadPreview = async function(file) {
     if (!file) throw new Error(message("没有可读取的图片文件。", "No image file was provided."));
 
     const isTiff = TIFF_EXTENSIONS.has(extOf(file.name));

@@ -238,6 +238,8 @@ assert(!appCore.includes("function rebuildInstanceList(){state.instanceIds"), "i
 assert(!appCore.includes("lineVs="), "WebGL shader implementation must not remain inline in app core");
 assert(!appCore.includes("state.shapeById.clear();state.indexById.clear();state.shapeGrid.clear();"), "render cache implementation must not remain inline in app core");
 assert(!appCore.includes("async function requestFolder(){"), "folder workflow must not remain inline in app core");
+assert(folderController.includes("await api.loadPreview(state.imageFile);"), "folder controller must dispatch preview loading through the replaceable module API");
+assert(browserRuntime.includes("window.HelloLabelFolder.loadPreview = async function(file)"), "browser runtime must replace the folder module preview loader directly");
 assert(!appCore.includes("async function saveJsonToFolder(showMessage=true){"), "JSON save implementation must not remain inline in app core");
 assert(!appCore.includes("function pushHistory(){if(!state.data)"), "history implementation must not remain inline in app core");
 assert(!appCore.includes("async function runYolo(){"), "YOLO implementation must not remain inline in app core");
