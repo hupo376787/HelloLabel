@@ -36,6 +36,9 @@ jobs:
       - name: Test SAM2.1 mask tensor extraction
         run: node scripts/test_sam_mask_tensor.mjs
 
+      - name: Test pointer/touch input layer
+        run: node scripts/test_pointer_input.mjs
+
       - name: Build pure-static Web distribution
         run: bash build_web.sh
 
@@ -48,6 +51,7 @@ jobs:
           set -euo pipefail
           node --check static/app.js
           node --check static/app-core.js
+          node --check static/pointer-input.js
           node --check static/browser-file-guard.js
           node --check static/browser-runtime.js
           node --check static/browser-model-cache.js
@@ -75,6 +79,7 @@ jobs:
           node --check scripts/test_boundary_guards.mjs
           node --check scripts/test_mask_geometry.mjs
           node --check scripts/test_sam_mask_tensor.mjs
+          node --check scripts/test_pointer_input.mjs
           node --check scripts/validate_web_dist.mjs
           node --check scripts/e2e_browser_v150.mjs
           node --check scripts/e2e_browser_v210.mjs
