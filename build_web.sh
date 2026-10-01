@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 OUT="dist/web"
-CACHE_TOKEN="hellolabel-v220-t8"
+CACHE_TOKEN="hellolabel-v220-t9"
 
 printf '%s\n' \
   '============================================================' \

@@ -42,11 +42,6 @@ const {
 
 const state=window.HelloLabelState.create({language:currentLanguage()});
 
-function setStatus(text,error=false){els.statusText.textContent=text;els.statusText.style.color=error?"var(--danger)":"";}
-function setBusy(on,text=t("processing")){els.busy.classList.toggle("hidden",!on);els.busyText.textContent=text;}
-function setSaveState(text,kind=""){els.saveState.textContent=text;els.saveState.className=`save-state ${kind}`.trim();}
-function responseError(res){return res.json().then(j=>j.detail||JSON.stringify(j)).catch(()=>`${res.status} ${res.statusText}`);}
-
 window.HelloLabelModel.configure({
   state,
   deepClone,
@@ -68,147 +63,49 @@ const {
   ensureDataImageFields
 }=window.HelloLabelModel;
 
-function updateActionButtons(){
-  const has=!!state.data, selected=!!primaryShape();
-  [els.fitBtn,els.actualBtn,els.zoomOutBtn,els.zoomInBtn,els.saveBtn].forEach(b=>b.disabled=!has);
-  if(els.deleteJsonBtn)els.deleteJsonBtn.disabled=!(has&&state.jsonHandle);
-  els.deleteBtn.disabled=!(has&&selected&&state.mode==="pointer");els.undoBtn.disabled=state.history.length===0;els.redoBtn.disabled=state.future.length===0;
-  els.samModeBtn.disabled=!has;els.yoloRunBtn.disabled=!has;
-}
-function enableImageUi(on){updateActionButtons();els.emptyState.classList.toggle("hidden",on);els.viewport.classList.toggle("hidden",!on);}
+window.HelloLabelStatusUI.configure({state,els,t,primaryShape});
+function setStatus(text,error=false){return window.HelloLabelStatusUI.setStatus(text,error);}
+function setBusy(on,text=t("processing")){return window.HelloLabelStatusUI.setBusy(on,text);}
+function setSaveState(text,kind=""){return window.HelloLabelStatusUI.setSaveState(text,kind);}
+function responseError(res){return window.HelloLabelStatusUI.responseError(res);}
+function updateActionButtons(){return window.HelloLabelStatusUI.updateActionButtons();}
+function enableImageUi(on){return window.HelloLabelStatusUI.enableImageUi(on);}
 
-async function requestFolder(){
-  try{await flushPendingSave();}catch(err){setStatus(t("folderSwitchSaveFailed",{message:err.message}),true);alert(t("folderSwitchCancelled",{message:err.message}));return;}
-  if(!window.showDirectoryPicker){alert(t("browserUnsupported"));return;}
-  try{
-    const handle=await window.showDirectoryPicker({mode:"readwrite"});
-    const perm=await handle.requestPermission({mode:"readwrite"});if(perm!=="granted")throw new Error(t("folderPermissionDenied"));
-    resetCurrentState();state.dirHandle=handle;state.fileFilter="";els.fileFilterInput.value="";els.folderName.textContent=handle.name;await refreshFolderEntries();
-  }catch(err){if(err?.name!=="AbortError")setStatus(String(err),true);}
-}
-async function refreshFolderEntries(){
-  const entries=[],jsonNames=new Set();
-  for await(const [name,handle] of state.dirHandle.entries()){if(handle.kind!=="file")continue;if(name.toLowerCase().endsWith(".json"))jsonNames.add(name.toLowerCase());if(isImage(name))entries.push({name,handle});}
-  state.entries=entries.sort((a,b)=>a.name.localeCompare(b.name,undefined,{numeric:true})).map(entry=>({...entry,hasJson:jsonNames.has(`${stemOf(entry.name)}.json`.toLowerCase())}));
-  renderFileList();
-  setStatus(t("folderOpened",{count:state.entries.length}));
-}
-function renderFileList(){
-  if(!els.fileList)return;if(!state.dirHandle&&!state.entries.length){els.fileList.replaceChildren();els.imageCount.textContent="0";els.clearFileFilterBtn.classList.add("hidden");return;}const q=String(state.fileFilter||"").trim().toLocaleLowerCase(),filtered=q?state.entries.filter(e=>e.name.toLocaleLowerCase().includes(q)):state.entries;
-  els.fileList.replaceChildren();els.imageCount.textContent=q?`${filtered.length}/${state.entries.length}`:String(state.entries.length);els.clearFileFilterBtn.classList.toggle("hidden",!q);
-  if(!filtered.length){const empty=document.createElement("div");empty.className="file-list-empty";empty.textContent=t("noMatchingImages");els.fileList.appendChild(empty);return;}
-  const frag=document.createDocumentFragment();
-  for(const entry of filtered){
-    const row=document.createElement("div");row.className="file-item"+(entry.name===state.imageName?" active":"");row.dataset.name=entry.name;
-    row.innerHTML=`<span class="file-type-icon"><svg viewBox="0 0 24 24"><rect x="3.25" y="4.25" width="17.5" height="15.5" rx="1.8"/><circle cx="8.2" cy="9" r="1.6"/><path d="M5.6 17.2l4.2-4.3 3.1 3.1 2.4-2.5 3.1 3.7"/></svg></span><span class="name" title="${escapeHtml(entry.name)}">${escapeHtml(entry.name)}</span>${entry.hasJson?'<span class="badge">JSON</span>':''}`;
-    row.addEventListener("click",()=>openImageEntry(entry));frag.appendChild(row);
-  }
-  els.fileList.appendChild(frag);
-}
-async function siblingJsonHandle(imageName,create=false){try{return await state.dirHandle.getFileHandle(`${stemOf(imageName)}.json`,{create});}catch(err){if(err?.name==="NotFoundError")return null;throw err;}}
-function markActiveFile(name){els.fileList.querySelectorAll(".file-item").forEach(x=>x.classList.toggle("active",x.dataset.name===name));}
+window.HelloLabelHistory.configure({
+  state,deepClone,ensureHelloLabel,clearSelection,t,renderAll,updateActionButtons,
+  setSaveState,setStatus,saveJsonToFolder
+});
+function pushHistory(){return window.HelloLabelHistory.pushHistory();}
+function restoreSnapshot(snapshot){return window.HelloLabelHistory.restoreSnapshot(snapshot);}
+function undo(){return window.HelloLabelHistory.undo();}
+function redo(){return window.HelloLabelHistory.redo();}
+function markDirty(status=t("modifiedWaiting")){return window.HelloLabelHistory.markDirty(status);}
+function scheduleAutoSave(){return window.HelloLabelHistory.scheduleAutoSave();}
+function flushPendingSave(){return window.HelloLabelHistory.flushPendingSave();}
 
-function resetCurrentState(){
-  if(state.transformRaf)cancelAnimationFrame(state.transformRaf);if(state.instanceListRaf)cancelAnimationFrame(state.instanceListRaf);if(state.saveTimer)clearTimeout(state.saveTimer);
-  if(state.previewUrl){URL.revokeObjectURL(state.previewUrl);state.previewUrl=null;}
-  state.imageHandle=null;state.imageFile=null;state.imageName="";state.jsonHandle=null;state.previewBlob=null;state.aiImageToken=null;state.width=0;state.height=0;
-  state.data=null;state.selectedIds.clear();state.primaryId=null;state.activeHandle=null;state.activeLabel=null;state.history=[];state.future=[];state.drawing=null;state.editing=null;state.dirty=false;state.revision=0;state.savedRevision=0;state.saveQueued=false;state.shapeById.clear();state.indexById.clear();state.shapeGrid.clear();state.boundsById.clear();state.runtimeIds=[];state.runtimeMeta={};state.instanceIds=[];state.sam={points:[],labels:[],box:null,history:[],preview:null,drag:null,requestSeq:0};
-  els.imageView.removeAttribute("src");els.stage.style.width="0px";els.stage.style.height="0px";
-  els.labelList.replaceChildren();els.instanceListInner.replaceChildren();els.instanceListInner.style.height="0px";els.controlHandles.replaceChildren();els.selectedPath.classList.add("hidden-svg");els.drawingPath.classList.add("hidden-svg");els.aiPreviewPath.classList.add("hidden-svg");els.samPrompts.replaceChildren();els.selectedLabelText.classList.add("hidden-svg");
-  setSaveState(t("noFileOpen"));updateSelectionPanel();enableImageUi(false);updateActionButtons();
-  state.glRenderer?.clear?.();
-}
-async function loadPreview(file){
-  const fd=new FormData();fd.append("file",file,file.name);const res=await fetch("/api/preview",{method:"POST",body:fd});if(!res.ok)throw new Error(await responseError(res));
-  const blob=await res.blob();state.previewBlob=blob;state.aiImageToken=res.headers.get("X-AI-Image-Token")||null;state.width=Number(res.headers.get("X-Image-Width"));state.height=Number(res.headers.get("X-Image-Height"));
-  if(state.previewUrl)URL.revokeObjectURL(state.previewUrl);state.previewUrl=URL.createObjectURL(blob);els.imageView.src=state.previewUrl;try{await els.imageView.decode();}catch{}
-  els.stage.style.width=`${state.width}px`;els.stage.style.height=`${state.height}px`;resizeOverlay();
-}
-async function openImageEntry(entry){
-  try{await flushPendingSave();}catch(err){setSaveState(t("saveFailed"),"error");setStatus(t("imageSwitchSaveFailed",{message:err.message}),true);alert(t("imageSwitchCancelled",{message:err.message}));return;}
-  setBusy(true,t("readImage"));
-  try{
-    resetCurrentState();state.imageHandle=entry.handle;state.imageFile=await entry.handle.getFile();state.imageName=entry.name;markActiveFile(entry.name);
-    await loadPreview(state.imageFile);state.jsonHandle=await siblingJsonHandle(entry.name,false);
-    if(state.jsonHandle){const jf=await state.jsonHandle.getFile();state.data=validateLabelme(JSON.parse(await jf.text()));setStatus(t("loadedJson",{name:stemOf(entry.name)}));}else{state.data=createEmptyLabelme();setStatus(t("emptyJson"));}
-    ensureDataImageFields();ensureHelloLabel();state.dirty=false;state.revision=0;state.savedRevision=0;setSaveState(state.jsonHandle?t("saved"):t("notCreatedJson"),state.jsonHandle?"saved":"");
-    renderAll();enableImageUi(true);requestAnimationFrame(fitToWindow);
-  }catch(err){console.error(err);setStatus(err?.message||String(err),true);alert(t("openFailed",{message:err?.message||err}));}finally{setBusy(false);}
-}
+window.HelloLabelJsonStorage.configure({
+  state,ensureDataImageFields,ensureHelloLabel,stemOf,setSaveState,t,setStatus,
+  updateActionButtons,els,scheduleAutoSave,confirmModal,escapeHtml,
+  createEmptyLabelme,renderFileList,renderAll
+});
+function saveJsonToFolder(showMessage=true){return window.HelloLabelJsonStorage.saveJsonToFolder(showMessage);}
+function deleteCurrentJson(){return window.HelloLabelJsonStorage.deleteCurrentJson();}
 
-function pushHistory(){if(!state.data)return;state.history.push({shapes:deepClone(state.data.shapes),hellolabel:deepClone(state.data.hellolabel),runtimeIds:deepClone(state.runtimeIds),runtimeMeta:deepClone(state.runtimeMeta),activeLabel:state.activeLabel});if(state.history.length>80)state.history.shift();state.future=[];updateActionButtons();}
-function restoreSnapshot(snap){state.data.shapes=deepClone(snap.shapes);state.data.hellolabel=deepClone(snap.hellolabel);state.runtimeIds=deepClone(snap.runtimeIds||[]);state.runtimeMeta=deepClone(snap.runtimeMeta||{});state.activeLabel=snap.activeLabel||null;ensureHelloLabel();clearSelection();markDirty(t("modified"));renderAll();}
-function undo(){if(!state.history.length||!state.data)return;const current={shapes:deepClone(state.data.shapes),hellolabel:deepClone(state.data.hellolabel),runtimeIds:deepClone(state.runtimeIds),runtimeMeta:deepClone(state.runtimeMeta),activeLabel:state.activeLabel};state.future.push(current);restoreSnapshot(state.history.pop());updateActionButtons();}
-function redo(){if(!state.future.length||!state.data)return;const current={shapes:deepClone(state.data.shapes),hellolabel:deepClone(state.data.hellolabel),runtimeIds:deepClone(state.runtimeIds),runtimeMeta:deepClone(state.runtimeMeta),activeLabel:state.activeLabel};state.history.push(current);restoreSnapshot(state.future.pop());updateActionButtons();}
-
-function markDirty(status=t("modifiedWaiting")){state.revision++;state.dirty=true;setSaveState(t("unsaved"),"saving");setStatus(status);scheduleAutoSave();}
-function scheduleAutoSave(){if(!state.data||!state.dirHandle)return;if(state.saveTimer)clearTimeout(state.saveTimer);state.saveTimer=setTimeout(()=>saveJsonToFolder(false).catch(err=>{setSaveState(t("autoSaveFailed"),"error");setStatus(err.message,true);}),300);}
-async function flushPendingSave(){
-  if(state.saveTimer){clearTimeout(state.saveTimer);state.saveTimer=0;}
-  if(state.saveInFlight&&state.savePromise)await state.savePromise;
-  if(state.dirty)await saveJsonToFolder(false);
-  if(state.saveInFlight&&state.savePromise)await state.savePromise;
-  if(state.dirty)await saveJsonToFolder(false);
-}
-async function saveJsonToFolder(showMessage=true){
-  if(!state.data||!state.dirHandle)return;
-  if(state.saveInFlight){
-    state.saveQueued=true;
-    if(state.savePromise)await state.savePromise;
-    if(state.dirty)return saveJsonToFolder(showMessage);
-    return;
-  }
-  if(state.saveTimer){clearTimeout(state.saveTimer);state.saveTimer=0;}
-  ensureDataImageFields();ensureHelloLabel();
-  const dataRef=state.data,imageName=state.imageName,dirHandle=state.dirHandle,knownHandle=state.jsonHandle,saveRevision=state.revision;
-  const payload=JSON.stringify(state.data,null,2);
-  state.saveInFlight=true;setSaveState(t("saving"),"saving");
-  const task=(async()=>{
-    const handle=knownHandle||await dirHandle.getFileHandle(`${stemOf(imageName)}.json`,{create:true});
-    const writable=await handle.createWritable();
-    try{await writable.write(payload);}finally{await writable.close();}
-    if(state.data===dataRef&&state.imageName===imageName){
-      state.jsonHandle=handle;state.savedRevision=Math.max(state.savedRevision,saveRevision);
-      if(state.revision===saveRevision){state.dirty=false;setSaveState(t("saved"),"saved");}else{state.dirty=true;setSaveState(t("pendingSave"),"saving");}
-      if(showMessage&&state.revision===saveRevision)setStatus(`${t("saved")} ${stemOf(imageName)}.json`);
-      updateActionButtons();
-      const entry=state.entries.find(e=>e.name===imageName);if(entry)entry.hasJson=true;const badgeRow=els.fileList.querySelector(`.file-item[data-name="${CSS.escape(imageName)}"]`);if(badgeRow&&!badgeRow.querySelector(".badge")){const b=document.createElement("span");b.className="badge";b.textContent="JSON";badgeRow.appendChild(b);}
-    }
-  })();
-  state.savePromise=task;
-  try{await task;}finally{
-    if(state.savePromise===task)state.savePromise=null;state.saveInFlight=false;
-    if(state.saveQueued||state.dirty&&state.revision>saveRevision){state.saveQueued=false;scheduleAutoSave();}
-  }
-}
-
-
-async function deleteCurrentJson(){
-  if(!state.data||!state.dirHandle||!state.imageName)return;
-  if(!state.jsonHandle){setStatus(t("noJsonToDelete"));return;}
-  const confirmed=await confirmModal(t("deleteJsonTitle"),escapeHtml(t("deleteJsonConfirm")),t("deleteJson"),true);
-  if(!confirmed)return;
-  try{
-    if(state.saveTimer){clearTimeout(state.saveTimer);state.saveTimer=0;}
-    state.saveQueued=false;
-    if(state.saveInFlight&&state.savePromise)await state.savePromise;
-    const jsonName=`${stemOf(state.imageName)}.json`;
-    await state.dirHandle.removeEntry(jsonName);
-    state.jsonHandle=null;
-    state.data=createEmptyLabelme();
-    state.runtimeIds=[];state.runtimeMeta={};state.history=[];state.future=[];state.activeLabel=null;state.drawing=null;state.editing=null;
-    state.selectedIds.clear();state.primaryId=null;state.activeHandle=null;
-    state.dirty=false;state.revision=0;state.savedRevision=0;
-    state.sam={points:[],labels:[],box:null,history:[],preview:null,drag:null,requestSeq:0};
-    ensureDataImageFields();ensureHelloLabel();
-    const entry=state.entries.find(e=>e.name===state.imageName);if(entry)entry.hasJson=false;
-    renderFileList();renderAll();
-    setSaveState(t("notCreatedJson"));setStatus(t("jsonDeleted",{name:stemOf(state.imageName)}));updateActionButtons();
-  }catch(err){
-    const message=err?.message||String(err);setStatus(t("jsonDeleteFailed",{message}),true);alert(t("jsonDeleteFailed",{message}));
-  }
-}
-
+window.HelloLabelFolder.configure({
+  state,els,flushPendingSave,setStatus,t,
+  resetCurrentState:()=>window.HelloLabelFolder.resetCurrentState(),
+  isImage,stemOf,escapeHtml,responseError,setSaveState,setBusy,validateLabelme,
+  createEmptyLabelme,ensureDataImageFields,ensureHelloLabel,renderAll,enableImageUi,
+  resizeOverlay,fitToWindow,updateSelectionPanel,updateActionButtons
+});
+function requestFolder(){return window.HelloLabelFolder.requestFolder();}
+function refreshFolderEntries(){return window.HelloLabelFolder.refreshFolderEntries();}
+function renderFileList(){return window.HelloLabelFolder.renderFileList();}
+function siblingJsonHandle(imageName,create=false){return window.HelloLabelFolder.siblingJsonHandle(imageName,create);}
+function markActiveFile(name){return window.HelloLabelFolder.markActiveFile(name);}
+function resetCurrentState(){return window.HelloLabelFolder.resetCurrentState();}
+function loadPreview(file){return window.HelloLabelFolder.loadPreview(file);}
+function openImageEntry(entry){return window.HelloLabelFolder.openImageEntry(entry);}
 
 // ---------- Geometry + WebGL2 renderer ----------
 function resizeOverlay(){

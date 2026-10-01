@@ -22,6 +22,10 @@ const languageTheme = read("static/ui/language-theme.js");
 const layoutController = read("static/ui/layout-controller.js");
 const helpMenu = read("static/ui/help-menu.js");
 const viewportController = read("static/view/viewport-controller.js");
+const statusUi = read("static/ui/status-ui.js");
+const historyManager = read("static/core/history-manager.js");
+const jsonStorage = read("static/io/json-storage.js");
+const folderController = read("static/io/folder-controller.js");
 const drawingPreview = read("static/drawing-preview.js");
 const drawingDispatcher = read("static/tools/drawing-dispatcher.js");
 const circleTool = read("static/tools/circle-tool.js");
@@ -141,6 +145,10 @@ for (const asset of [
   "ui/layout-controller.js",
   "ui/help-menu.js",
   "view/viewport-controller.js",
+  "ui/status-ui.js",
+  "core/history-manager.js",
+  "io/json-storage.js",
+  "io/folder-controller.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 assert(i18nCore.includes("HelloLabelI18n"), "i18n core must expose HelloLabelI18n");
@@ -155,6 +163,13 @@ assert(languageTheme.includes("HelloLabelLanguageTheme"), "language/theme contro
 assert(layoutController.includes("HelloLabelLayout"), "layout controller must be extracted");
 assert(helpMenu.includes("HelloLabelHelpMenu"), "help/menu controller must be extracted");
 assert(viewportController.includes("HelloLabelViewport"), "viewport controller must be extracted");
+assert(statusUi.includes("HelloLabelStatusUI"), "status UI must be extracted");
+assert(historyManager.includes("HelloLabelHistory"), "history manager must be extracted");
+assert(jsonStorage.includes("HelloLabelJsonStorage"), "JSON storage must be extracted");
+assert(folderController.includes("HelloLabelFolder"), "folder controller must be extracted");
+assert(!appCore.includes("async function requestFolder(){"), "folder workflow must not remain inline in app core");
+assert(!appCore.includes("async function saveJsonToFolder(showMessage=true){"), "JSON save implementation must not remain inline in app core");
+assert(!appCore.includes("function pushHistory(){if(!state.data)"), "history implementation must not remain inline in app core");
 assert(!appCore.includes("async function runYolo(){"), "YOLO implementation must not remain inline in app core");
 assert(!appCore.includes("function renderSamOverlay(){\n  els.samPrompts"), "SAM rendering must not remain inline in app core");
 assert(!appCore.includes("function fitToWindow(){if(!state.data)"), "viewport implementation must not remain inline in app core");
@@ -207,6 +222,10 @@ const required = [
   "static/ui/layout-controller.js",
   "static/ui/help-menu.js",
   "static/view/viewport-controller.js",
+  "static/ui/status-ui.js",
+  "static/core/history-manager.js",
+  "static/io/json-storage.js",
+  "static/io/folder-controller.js",
   "static/app-core.js",
   "static/telemetry.js",
   "static/annotation-telemetry.js",
