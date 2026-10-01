@@ -478,47 +478,32 @@ async function finishSequenceDrawing(){
   else if(sourceType==="oriented_rectangle")window.HelloLabelObbTool.completed();
   await commitGeometry(type,points);
 }
-function handleDrawPointerDown(ev){
-  if(ev.button!==0||!state.data)return false;
-  const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY)),m=state.mode;
-  if(m==="pen")return window.HelloLabelBrushTool.pointerDown(p);
-  if(m==="polygon"||m==="linestrip")return window.HelloLabelPolygonTool.pointerDown(p,m);
-  if(m==="rectangle")return window.HelloLabelRectangleTool.pointerDown(p);
-  if(m==="oriented_rectangle")return window.HelloLabelObbTool.pointerDown(p);
-  if(m==="line"){
-    if(!state.drawing){state.drawing={type:"line",points:[p],cursor:p};setStatus(t("lineHint"));}else{state.drawing.points.push(p);finishSequenceDrawing();}
-    renderDrawingOverlay();return true;
-  }
-  if(m==="circle"){
-    if(!state.drawing){state.drawing={type:"circle",start:p,current:p};setStatus(t("circleSecond"));renderDrawingOverlay();return true;}
-    if(state.drawing.type==="circle"&&state.drawing.start){
-      const d=state.drawing;d.current=p;const screenDist=Math.sqrt(dist2(d.start,p))*state.scale;const points=[d.start,d.current];
-      state.drawing=null;renderDrawingOverlay();
-      if(screenDist>=3)commitGeometry("circle",points);else setStatus(t("tooSmall",{type:shapeTypeText("circle")}));
-      return true;
-    }
-  }
-  if(m==="point"){commitGeometry("point",[p]);return true;}
-  return false;
-}
-function handleDrawPointerMove(ev){
-  const d=state.drawing;if(!d)return false;
-  const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY));
-  if(d.type==="pen")return window.HelloLabelBrushTool.pointerMove(p);
-  if(d.type==="polygon"||d.type==="linestrip")return window.HelloLabelPolygonTool.pointerMove(p);
-  if(d.type==="rectangle")return window.HelloLabelRectangleTool.pointerMove(p);
-  if(d.type==="oriented_rectangle")return window.HelloLabelObbTool.pointerMove(p);
-  d.cursor=p;
-  if(d.type==="circle")d.current=p;
-  renderDrawingOverlay();
-  return true;
-}
-function handleDrawPointerUp(_ev){return false;}
+function handleDrawPointerDown(ev){return window.HelloLabelDrawingDispatcher.pointerDown(ev);}
+function handleDrawPointerMove(ev){return window.HelloLabelDrawingDispatcher.pointerMove(ev);}
+function handleDrawPointerUp(ev){return window.HelloLabelDrawingDispatcher.pointerUp(ev);}
 
 window.HelloLabelPolygonTool.configure({state,renderDrawingOverlay,setStatus,t,shapeTypeText});
 window.HelloLabelRectangleTool.configure({state,renderDrawingOverlay,setStatus,t,dist2,shapeTypeText,commitGeometry});
 window.HelloLabelBrushTool.configure({state,setStatus,t,renderDrawingOverlay,finishSequenceDrawing});
 window.HelloLabelObbTool.configure({state,setStatus,t,renderDrawingOverlay,finishSequenceDrawing});
+window.HelloLabelCircleTool.configure({state,renderDrawingOverlay,setStatus,t,dist2,shapeTypeText,commitGeometry});
+window.HelloLabelLineTool.configure({state,setStatus,t,renderDrawingOverlay,finishSequenceDrawing});
+window.HelloLabelPointTool.configure({commitGeometry});
+window.HelloLabelDrawingDispatcher.configure({
+  state,
+  clampImagePoint,
+  screenToImage,
+  tools:{
+    pen:window.HelloLabelBrushTool,
+    polygon:window.HelloLabelPolygonTool,
+    linestrip:window.HelloLabelPolygonTool,
+    rectangle:window.HelloLabelRectangleTool,
+    oriented_rectangle:window.HelloLabelObbTool,
+    circle:window.HelloLabelCircleTool,
+    line:window.HelloLabelLineTool,
+    point:window.HelloLabelPointTool
+  }
+});
 window.HelloLabelPointerTool.configure({
   state,els,clampImagePoint,screenToImage,rectCorners,primaryShape,pointerProfile,controlPointsForShape,
   selectId,deepClone,shapeAtId,findShapeAt,clearSelection,pushHistory,buildRenderCache,buildLabelAtlas,

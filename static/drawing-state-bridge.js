@@ -37,6 +37,13 @@ window.HelloLabelDrawingState = {
     });
   },
 
+  circle(phase = "drawing") {
+    window.notifyMobileToolbarState({
+      tool: "circle",
+      phase
+    });
+  },
+
   orientedRectangle(phase) {
     window.notifyMobileToolbarState({
       tool: "oriented_rectangle",

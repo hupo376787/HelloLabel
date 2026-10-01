@@ -9,6 +9,11 @@ const errors = [];
 const assert = (condition, message) => { if (!condition) errors.push(message); };
 
 const app = read("static/app.js");
+const appCore = read("static/app-core.js");
+const drawingDispatcher = read("static/tools/drawing-dispatcher.js");
+const circleTool = read("static/tools/circle-tool.js");
+const lineTool = read("static/tools/line-tool.js");
+const pointTool = read("static/tools/point-tool.js");
 const pointerInput = read("static/pointer-input.js");
 const index = read("static/index.html");
 const aboutUi = read("static/about-ui.js");
@@ -105,9 +110,21 @@ for (const asset of [
   "tools/rectangle-tool.js",
   "tools/brush-tool.js",
   "tools/obb-tool.js",
+  "tools/circle-tool.js",
+  "tools/line-tool.js",
+  "tools/point-tool.js",
+  "tools/drawing-dispatcher.js",
   "tools/pointer-tool.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
+assert(drawingDispatcher.includes("HelloLabelDrawingDispatcher"), "drawing dispatcher must expose HelloLabelDrawingDispatcher");
+assert(circleTool.includes("HelloLabelCircleTool"), "circle tool must expose HelloLabelCircleTool");
+assert(lineTool.includes("HelloLabelLineTool"), "line tool must expose HelloLabelLineTool");
+assert(pointTool.includes("HelloLabelPointTool"), "point tool must expose HelloLabelPointTool");
+assert(appCore.includes("HelloLabelDrawingDispatcher.configure"), "app core must configure extracted drawing dispatcher");
+assert(!appCore.includes('if(m==="circle")'), "circle drawing logic must not remain inline in app core");
+assert(!appCore.includes('if(m==="line")'), "line drawing logic must not remain inline in app core");
+assert(!appCore.includes('if(m==="point")'), "point drawing logic must not remain inline in app core");
 
 const staticReferences = [...app.matchAll(/`\/static\/([^?`]+)\?v=/g)].map(match => `static/${match[1]}`);
 for (const relative of staticReferences) assert(exists(relative), `bootstrap references missing file: ${relative}`);
@@ -122,6 +139,10 @@ const required = [
   "static/tools/rectangle-tool.js",
   "static/tools/brush-tool.js",
   "static/tools/obb-tool.js",
+  "static/tools/circle-tool.js",
+  "static/tools/line-tool.js",
+  "static/tools/point-tool.js",
+  "static/tools/drawing-dispatcher.js",
   "static/tools/pointer-tool.js",
   "static/app-core.js",
   "static/telemetry.js",
