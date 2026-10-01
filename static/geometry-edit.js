@@ -8,6 +8,14 @@
   const SVG_NS = "http://www.w3.org/2000/svg";
   const SNAP_PX = 12;
   const EDGE_SNAP_PX = 9;
+
+  function inputProfile(pointerType = null) {
+    return window.helloLabelPointerInput?.profileFor?.(pointerType) || {
+      pointerType: "mouse",
+      edgeHitPx: EDGE_SNAP_PX,
+      polygonStartHitPx: SNAP_PX,
+    };
+  }
   const DRAWING_START_R = 5;
   const POLYGON_SNAP_R = SNAP_PX;
   let edgeSnap = null;
@@ -86,10 +94,13 @@
     return ids;
   }
 
-  function findEditableEdge(point) {
+  function findEditableEdge(point, pointerType = null) {
     if (!state.data || state.drawing || state.editing || state.panning) return null;
     let best = null;
     let bestScreenDistance = Infinity;
+    const profile = inputProfile(pointerType);
+    const edgeHitPx = Number(profile.edgeHitPx || EDGE_SNAP_PX);
+    const endpointGuardPx = Math.max(7, edgeHitPx * 0.8);
 
     for (const id of nearbyShapeIds(point)) {
       const shape = shapeAtId(id);
@@ -102,13 +113,13 @@
         const projected = projectToSegment(point, points[index], points[next]);
         if (!projected) continue;
         const screenDistance = projected.distance * state.scale;
-        if (screenDistance > EDGE_SNAP_PX || screenDistance >= bestScreenDistance) continue;
+        if (screenDistance > edgeHitPx || screenDistance >= bestScreenDistance) continue;
 
         const endpointDistance = Math.min(
           Math.hypot(projected.point[0] - points[index][0], projected.point[1] - points[index][1]),
           Math.hypot(projected.point[0] - points[next][0], projected.point[1] - points[next][1])
         ) * state.scale;
-        if (endpointDistance <= 7) continue;
+        if (endpointDistance <= endpointGuardPx) continue;
 
         bestScreenDistance = screenDistance;
         best = { id, shape, segmentIndex: index, point: projected.point };
@@ -117,12 +128,12 @@
     return best;
   }
 
-  function polygonStartSnap(clientX, clientY) {
+  function polygonStartSnap(clientX, clientY, pointerType = null) {
     const drawing = state.drawing;
     if (!drawing || drawing.type !== "polygon" || !Array.isArray(drawing.points) || drawing.points.length < 3) return null;
     const point = clampImagePoint(screenToImage(clientX, clientY));
     const first = drawing.points[0];
-    return Math.hypot(point[0] - first[0], point[1] - first[1]) * state.scale <= SNAP_PX ? [first[0], first[1]] : null;
+    return Math.hypot(point[0] - first[0], point[1] - first[1]) * state.scale <= Number(inputProfile(pointerType).polygonStartHitPx || SNAP_PX) ? [first[0], first[1]] : null;
   }
 
   function insertSnappedVertex(candidate) {
@@ -265,7 +276,7 @@
       return;
     }
 
-    const closePoint = polygonStartSnap(event.clientX, event.clientY);
+    const closePoint = polygonStartSnap(event.clientX, event.clientY, event.pointerType);
     if (closePoint) {
       state.drawing.cursor = [closePoint[0], closePoint[1]];
       showSnapAtImage(closePoint, { polygonStart: true });
@@ -284,7 +295,7 @@
 
     if (state.mode === "pointer" || state.mode === "polygon" || state.mode === "linestrip") {
       const point = clampImagePoint(screenToImage(event.clientX, event.clientY));
-      edgeSnap = findEditableEdge(point);
+      edgeSnap = findEditableEdge(point, event.pointerType);
       if (edgeSnap) showSnapAtImage(edgeSnap.point); else clearSnap();
     } else {
       clearSnap();
@@ -295,7 +306,7 @@
     if (!state.data) return;
 
     if (event.button === 0) {
-      const closePoint = polygonStartSnap(event.clientX, event.clientY);
+      const closePoint = polygonStartSnap(event.clientX, event.clientY, event.pointerType);
       if (closePoint) {
         state.drawing.cursor = [closePoint[0], closePoint[1]];
         clearSnap();
@@ -308,7 +319,7 @@
 
       if (!state.drawing && (state.mode === "pointer" || state.mode === "polygon" || state.mode === "linestrip")) {
         const point = clampImagePoint(screenToImage(event.clientX, event.clientY));
-        const candidate = findEditableEdge(point);
+        const candidate = findEditableEdge(point, event.pointerType);
         if (candidate && insertSnappedVertex(candidate)) {
           event.preventDefault();
           event.stopPropagation();
@@ -320,7 +331,7 @@
 
     if (event.button === 2 && !state.drawing) {
       const point = clampImagePoint(screenToImage(event.clientX, event.clientY));
-      const hit = findShapeAt(point[0], point[1]);
+      const hit = findShapeAt(point[0], point[1], event.pointerType);
       if (hit && reopenCompletedShape(hit, event.clientX, event.clientY)) {
         suppressNextContextMenu = true;
         event.preventDefault();
