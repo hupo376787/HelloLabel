@@ -101,6 +101,11 @@ for (const asset of [
   "browser-runtime-ui.js",
   "oriented-rect-direction.js",
   "viewport-context-menu.js",
+  "tools/polygon-tool.js",
+  "tools/rectangle-tool.js",
+  "tools/brush-tool.js",
+  "tools/obb-tool.js",
+  "tools/pointer-tool.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 
@@ -113,6 +118,11 @@ const required = [
   "static/core/app-state.js",
   "static/core/mode-manager.js",
   "static/core/event-manager.js",
+  "static/tools/polygon-tool.js",
+  "static/tools/rectangle-tool.js",
+  "static/tools/brush-tool.js",
+  "static/tools/obb-tool.js",
+  "static/tools/pointer-tool.js",
   "static/app-core.js",
   "static/telemetry.js",
   "static/annotation-telemetry.js",

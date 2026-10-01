@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 set "OUT=dist\web"
-set "CACHE_TOKEN=hellolabel-v220-t3"
+set "CACHE_TOKEN=hellolabel-v220-t4"
 
 echo ============================================================
 echo   HelloLabel 2.2 - Build Static Web Distribution

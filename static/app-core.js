@@ -431,9 +431,10 @@ function renderInstanceListWindow(){
   for(let i=start;i<end;i++){const id=state.instanceIds[i],shape=shapeAtId(id);if(!shape)continue;const row=document.createElement("div");row.className="instance-row"+(state.selectedIds.has(id)?" active":"");row.style.top=`${i*INSTANCE_ROW_H}px`;row.dataset.shapeId=id;row.innerHTML=`<span class="instance-no">#${i+1}</span><span class="instance-label" title="${escapeHtml(shape.label)}">${escapeHtml(shape.label)}</span><span class="shape-chip">${escapeHtml(shapeTypeText(shape.shape_type))}</span>`;frag.appendChild(row);}els.instanceListInner.replaceChildren(frag);
 }
 function scrollInstanceToId(id){const idx=state.instanceIds.indexOf(id);if(idx<0)return;const top=idx*INSTANCE_ROW_H,bottom=top+INSTANCE_ROW_H,st=els.instanceList.scrollTop,vh=els.instanceList.clientHeight;if(top<st)els.instanceList.scrollTop=top;else if(bottom>st+vh)els.instanceList.scrollTop=Math.max(0,bottom-vh);scheduleInstanceListRender();}
-function clearSelection(){state.selectedIds.clear();state.primaryId=null;state.activeHandle=null;updateSelectionPanel();renderSelectedOverlay();scheduleInstanceListRender();updateActionButtons();}
+function clearSelection(){state.selectedIds.clear();state.primaryId=null;state.activeHandle=null;updateSelectionPanel();renderSelectedOverlay();scheduleInstanceListRender();updateActionButtons();window.HelloLabelDrawingState?.idle?.();}
 function selectId(id,{scroll=false,ensure=false,additive=false}={}){
   if(!id||!shapeAtId(id)){clearSelection();return;}if(additive){if(state.selectedIds.has(id)){state.selectedIds.delete(id);if(state.primaryId===id)state.primaryId=[...state.selectedIds].at(-1)||null;}else{state.selectedIds.add(id);state.primaryId=id;}}else{state.selectedIds=new Set([id]);state.primaryId=id;}state.activeHandle=null;updateSelectionPanel();renderSelectedOverlay();scheduleInstanceListRender();updateActionButtons();if(scroll)scrollInstanceToId(id);if(ensure)ensureShapeVisible(id);
+  const selected=primaryShape();if(selected&&state.primaryId)window.HelloLabelDrawingState?.selected?.(state.primaryId,selected.label);else window.HelloLabelDrawingState?.idle?.();
 }
 function ensureShapeVisible(id){const shape=shapeAtId(id);if(!shape)return;const a=imageToViewport(...shapeAnchor(shape)),r=els.viewport.getBoundingClientRect(),margin=60;if(a[0]>=margin&&a[0]<=r.width-margin&&a[1]>=margin&&a[1]<=r.height-margin)return;state.panX=r.width/2-shapeAnchor(shape)[0]*state.scale;state.panY=r.height/2-shapeAnchor(shape)[1]*state.scale;scheduleViewportRender();}
 function updateSelectionPanel(){const shape=primaryShape();els.noSelection.classList.toggle("hidden",!!shape);els.selectionInfo.classList.toggle("hidden",!shape);if(!shape)return;const idx=primaryIndex(),meta=shapeMeta(state.primaryId);els.selNumber.textContent=idx>=0?`#${idx+1}`:"--";els.selLabel.textContent=shape.label;els.selType.textContent=shapeTypeText(shape.shape_type);els.selPoints.textContent=String(shape.points?.length||0);els.selSource.textContent=(meta.source&&meta.source!=="manual")?meta.source:t("manual");}
@@ -444,10 +445,8 @@ function roundCoord(v){return Math.round(Number(v)*1000)/1000;}
 async function commitGeometry(type,points,meta={source:"manual"}){
   if(!state.data||!points?.length)return;const label=await resolveNewShapeLabel();if(!label){setStatus(t("newAnnotationCancelled"));return;}pushHistory();if(!state.data.hellolabel.labels[label])state.data.hellolabel.labels[label]={color:stableColor(label)};state.activeLabel=label;const id=uid(),shape=makeShape(label,type,points);state.data.shapes.push(shape);state.runtimeIds.push(id);state.runtimeMeta[id]={...meta};markDirty(t("annotationAdded",{type:shapeTypeText(type)}));renderAll();selectId(id,{scroll:true});
 }
-function rdp(points,eps){if(points.length<3)return points;let maxD=0,idx=0;const a=points[0],b=points.at(-1);for(let i=1;i<points.length-1;i++){const d=pointSegDistance(points[i],a,b);if(d>maxD){maxD=d;idx=i;}}if(maxD<=eps)return [a,b];const left=rdp(points.slice(0,idx+1),eps),right=rdp(points.slice(idx),eps);return left.slice(0,-1).concat(right);}
-function simplifyPen(points){if(points.length<4)return points;const min=Math.max(.6,1.2/state.scale),out=[points[0]];for(let i=1;i<points.length;i++)if(dist2(points[i],out.at(-1))>=min*min)out.push(points[i]);const simp=rdp(out,Math.max(.45,.85/state.scale));return simp.length>=3?simp:out;}
-function cancelDrawing(status=true){state.drawing=null;renderDrawingOverlay();if(status)setStatus(t("drawingCancelled"));}
-function orientedRectFromEdge(a,b,c){const dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy);if(len<1e-6)return [a,b,b,a];const nx=-dy/len,ny=dx/len,h=(c[0]-b[0])*nx+(c[1]-b[1])*ny;return [a,b,[b[0]+nx*h,b[1]+ny*h],[a[0]+nx*h,a[1]+ny*h]];}
+function cancelDrawing(status=true){state.drawing=null;renderDrawingOverlay();window.HelloLabelDrawingState?.idle?.();if(status)setStatus(t("drawingCancelled"));}
+function orientedRectFromEdge(a,b,c){return window.HelloLabelObbTool.fromEdge(a,b,c);}
 function currentDrawingShape(){
   const d=state.drawing;if(!d)return null;
   if(d.type==="pen"||d.type==="polygon"||d.type==="linestrip"){const pts=[...(d.points||[])];if(d.cursor&&d.type!=="pen")pts.push(d.cursor);return makeShape("",d.type==="polygon"?"linestrip":"linestrip",pts);}
@@ -464,83 +463,71 @@ function renderDrawingOverlay(){
   const shape=currentDrawingShape();if(!shape||!shape.points?.length){els.drawingPath.classList.add("hidden-svg");els.drawingStart.classList.add("hidden-svg");return;}els.drawingPath.setAttribute("d",shapeScreenPath(shape));els.drawingPath.style.fill=isClosedType(shape.shape_type)?"":"none";els.drawingPath.classList.remove("hidden-svg");const first=shape.points[0]?imageToViewport(...shape.points[0]):null;if(first&&(state.drawing.type==="pen"||state.drawing.type==="polygon"||state.drawing.type==="linestrip")){els.drawingStart.setAttribute("cx",first[0]);els.drawingStart.setAttribute("cy",first[1]);els.drawingStart.classList.remove("hidden-svg");}else els.drawingStart.classList.add("hidden-svg");
 }
 async function finishSequenceDrawing(){
-  const d=state.drawing;if(!d)return;let type=d.type,points=d.points||[];if(type==="pen"){points=simplifyPen(points);type="polygon";}if(type==="polygon"&&points.length<3){setStatus(t("polygonMin"),true);return;}if(type==="linestrip"&&points.length<2){setStatus(t("linestripMin"),true);return;}if(type==="line"&&points.length<2){return;}if(type==="oriented_rectangle"&&points.length<4)return;state.drawing=null;renderDrawingOverlay();await commitGeometry(type,points);
+  const d=state.drawing;if(!d)return;
+  const sourceType=d.type;
+  let type=d.type,points=d.points||[];
+  if(type==="pen"){points=window.HelloLabelBrushTool.finalize(points,state.scale);type="polygon";}
+  if(type==="polygon"&&points.length<3){setStatus(t("polygonMin"),true);return;}
+  if(type==="linestrip"&&points.length<2){setStatus(t("linestripMin"),true);return;}
+  if(type==="line"&&points.length<2)return;
+  if(type==="oriented_rectangle"&&points.length<4)return;
+  state.drawing=null;
+  renderDrawingOverlay();
+  if(sourceType==="pen")window.HelloLabelBrushTool.completed();
+  else if(sourceType==="polygon"||sourceType==="linestrip")window.HelloLabelPolygonTool.completed(sourceType,points.length);
+  else if(sourceType==="oriented_rectangle")window.HelloLabelObbTool.completed();
+  await commitGeometry(type,points);
 }
 function handleDrawPointerDown(ev){
-  if(ev.button!==0||!state.data)return false;const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY)),m=state.mode;
-  if(m==="pen"){
-    if(!state.drawing){state.drawing={type:"pen",points:[p],cursor:p};setStatus(t("penHint"));}return true;
-  }
-  if(m==="polygon"||m==="linestrip"){
-    if(!state.drawing)state.drawing={type:m,points:[p],cursor:p};else state.drawing.points.push(p);renderDrawingOverlay();setStatus(t("sequenceHint",{type:shapeTypeText(m)}));return true;
-  }
+  if(ev.button!==0||!state.data)return false;
+  const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY)),m=state.mode;
+  if(m==="pen")return window.HelloLabelBrushTool.pointerDown(p);
+  if(m==="polygon"||m==="linestrip")return window.HelloLabelPolygonTool.pointerDown(p,m);
+  if(m==="rectangle")return window.HelloLabelRectangleTool.pointerDown(p);
+  if(m==="oriented_rectangle")return window.HelloLabelObbTool.pointerDown(p);
   if(m==="line"){
-    if(!state.drawing){state.drawing={type:"line",points:[p],cursor:p};setStatus(t("lineHint"));}else{state.drawing.points.push(p);finishSequenceDrawing();}renderDrawingOverlay();return true;
+    if(!state.drawing){state.drawing={type:"line",points:[p],cursor:p};setStatus(t("lineHint"));}else{state.drawing.points.push(p);finishSequenceDrawing();}
+    renderDrawingOverlay();return true;
   }
-  if(m==="rectangle"||m==="circle"){
-    if(!state.drawing){
-      state.drawing={type:m,start:p,current:p};
-      setStatus(t(m==="rectangle"?"rectSecond":"circleSecond"));
-      renderDrawingOverlay();
-      return true;
-    }
-    if(state.drawing.type===m&&state.drawing.start){
-      const d=state.drawing;d.current=p;
-      const screenDist=Math.sqrt(dist2(d.start,p))*state.scale;
-      const type=d.type,points=[d.start,d.current];
+  if(m==="circle"){
+    if(!state.drawing){state.drawing={type:"circle",start:p,current:p};setStatus(t("circleSecond"));renderDrawingOverlay();return true;}
+    if(state.drawing.type==="circle"&&state.drawing.start){
+      const d=state.drawing;d.current=p;const screenDist=Math.sqrt(dist2(d.start,p))*state.scale;const points=[d.start,d.current];
       state.drawing=null;renderDrawingOverlay();
-      if(screenDist>=3)commitGeometry(type,points);else setStatus(t("tooSmall",{type:shapeTypeText(type)}));
+      if(screenDist>=3)commitGeometry("circle",points);else setStatus(t("tooSmall",{type:shapeTypeText("circle")}));
       return true;
     }
   }
   if(m==="point"){commitGeometry("point",[p]);return true;}
-  if(m==="oriented_rectangle"){
-    if(!state.drawing){state.drawing={type:m,points:[p],cursor:p};setStatus(t("obbSecond"));}
-    else if(state.drawing.points.length===1){state.drawing.points.push(p);state.drawing.cursor=p;setStatus(t("obbWidth"));}
-    else{const pts=orientedRectFromEdge(state.drawing.points[0],state.drawing.points[1],p);state.drawing={type:m,points:pts,cursor:null};finishSequenceDrawing();}renderDrawingOverlay();return true;
-  }
   return false;
 }
 function handleDrawPointerMove(ev){
-  const d=state.drawing;if(!d)return false;const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY));d.cursor=p;
-  if(d.type==="pen"){
-    const last=d.points.at(-1),minScreen=2.3;if(Math.sqrt(dist2(last,p))*state.scale>=minScreen)d.points.push(p);if(d.points.length>=12){const first=d.points[0],screenDist=Math.sqrt(dist2(first,p))*state.scale;if(screenDist<=11){finishSequenceDrawing();return true;}}
-  }else if(d.type==="rectangle"||d.type==="circle")d.current=p;renderDrawingOverlay();return true;
+  const d=state.drawing;if(!d)return false;
+  const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY));
+  if(d.type==="pen")return window.HelloLabelBrushTool.pointerMove(p);
+  if(d.type==="polygon"||d.type==="linestrip")return window.HelloLabelPolygonTool.pointerMove(p);
+  if(d.type==="rectangle")return window.HelloLabelRectangleTool.pointerMove(p);
+  if(d.type==="oriented_rectangle")return window.HelloLabelObbTool.pointerMove(p);
+  d.cursor=p;
+  if(d.type==="circle")d.current=p;
+  renderDrawingOverlay();
+  return true;
 }
 function handleDrawPointerUp(_ev){return false;}
 
-function translatePoints(points,dx,dy){return points.map(p=>clampImagePoint([Number(p[0])+dx,Number(p[1])+dy]));}
-function dragOrientedCorner(points,index,newP){
-  const p=points.map(q=>[Number(q[0]),Number(q[1])]);if(p.length!==4){p[index]=newP;return p;}const opp=(index+2)%4,prev=(opp+3)%4,next=(opp+1)%4,o=p[opp];let ux=p[prev][0]-o[0],uy=p[prev][1]-o[1],vx=p[next][0]-o[0],vy=p[next][1]-o[1],ul=Math.hypot(ux,uy)||1,vl=Math.hypot(vx,vy)||1;ux/=ul;uy/=ul;vx/=vl;vy/=vl;const dx=newP[0]-o[0],dy=newP[1]-o[1],a=dx*ux+dy*uy,b=dx*vx+dy*vy;const q=p.slice();q[opp]=o;q[prev]=clampImagePoint([o[0]+ux*a,o[1]+uy*a]);q[next]=clampImagePoint([o[0]+vx*b,o[1]+vy*b]);q[index]=clampImagePoint([o[0]+ux*a+vx*b,o[1]+uy*a+vy*b]);return q;
-}
-function applyHandleDrag(shape,index,kind,newP,original){
-  const t=shape.shape_type;if(t==="rectangle"){const corners=rectCorners(original.points),opp=corners[(index+2)%4];shape.points=[clampImagePoint(newP),clampImagePoint(opp)];return;}
-  if(t==="oriented_rectangle"){shape.points=dragOrientedCorner(original.points,index,newP);return;}
-  if(t==="circle"&&index===0){const old=original.points[0],dx=newP[0]-old[0],dy=newP[1]-old[1];shape.points=[clampImagePoint(newP),clampImagePoint([original.points[1][0]+dx,original.points[1][1]+dy])];return;}
-  const pts=deepClone(original.points);pts[index]=clampImagePoint(newP);shape.points=pts;
-}
-function nearestVisibleControlHandle(p,pointerType){
-  if(pointerProfile(pointerType).pointerType==="mouse")return null;
-  const shape=primaryShape();if(!shape||!state.primaryId)return null;const profile=pointerProfile(pointerType),limit=profile.vertexHitPx/Math.max(.0001,state.scale);let best=null,bestD=Infinity;
-  for(const h of controlPointsForShape(shape)){const d=Math.hypot(Number(h.p[0])-p[0],Number(h.p[1])-p[1]);if(d<=limit&&d<bestD){best={id:state.primaryId,index:h.index,kind:h.kind};bestD=d;}}
-  return best;
-}
-function beginPointerEdit(ev){
-  if(state.mode!=="pointer"||ev.button!==0)return false;const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY));const target=ev.target.closest?.(".control-handle"),near=target?null:nearestVisibleControlHandle(p,ev.pointerType);
-  if(target||near){const id=target?.dataset.shapeId||near.id,index=target?Number(target.dataset.handleIndex):near.index,handleKind=target?.dataset.handleKind||near.kind;selectId(id);state.activeHandle={index,kind:handleKind};state.editing={kind:"handle",id,index,handleKind,start:p,startClient:[ev.clientX,ev.clientY],original:deepClone(shapeAtId(id)),historyPushed:false,moved:false,pointerType:ev.pointerType||"mouse",pointerId:ev.pointerId,historyLength:state.history.length,futureBefore:deepClone(state.future)};(window.helloLabelPointerInput?.capture?.(ev) ?? (els.viewport.setPointerCapture?.(ev.pointerId),true));renderSelectedOverlay();return true;}
-  const hit=findShapeAt(p[0],p[1],ev.pointerType);if(!hit){clearSelection();return false;}selectId(hit.id,{additive:ev.ctrlKey||ev.metaKey});if(ev.ctrlKey||ev.metaKey)return true;state.editing={kind:"move",id:hit.id,start:p,startClient:[ev.clientX,ev.clientY],original:deepClone(hit.shape),historyPushed:false,moved:false,pointerType:ev.pointerType||"mouse",pointerId:ev.pointerId,historyLength:state.history.length,futureBefore:deepClone(state.future)};(window.helloLabelPointerInput?.capture?.(ev) ?? (els.viewport.setPointerCapture?.(ev.pointerId),true));return true;
-}
-function movePointerEdit(ev){
-  const ed=state.editing;if(!ed)return false;const movedPx=Math.hypot(ev.clientX-ed.startClient[0],ev.clientY-ed.startClient[1]);if(!ed.moved&&movedPx<2)return true;if(!ed.historyPushed){pushHistory();ed.historyPushed=true;ed.moved=true;buildRenderCache(new Set([ed.id]));buildLabelAtlas();}
-  const p=clampImagePoint(screenToImage(ev.clientX,ev.clientY)),shape=shapeAtId(ed.id);if(!shape)return true;if(ed.kind==="move"){const dx=p[0]-ed.start[0],dy=p[1]-ed.start[1];shape.points=translatePoints(ed.original.points,dx,dy);}else applyHandleDrag(shape,ed.index,ed.handleKind,p,ed.original);renderSelectedOverlay();scheduleViewportRender();return true;
-}
-function endPointerEdit(){const ed=state.editing;if(!ed)return false;state.editing=null;window.helloLabelPointerInput?.release?.(ed.pointerId);if(ed.moved){markDirty(ed.kind==="move"?t("instanceMoved"):t("controlPointMoved"));renderAll();selectId(ed.id);}return true;}
-function cancelPointerEdit(){
-  const ed=state.editing;if(!ed)return false;state.editing=null;window.helloLabelPointerInput?.release?.(ed.pointerId);
-  if(ed.moved){const shape=shapeAtId(ed.id);if(shape&&ed.original){Object.assign(shape,deepClone(ed.original));}if(ed.historyPushed){state.history.length=Math.min(state.history.length,ed.historyLength);state.future=deepClone(ed.futureBefore||[]);}buildRenderCache();buildLabelAtlas();renderAll();selectId(ed.id);}
-  else{renderSelectedOverlay();scheduleViewportRender();}
-  return true;
-}
+window.HelloLabelPolygonTool.configure({state,renderDrawingOverlay,setStatus,t,shapeTypeText});
+window.HelloLabelRectangleTool.configure({state,renderDrawingOverlay,setStatus,t,dist2,shapeTypeText,commitGeometry});
+window.HelloLabelBrushTool.configure({state,setStatus,t,renderDrawingOverlay,finishSequenceDrawing});
+window.HelloLabelObbTool.configure({state,setStatus,t,renderDrawingOverlay,finishSequenceDrawing});
+window.HelloLabelPointerTool.configure({
+  state,els,clampImagePoint,screenToImage,rectCorners,primaryShape,pointerProfile,controlPointsForShape,
+  selectId,deepClone,shapeAtId,findShapeAt,clearSelection,pushHistory,buildRenderCache,buildLabelAtlas,
+  renderSelectedOverlay,scheduleViewportRender,markDirty,t,renderAll
+});
+function beginPointerEdit(ev){return window.HelloLabelPointerTool.begin(ev);}
+function movePointerEdit(ev){return window.HelloLabelPointerTool.move(ev);}
+function endPointerEdit(){return window.HelloLabelPointerTool.end();}
+function cancelPointerEdit(){return window.HelloLabelPointerTool.cancel();}
 function nearestEditableSegment(shape,p,pointerType=null){const t=shape.shape_type;if(t!=="polygon"&&t!=="linestrip")return null;const pts=shape.points||[];if(pts.length<2)return null;let best=null,bestD=Infinity,end=t==="polygon"?pts.length:pts.length-1;for(let i=0;i<end;i++){const j=(i+1)%pts.length,d=pointSegDistance(p,pts[i],pts[j]);if(d<bestD){bestD=d;best=i;}}return bestD*state.scale<=pointerProfile(pointerType).edgeHitPx?best:null;}
 function insertVertexAtDoubleClick(ev){if(state.mode!=="pointer"||!state.primaryId)return;const shape=primaryShape(),p=clampImagePoint(screenToImage(ev.clientX,ev.clientY)),seg=nearestEditableSegment(shape,p,ev.pointerType);if(seg==null)return;pushHistory();shape.points.splice(seg+1,0,p);state.activeHandle={index:seg+1,kind:"point"};markDirty(t("vertexInserted"));renderAll();selectId(state.primaryId);ev.preventDefault();}
 function deleteActiveVertex(){const shape=primaryShape(),h=state.activeHandle;if(!shape||!h)return false;if(shape.shape_type==="polygon"&&shape.points.length>3){pushHistory();shape.points.splice(h.index,1);state.activeHandle=null;markDirty(t("polygonVertexDeleted"));renderAll();selectId(state.primaryId);return true;}if(shape.shape_type==="linestrip"&&shape.points.length>2){pushHistory();shape.points.splice(h.index,1);state.activeHandle=null;markDirty(t("linestripVertexDeleted"));renderAll();selectId(state.primaryId);return true;}return false;}
