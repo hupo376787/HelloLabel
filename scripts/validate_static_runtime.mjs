@@ -59,7 +59,7 @@ assert(browserRuntime.includes("interactionSeq"), "browser runtime must keep a n
 assert(!/SlimSAM|slimsam|@xenova\/transformers|SLIMSAM_MODEL/.test(browserRuntime), "browser-runtime.js must not contain the retired SlimSAM implementation");
 assert(!/runSamPrediction\s*=|runYolo\s*=|installAIFromMenu\s*=|showModelStatus\s*=/.test(browserRuntime), "browser-runtime.js must stay a shared browser runtime base");
 assert(browserFileGuard.includes("assertUniqueImageStem") && browserFileGuard.includes("findExistingJson"), "file guard must prevent shared-stem JSON collisions and resolve actual JSON case");
-assert(mobileFolderCompat.includes("webkitdirectory") && mobileFolderCompat.includes("mobile"), "mobile folder compatibility mode must remain available");
+assert(mobileFolderCompat.includes("webkitdirectory") && mobileFolderCompat.includes("__helloLabelMobileCompat"), "mobile folder compatibility mode must remain available");
 assert(browserSam.includes("onnx-community/sam2.1-hiera-tiny-ONNX"), "browser SAM runtime must use SAM2.1 Tiny");
 assert(browserSam.includes("state.sam === samRef") && browserSam.includes("runtime.sam.interactionSeq === interactionSeq"), "SAM result application must reject stale cross-image/cross-prompt results");
 assert(browserSam.includes("REQUEST_TIMEOUT_MS") && browserSam.includes("resetWorker"), "SAM worker requests must recover from dead workers/timeouts");
