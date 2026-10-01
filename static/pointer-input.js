@@ -32,6 +32,7 @@
   });
 
   let lastPointerType = "mouse";
+  const activePointers = new Map();
 
   function normalizePointerType(value) {
     const type = String(value || "").toLowerCase();
@@ -42,8 +43,22 @@
     return PROFILES[normalizePointerType(pointerType)] || PROFILES.mouse;
   }
 
+  function pointerSnapshot(event) {
+    return {
+      pointerId: event.pointerId,
+      pointerType: normalizePointerType(event.pointerType),
+      clientX: Number(event.clientX || 0),
+      clientY: Number(event.clientY || 0),
+      buttons: Number(event.buttons || 0),
+      isPrimary: event.isPrimary !== false,
+    };
+  }
+
   function rememberPointer(event) {
     lastPointerType = normalizePointerType(event?.pointerType);
+    if (event?.pointerId == null) return;
+    if (event.type === "pointerup" || event.type === "pointercancel") activePointers.delete(event.pointerId);
+    else activePointers.set(event.pointerId, pointerSnapshot(event));
   }
 
   function capture(event) {
@@ -78,6 +93,10 @@
     normalizePointerType,
     capture,
     release,
+    activePointers,
+    get activePointerCount() {
+      return activePointers.size;
+    },
     get lastPointerType() {
       return lastPointerType;
     },
