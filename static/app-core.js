@@ -264,10 +264,14 @@ function beginPointerEdit(ev){return window.HelloLabelPointerTool.begin(ev);}
 function movePointerEdit(ev){return window.HelloLabelPointerTool.move(ev);}
 function endPointerEdit(){return window.HelloLabelPointerTool.end();}
 function cancelPointerEdit(){return window.HelloLabelPointerTool.cancel();}
-function nearestEditableSegment(shape,p,pointerType=null){const t=shape.shape_type;if(t!=="polygon"&&t!=="linestrip")return null;const pts=shape.points||[];if(pts.length<2)return null;let best=null,bestD=Infinity,end=t==="polygon"?pts.length:pts.length-1;for(let i=0;i<end;i++){const j=(i+1)%pts.length,d=pointSegDistance(p,pts[i],pts[j]);if(d<bestD){bestD=d;best=i;}}return bestD*state.scale<=pointerProfile(pointerType).edgeHitPx?best:null;}
-function insertVertexAtDoubleClick(ev){if(state.mode!=="pointer"||!state.primaryId)return;const shape=primaryShape(),p=clampImagePoint(screenToImage(ev.clientX,ev.clientY)),seg=nearestEditableSegment(shape,p,ev.pointerType);if(seg==null)return;pushHistory();shape.points.splice(seg+1,0,p);state.activeHandle={index:seg+1,kind:"point"};markDirty(t("vertexInserted"));renderAll();selectId(state.primaryId);ev.preventDefault();}
-function deleteActiveVertex(){const shape=primaryShape(),h=state.activeHandle;if(!shape||!h)return false;if(shape.shape_type==="polygon"&&shape.points.length>3){pushHistory();shape.points.splice(h.index,1);state.activeHandle=null;markDirty(t("polygonVertexDeleted"));renderAll();selectId(state.primaryId);return true;}if(shape.shape_type==="linestrip"&&shape.points.length>2){pushHistory();shape.points.splice(h.index,1);state.activeHandle=null;markDirty(t("linestripVertexDeleted"));renderAll();selectId(state.primaryId);return true;}return false;}
-function deleteSelected(){if(!state.data||!state.primaryId)return;if(deleteActiveVertex())return;const ids=[...state.selectedIds];pushHistory();for(let i=state.data.shapes.length-1;i>=0;i--){const id=shapeIds()[i];if(ids.includes(id)){state.data.shapes.splice(i,1);state.runtimeIds.splice(i,1);delete state.runtimeMeta[id];}}clearSelection();markDirty(t("instancesDeleted",{count:ids.length}));renderAll();}
+window.HelloLabelEditCommands.configure({
+  state,primaryShape,pointSegDistance,pointerProfile,clampImagePoint,screenToImage,
+  pushHistory,markDirty,t,renderAll,selectId,shapeIds,clearSelection
+});
+function nearestEditableSegment(shape,point,pointerType=null){return window.HelloLabelEditCommands.nearestEditableSegment(shape,point,pointerType);}
+function insertVertexAtDoubleClick(event){return window.HelloLabelEditCommands.insertVertexAtDoubleClick(event);}
+function deleteActiveVertex(){return window.HelloLabelEditCommands.deleteActiveVertex();}
+function deleteSelected(){return window.HelloLabelEditCommands.deleteSelected();}
 
 // ---------- AI assisted annotation ----------
 window.HelloLabelSamController.configure({
@@ -353,53 +357,35 @@ function setMode(mode, options={}) {
 }
 
 // ---------- Events ----------
-els.openFolderBtn.addEventListener("click",requestFolder);
-els.leftSidebarToggle?.addEventListener("click",()=>togglePanel("left"));els.rightSidebarToggle?.addEventListener("click",()=>togglePanel("right"));
-els.appMenuBtn?.addEventListener("click",ev=>{ev.stopPropagation();toggleAppMenu();});
-els.appMenu?.addEventListener("click",ev=>{const command=ev.target.closest("[data-command]")?.dataset.command;if(command){ev.stopPropagation();runMenuCommand(command);return;}const root=ev.target.closest(".menu-root");if(root){const entry=root.closest(".menu-entry");els.appMenu.querySelectorAll(".menu-entry.open").forEach(x=>{if(x!==entry)x.classList.remove("open")});entry?.classList.toggle("open");ev.stopPropagation();}});
-document.addEventListener("pointerdown",ev=>{if(!els.appMenu?.classList.contains("hidden")&&!els.appMenu.contains(ev.target)&&ev.target!==els.appMenuBtn)closeAppMenu();});
-window.HelloLabelEvents.init({buttons:MODE_BUTTONS,setMode});
-els.deleteBtn.addEventListener("click",deleteSelected);els.undoBtn.addEventListener("click",undo);els.redoBtn.addEventListener("click",redo);els.saveBtn.addEventListener("click",()=>saveJsonToFolder(true).catch(e=>{setSaveState(t("saveFailed"),"error");setStatus(e.message,true);}));els.deleteJsonBtn?.addEventListener("click",deleteCurrentJson);
-els.fitBtn.addEventListener("click",fitToWindow);els.actualBtn.addEventListener("click",actualSize);els.zoomOutBtn.addEventListener("click",()=>zoomAt(.8));els.zoomInBtn.addEventListener("click",()=>zoomAt(1.25));
-els.showLabelsCheck.addEventListener("change",scheduleViewportRender);els.labelDisplayMode.addEventListener("change",scheduleViewportRender);els.themeBtn.addEventListener("click",cycleTheme);
-els.aiToolbarToggle.addEventListener("change",()=>applyAiToolbarVisibility(els.aiToolbarToggle.checked));els.languageSelect.addEventListener("click",()=>applyLanguage(state.language==="zh"?"en":"zh"));
-els.fileFilterInput.addEventListener("input",()=>{state.fileFilter=els.fileFilterInput.value;renderFileList();});els.clearFileFilterBtn.addEventListener("click",()=>{state.fileFilter="";els.fileFilterInput.value="";renderFileList();els.fileFilterInput.focus();});
-els.addLabelBtn.addEventListener("click",()=>{if(state.data)addLabel();});
-els.instanceList.addEventListener("scroll",scheduleInstanceListRender,{passive:true});els.instanceListInner.addEventListener("click",ev=>{const row=ev.target.closest("[data-shape-id]");if(!row)return;setMode("pointer");selectId(row.dataset.shapeId,{scroll:false,ensure:true});flashSelected();});
-els.brightnessSlider.addEventListener("input",()=>{state.brightness=Number(els.brightnessSlider.value);applyImageDisplay();});els.contrastSlider.addEventListener("input",()=>{state.contrast=Number(els.contrastSlider.value);applyImageDisplay();});els.resetDisplayBtn.addEventListener("click",resetDisplay);
-els.samAcceptBtn.addEventListener("click",acceptSam);els.samCancelBtn.addEventListener("click",()=>cancelSam());els.samOutputSelect.addEventListener("change",()=>{if(state.mode==="sam"&&(state.sam.points.length||state.sam.box))runSamPrediction();});els.samModelSelect.addEventListener("change",()=>{if(state.mode==="sam")resetSamState();});
-els.yoloModelSelect.addEventListener("change",updateYoloUi);els.yoloRunBtn.addEventListener("click",runYolo);els.modelStatusBtn.addEventListener("click",showModelStatus);
-els.modalBackdrop.addEventListener("pointerdown",ev=>{if(ev.target===els.modalBackdrop)closeModal(null);});
-
-els.viewport.addEventListener("wheel",ev=>{if(!state.data)return;ev.preventDefault();zoomAt(ev.deltaY<0?1.12:.89,ev.clientX,ev.clientY);},{passive:false});
-els.viewport.addEventListener("contextmenu",ev=>{if(state.mode==="sam")ev.preventDefault();});
-els.viewport.addEventListener("pointerdown",ev=>{
-  if(!state.data)return;if(startPan(ev))return;if(state.mode==="sam"){samPointerDown(ev);return;}if(state.mode==="pointer"){beginPointerEdit(ev);return;}handleDrawPointerDown(ev);
+window.HelloLabelUiEvents.configure({
+  state,els,requestFolder,togglePanel,toggleAppMenu,runMenuCommand,closeAppMenu,
+  MODE_BUTTONS,setMode,deleteSelected,undo,redo,saveJsonToFolder,setSaveState,t,setStatus,
+  deleteCurrentJson,fitToWindow,actualSize,zoomAt,scheduleViewportRender,cycleTheme,
+  applyAiToolbarVisibility,applyLanguage,renderFileList,addLabel,scheduleInstanceListRender,
+  selectId,flashSelected,applyImageDisplay,resetDisplay,acceptSam,cancelSam,runSamPrediction,
+  resetSamState,updateYoloUi,runYolo,showModelStatus,closeModal
 });
-els.viewport.addEventListener("pointermove",ev=>{if(state.panning){movePan(ev);return;}if(state.mode==="sam"){samPointerMove(ev);return;}if(state.mode==="pointer"){movePointerEdit(ev);return;}handleDrawPointerMove(ev);});
-els.viewport.addEventListener("pointerup",ev=>{try{if(state.panning){endPan();return;}if(state.mode==="sam"){samPointerUp(ev);return;}if(state.mode==="pointer"){endPointerEdit();return;}handleDrawPointerUp(ev);}finally{window.helloLabelPointerInput?.release?.(ev.pointerId);}});
-els.viewport.addEventListener("pointercancel",ev=>{endPan();if(state.editing)cancelPointerEdit();if(state.sam.drag?.pointerId===ev.pointerId)state.sam.drag=null;window.helloLabelPointerInput?.release?.(ev.pointerId);renderSamOverlay();});
-els.viewport.addEventListener("auxclick",ev=>{if(ev.button===1)ev.preventDefault();});
-els.viewport.addEventListener("dblclick",ev=>{
-  if(state.mode==="pointer"){insertVertexAtDoubleClick(ev);return;}const d=state.drawing;if(!d||(d.type!=="polygon"&&d.type!=="linestrip"))return;if(d.points.length>=2&&Math.sqrt(dist2(d.points.at(-1),d.points.at(-2)))*state.scale<12)d.points.pop();const min=d.type==="polygon"?3:2;if(d.points.length>=min)finishSequenceDrawing();
-});
+window.HelloLabelUiEvents.bind();
 
-window.addEventListener("resize",()=>{resizeOverlay();scheduleViewportRender();scheduleInstanceListRender();});
-window.addEventListener("keydown",ev=>{
-  const modalOpen=!els.modalBackdrop.classList.contains("hidden");if(modalOpen){if(ev.key==="Escape"){ev.preventDefault();closeModal(null);}else if(ev.key==="Enter"&&!ev.shiftKey){const primary=[...els.modalActions.querySelectorAll("button")].at(-1);if(primary){ev.preventDefault();primary.click();}}return;}
-  const editable=ev.target instanceof HTMLInputElement||ev.target instanceof HTMLSelectElement||ev.target instanceof HTMLTextAreaElement;if(ev.code==="Space"&&!editable){state.spaceDown=true;ev.preventDefault();}
-  if(ev.key==="Escape"){if(state.mode==="sam"){cancelSam();ev.preventDefault();return;}if(state.drawing){cancelDrawing();ev.preventDefault();return;}}
-  if(ev.key==="Enter"&&!editable){if(state.mode==="sam"&&state.sam.preview){acceptSam();ev.preventDefault();return;}if(state.drawing){const d=state.drawing;if(d.type==="oriented_rectangle"&&d.points.length===2&&d.cursor){d.points=orientedRectFromEdge(d.points[0],d.points[1],d.cursor);}finishSequenceDrawing();ev.preventDefault();return;}}
-  if(state.mode==="sam"&&ev.key==="Backspace"&&!editable){ev.preventDefault();samUndoPrompt();return;}
-  if((ev.key==="Delete"||ev.key==="Backspace")&&state.mode==="pointer"&&state.primaryId&&!editable){ev.preventDefault();deleteSelected();return;}
-  if((ev.ctrlKey||ev.metaKey)&&!editable&&ev.key.toLowerCase()==="s"){ev.preventDefault();saveJsonToFolder(true).catch(e=>{setSaveState(t("saveFailed"),"error");setStatus(e.message,true);});return;}
-  if((ev.ctrlKey||ev.metaKey)&&!editable&&ev.key.toLowerCase()==="o"){ev.preventDefault();requestFolder();return;}
-  if((ev.ctrlKey||ev.metaKey)&&!editable&&ev.key.toLowerCase()==="z"){ev.preventDefault();if(ev.shiftKey)redo();else undo();return;}if((ev.ctrlKey||ev.metaKey)&&!editable&&ev.key.toLowerCase()==="y"){ev.preventDefault();redo();return;}
-  if(editable||ev.ctrlKey||ev.metaKey||ev.altKey)return;const k=ev.key.toLowerCase(),map={v:"pointer",b:"pen",p:"polygon",r:"rectangle",o:"oriented_rectangle",c:"circle",d:"point",l:"line",k:"linestrip"};if(map[k]){setMode(map[k]);ev.preventDefault();}
+window.HelloLabelViewportEvents.configure({
+  state,els,zoomAt,startPan,samPointerDown,beginPointerEdit,handleDrawPointerDown,
+  movePan,samPointerMove,movePointerEdit,handleDrawPointerMove,endPan,samPointerUp,
+  endPointerEdit,handleDrawPointerUp,cancelPointerEdit,renderSamOverlay,
+  insertVertexAtDoubleClick,dist2,finishSequenceDrawing,resizeOverlay,
+  scheduleViewportRender,scheduleInstanceListRender
 });
-window.addEventListener("keyup",ev=>{if(ev.code==="Space")state.spaceDown=false;});
-window.addEventListener("beforeunload",ev=>{if(state.dirty){ev.preventDefault();ev.returnValue="";}});
-matchMedia("(prefers-color-scheme: light)").addEventListener?.("change",()=>{if(currentTheme()==="system")applyTheme("system",false);});
+window.HelloLabelViewportEvents.bind();
 
-state.leftPanelVisible=currentPanelVisible("left");state.rightPanelVisible=currentPanelVisible("right");updatePanelToggleUi();applyAiToolbarVisibility(currentAiToolbarVisible(),false);applyLanguage(currentLanguage(),false);initRenderer();applyImageDisplay();updateYoloUi();updateActionButtons();
-if(!window.showDirectoryPicker)setStatus(t("fileAccessNeeded"),true);
+window.HelloLabelKeyboardEvents.configure({
+  state,els,closeModal,cancelSam,cancelDrawing,acceptSam,orientedRectFromEdge,
+  finishSequenceDrawing,samUndoPrompt,deleteSelected,saveJsonToFolder,setSaveState,
+  t,setStatus,requestFolder,undo,redo,setMode,currentTheme,applyTheme
+});
+window.HelloLabelKeyboardEvents.bind();
+
+window.HelloLabelAppInitializer.configure({
+  state,currentPanelVisible,updatePanelToggleUi,applyAiToolbarVisibility,
+  currentAiToolbarVisible,applyLanguage,currentLanguage,initRenderer,
+  applyImageDisplay,updateYoloUi,updateActionButtons,setStatus,t
+});
+window.HelloLabelAppInitializer.init();

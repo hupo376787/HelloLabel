@@ -37,6 +37,11 @@ const labelsController = read("static/ui/labels-controller.js");
 const instanceList = read("static/ui/instance-list.js");
 const selectionController = read("static/ui/selection-controller.js");
 const renderOrchestrator = read("static/ui/render-orchestrator.js");
+const editCommands = read("static/annotation/edit-commands.js");
+const uiEvents = read("static/events/ui-events.js");
+const viewportEvents = read("static/events/viewport-events.js");
+const keyboardEvents = read("static/events/keyboard-events.js");
+const appInitializer = read("static/core/app-initializer.js");
 const drawingPreview = read("static/drawing-preview.js");
 const drawingDispatcher = read("static/tools/drawing-dispatcher.js");
 const circleTool = read("static/tools/circle-tool.js");
@@ -171,6 +176,11 @@ for (const asset of [
   "ui/instance-list.js",
   "ui/selection-controller.js",
   "ui/render-orchestrator.js",
+  "annotation/edit-commands.js",
+  "events/ui-events.js",
+  "events/viewport-events.js",
+  "events/keyboard-events.js",
+  "core/app-initializer.js",
 ]) assert(app.includes(asset), `app bootstrap must load ${asset}`);
 assert(index.includes('/static/app.js'), "static/index.html must load /static/app.js");
 assert(i18nCore.includes("HelloLabelI18n"), "i18n core must expose HelloLabelI18n");
@@ -200,6 +210,13 @@ assert(labelsController.includes("HelloLabelLabels"), "labels controller must be
 assert(instanceList.includes("HelloLabelInstances"), "instance list must be extracted");
 assert(selectionController.includes("HelloLabelSelection"), "selection controller must be extracted");
 assert(renderOrchestrator.includes("HelloLabelRenderAll"), "render orchestration must be extracted");
+assert(editCommands.includes("HelloLabelEditCommands"), "annotation edit commands must be extracted");
+assert(uiEvents.includes("HelloLabelUiEvents"), "UI events must be extracted");
+assert(viewportEvents.includes("HelloLabelViewportEvents"), "viewport events must be extracted");
+assert(keyboardEvents.includes("HelloLabelKeyboardEvents"), "keyboard events must be extracted");
+assert(appInitializer.includes("HelloLabelAppInitializer"), "app initializer must be extracted");
+assert(!appCore.includes('els.openFolderBtn.addEventListener("click",requestFolder);'), "UI event binding must not remain inline in app core");
+assert(!appCore.includes('window.addEventListener("keydown",ev=>'), "keyboard binding must not remain inline in app core");
 assert(!appCore.includes("function showModal({title,body,buttons})"), "modal implementation must not remain inline in app core");
 assert(!appCore.includes("function renderLabelList(){\n  if(!state.data)"), "label rendering must not remain inline in app core");
 assert(!appCore.includes("function rebuildInstanceList(){state.instanceIds"), "instance list implementation must not remain inline in app core");
@@ -275,6 +292,11 @@ const required = [
   "static/ui/instance-list.js",
   "static/ui/selection-controller.js",
   "static/ui/render-orchestrator.js",
+  "static/annotation/edit-commands.js",
+  "static/events/ui-events.js",
+  "static/events/viewport-events.js",
+  "static/events/keyboard-events.js",
+  "static/core/app-initializer.js",
   "static/app-core.js",
   "static/telemetry.js",
   "static/annotation-telemetry.js",
