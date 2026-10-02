@@ -11,15 +11,15 @@
   const worldOption = els.yoloModelSelect?.querySelector('option[value="yolo-world"]');
   if (worldOption) {
     worldOption.disabled = true;
-    worldOption.textContent = "YOLO-World (v1.5 pending)";
+    worldOption.textContent = "YOLO-World (v2.2 pending)";
     worldOption.title = text(
-      "v1.5 纯浏览器版暂未迁移 YOLO-World",
-      "YOLO-World is not migrated to the v1.5 browser runtime yet",
+      "v2.2 纯浏览器版暂未迁移 YOLO-World",
+      "YOLO-World is not migrated to the v2.2 browser runtime yet",
     );
     if (els.yoloModelSelect.value === "yolo-world") els.yoloModelSelect.value = "yolo11-detect";
   }
 
-  installAIFromMenu = async function() {
+  async function installBrowserAIFromMenu() {
     if (!runtime.secureContext) {
       await showModal({
         title: text("浏览器环境不安全", "Insecure browser context"),
@@ -101,7 +101,7 @@
     }
   };
 
-  showModelStatus = async function() {
+  async function showBrowserModelStatus() {
     let cacheNames = [];
     try { if ("caches" in window) cacheNames = await caches.keys(); } catch {}
 
@@ -109,7 +109,7 @@
     const segDevice = runtime.yolo?.devices?.get?.("yolo11-seg") || null;
     const samModel = runtime.sam?.model || "onnx-community/sam2.1-hiera-tiny-ONNX";
     const rows = [
-      ["Runtime", "Browser-only 1.5.0"],
+      ["Runtime", "Browser-only 2.2.0"],
       [text("安全上下文", "Secure context"), runtime.secureContext ? text("是（HTTPS / localhost）", "yes (HTTPS / localhost)") : text("否", "no")],
       ["File System Access", yesNo(runtime.fileSystemAccess)],
       ["WebGPU", runtime.webgpu ? text("可用", "available") : text("不可用，将使用 CPU/WASM 兼容路径", "unavailable; CPU/WASM fallback")],
@@ -118,7 +118,7 @@
       [text("SAM 模型", "SAM model"), samModel],
       ["YOLO11 Detect", detectDevice ? `${text("已加载", "loaded")} (${detectDevice})` : text("未加载", "not loaded")],
       ["YOLO11 Seg", segDevice ? `${text("已加载", "loaded")} (${segDevice})` : text("未加载", "not loaded")],
-      ["YOLO-World", text("v1.5 暂未迁移", "not migrated in v1.5")],
+      ["YOLO-World", text("v2.2 暂未迁移", "not migrated in v2.2")],
       [text("模型缓存", "Model cache"), cacheNames.length ? cacheNames.join(", ") : text("尚无 Cache Storage 缓存", "no Cache Storage entries yet")],
       [text("图片上传", "Image upload"), text("已禁用：图片仅在本机读取", "disabled: images stay local")],
       [text("服务端 API", "Server API"), text("无", "none")],
@@ -135,8 +135,8 @@
   };
 
   window.HelloLabelBrowserRuntimeUI = Object.freeze({
-    installAIFromMenu: (...args) => installAIFromMenu(...args),
-    showModelStatus: (...args) => showModelStatus(...args),
+    installAIFromMenu: (...args) => installBrowserAIFromMenu(...args),
+    showModelStatus: (...args) => showBrowserModelStatus(...args),
   });
 
   if (typeof I18N !== "undefined") {

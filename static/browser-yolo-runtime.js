@@ -118,11 +118,11 @@
       .filter(Boolean));
   }
 
-  runYolo = async function() {
+  async function runBrowserYolo() {
     if (!state.imageFile || !state.data) return;
     const modelId = els.yoloModelSelect.value;
     if (modelId === "yolo-world") {
-      alert(text("YOLO-World 尚未迁移到 v1.5 纯浏览器运行时。", "YOLO-World has not yet been migrated to the v1.5 browser runtime."));
+      alert(text("YOLO-World 尚未迁移到 v2.2 纯浏览器运行时。", "YOLO-World has not yet been migrated to the v2.2 browser runtime."));
       return;
     }
 
@@ -202,4 +202,8 @@
   };
 
   runtime.yolo.loadModel = loadModel;
+  window.HelloLabelBrowserYoloRuntime = Object.freeze({
+    run: (...args) => runBrowserYolo(...args),
+    loadModel,
+  });
 })();

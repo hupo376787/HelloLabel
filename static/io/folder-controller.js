@@ -183,23 +183,26 @@
   }
 
   async function loadPreview(file) {
-    const { state, els, responseError, resizeOverlay } = c;
-    const form = new FormData();
-    form.append("file", file, file.name);
+    const { state, els, resizeOverlay } = c;
+    if (!file) throw new Error("No image file was provided.");
 
-    const response = await fetch("/api/preview", { method:"POST", body:form });
-    if (!response.ok) throw new Error(await responseError(response));
+    if (state.previewUrl) {
+      try { URL.revokeObjectURL(state.previewUrl); } catch {}
+      state.previewUrl = null;
+    }
 
-    const blob = await response.blob();
-    state.previewBlob = blob;
-    state.aiImageToken = response.headers.get("X-AI-Image-Token") || null;
-    state.width = Number(response.headers.get("X-Image-Width"));
-    state.height = Number(response.headers.get("X-Image-Height"));
-
-    if (state.previewUrl) URL.revokeObjectURL(state.previewUrl);
-    state.previewUrl = URL.createObjectURL(blob);
-    els.imageView.src = state.previewUrl;
+    const url = URL.createObjectURL(file);
+    state.previewUrl = url;
+    state.previewBlob = file;
+    state.aiImageToken = null;
+    els.imageView.src = url;
     try { await els.imageView.decode(); } catch {}
+
+    state.width = Number(els.imageView.naturalWidth || 0);
+    state.height = Number(els.imageView.naturalHeight || 0);
+    if (!(state.width > 0 && state.height > 0)) {
+      throw new Error("Browser could not decode this image.");
+    }
 
     els.stage.style.width = `${state.width}px`;
     els.stage.style.height = `${state.height}px`;
@@ -231,7 +234,7 @@
       markActiveFile(entry.name);
 
       await api.loadPreview(state.imageFile);
-      state.jsonHandle = await siblingJsonHandle(entry.name, false);
+      state.jsonHandle = await api.siblingJsonHandle(entry.name, false);
 
       if (state.jsonHandle) {
         const file = await state.jsonHandle.getFile();

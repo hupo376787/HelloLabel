@@ -205,12 +205,18 @@
 
     requestAnimationFrame(() => {
       const list = $("modalLabelList");
+      const input = $("modalNewLabel");
+      const okButton = [...els.modalActions.querySelectorAll("button")].at(-1);
+      const updateOkState = () => {
+        const typed = String(input?.value || "").trim();
+        if (okButton) okButton.disabled = !(picked || typed);
+      };
       const selectRow = row => {
         if (!row) return;
         picked = row.dataset.label;
         list?.querySelectorAll(".modal-label-option").forEach(item => item.classList.toggle("active", item === row));
-        const input = $("modalNewLabel");
         if (input) input.value = "";
+        updateOkState();
       };
       list?.addEventListener("click", event => selectRow(event.target.closest("[data-label]")));
       list?.addEventListener("dblclick", event => {
@@ -218,12 +224,14 @@
         if (!row) return;
         selectRow(row);
         event.preventDefault();
-        closeModal("ok");
+        if (!okButton?.disabled) closeModal("ok");
       });
-      $("modalNewLabel")?.addEventListener("input", () => {
+      input?.addEventListener("input", () => {
         picked = null;
         list?.querySelectorAll(".modal-label-option").forEach(item => item.classList.remove("active"));
+        updateOkState();
       });
+      updateOkState();
     });
 
     const result = await promise;

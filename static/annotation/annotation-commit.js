@@ -98,7 +98,7 @@
       window.HelloLabelObbTool.completed();
     }
 
-    await commitGeometry(type, points);
+    await api.commitGeometry(type, points);
   }
 
   const api = {

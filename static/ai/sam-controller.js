@@ -119,65 +119,13 @@
   }
 
   async function predict() {
-    const { state, els, setBusy, t, responseError, setStatus } = c;
-    if (!state.imageFile || (state.sam.points.length === 0 && !state.sam.box)) {
-      state.sam.preview = null;
-      render();
-      return;
-    }
-
-    const seq = ++state.sam.requestSeq;
-    setBusy(true, t("inferencing", { model:els.samModelSelect.options[els.samModelSelect.selectedIndex].text }));
-
-    try {
-      const post = async forceFile => {
-        const form = new FormData();
-        if (!forceFile && state.aiImageToken) form.append("image_token", state.aiImageToken);
-        else form.append("file", state.imageFile, state.imageName);
-        form.append("model", els.samModelSelect.value);
-        form.append("points", JSON.stringify(state.sam.points));
-        form.append("point_labels", JSON.stringify(state.sam.labels));
-        form.append("box", JSON.stringify(state.sam.box));
-        form.append("output_shape", els.samOutputSelect.value);
-        return fetch("/api/ai/sam", { method:"POST", body:form });
-      };
-
-      let response = await post(false);
-      if (response.status === 410 && state.aiImageToken) {
-        state.aiImageToken = null;
-        response = await post(true);
-      }
-      if (!response.ok) throw new Error(await responseError(response));
-
-      const json = await response.json();
-      if (seq !== state.sam.requestSeq) return;
-      if (json.image_token) state.aiImageToken = json.image_token;
-
-      state.sam.preview = {
-        label:"",
-        points:json.shape.points,
-        shape_type:json.shape.shape_type,
-        group_id:null,
-        description:"",
-        flags:{},
-        mask:null,
-        _score:json.shape.score,
-        _model:json.shape.model
-      };
-      render();
-      setStatus(t("aiCandidate", {
-        score:json.shape.score != null ? `, score ${Number(json.shape.score).toFixed(3)}` : ""
-      }));
-    } catch (error) {
-      if (seq === state.sam.requestSeq) {
-        state.sam.preview = null;
-        render();
-        setStatus(error.message, true);
-        alert(t("aiSegFailed", { message:error.message }));
-      }
-    } finally {
-      if (seq === state.sam.requestSeq) setBusy(false);
-    }
+    const browserPredict = window.HelloLabelBrowserSamRuntime?.predict;
+    if (typeof browserPredict === "function") return browserPredict();
+    const { state, setStatus, t } = c;
+    state.sam.preview = null;
+    render();
+    const detail = "Browser SAM2.1 runtime is not ready.";
+    setStatus(t("aiSegFailed", { message:detail }), true);
   }
 
   function pointerDown(event) {

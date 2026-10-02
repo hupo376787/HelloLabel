@@ -12,7 +12,7 @@
     const {
       state, ensureDataImageFields, ensureHelloLabel, stemOf,
       setSaveState, t, setStatus, updateActionButtons, els,
-      scheduleAutoSave, validateLabelme
+      scheduleAutoSave, validateLabelme, siblingJsonHandle
     } = c;
 
     if (!state.data || !state.dirHandle) return;
@@ -45,7 +45,7 @@
 
     const task = (async () => {
       const handle = knownHandle
-        || await dirHandle.getFileHandle(`${stemOf(imageName)}.json`, { create:true });
+        || await siblingJsonHandle(imageName, true);
 
       const writable = await handle.createWritable();
       try {

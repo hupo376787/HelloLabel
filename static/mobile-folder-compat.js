@@ -4,10 +4,10 @@
   if (window.__helloLabelMobileFolderCompatInstalled) return;
   window.__helloLabelMobileFolderCompatInstalled = true;
 
-  const originalRequestFolder = requestFolder;
-  const originalSaveJsonToFolder = saveJsonToFolder;
-  const originalDeleteCurrentJson = deleteCurrentJson;
-  const originalUpdateActionButtons = updateActionButtons;
+  const originalRequestFolder = window.HelloLabelFolder.requestFolder.bind(window.HelloLabelFolder);
+  const originalSaveJsonToFolder = window.HelloLabelJsonStorage.saveJsonToFolder.bind(window.HelloLabelJsonStorage);
+  const originalDeleteCurrentJson = window.HelloLabelJsonStorage.deleteCurrentJson.bind(window.HelloLabelJsonStorage);
+  const originalUpdateActionButtons = window.HelloLabelStatusUI.updateActionButtons.bind(window.HelloLabelStatusUI);
 
   const text = (zh, en) => state?.language === "en" ? en : zh;
   const isCompatMode = () => state?.dirHandle?.__helloLabelMobileCompat === true;
@@ -259,19 +259,10 @@
     }
   }
 
-  requestFolder = compatibleRequestFolder;
-  saveJsonToFolder = saveCompatJson;
-  deleteCurrentJson = compatibleDeleteCurrentJson;
-  updateActionButtons = compatibleUpdateActionButtons;
-
-  if (els.openFolderBtn) {
-    els.openFolderBtn.removeEventListener("click", originalRequestFolder);
-    els.openFolderBtn.addEventListener("click", compatibleRequestFolder);
-  }
-  if (els.deleteJsonBtn) {
-    els.deleteJsonBtn.removeEventListener("click", originalDeleteCurrentJson);
-    els.deleteJsonBtn.addEventListener("click", compatibleDeleteCurrentJson);
-  }
+  window.HelloLabelFolder.requestFolder = compatibleRequestFolder;
+  window.HelloLabelJsonStorage.saveJsonToFolder = saveCompatJson;
+  window.HelloLabelJsonStorage.deleteCurrentJson = compatibleDeleteCurrentJson;
+  window.HelloLabelStatusUI.updateActionButtons = compatibleUpdateActionButtons;
 
   window.helloLabelMobileFolderCompat = {
     supported: true,

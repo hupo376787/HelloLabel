@@ -90,7 +90,7 @@
       </div>`;
   }
 
-  showAbout = async function() {
+  const showAboutDialog = async function() {
     await modalWithClass({
       title: t("menuAboutHelloLabel"),
       body: aboutHtml(),
@@ -99,7 +99,7 @@
   };
 
   window.HelloLabelAboutUI = window.HelloLabelAboutUI || {};
-  window.HelloLabelAboutUI.showAbout = (...args) => showAbout(...args);
+  window.HelloLabelAboutUI.showAbout = (...args) => showAboutDialog(...args);
 
   function shortcutSections() {
     const en = isEnglish();
@@ -230,11 +230,14 @@
     </div>`;
   }
 
-  showShortcuts = async function() {
+  const showShortcutsDialog = async function() {
     await modalWithClass({
       title: t("shortcuts"),
       body: shortcutsHtml(),
       buttons: [{ label: t("close"), value: "ok", className: "primary" }]
     }, "shortcuts-modal-card");
   };
+
+  window.HelloLabelAboutUI = window.HelloLabelAboutUI || {};
+  window.HelloLabelAboutUI.showShortcuts = (...args) => showShortcutsDialog(...args);
 })();

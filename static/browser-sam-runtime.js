@@ -8,6 +8,7 @@
   const MODEL_ID = "onnx-community/sam2.1-hiera-tiny-ONNX";
   const REQUEST_TIMEOUT_MS = 600000;
   const text = (zh, en) => state?.language === "en" ? en : zh;
+  const assetVersion = encodeURIComponent(window.HELLOLABEL_ASSET_VERSION || runtime.version || "2.2.0");
 
   if (els.samModelSelect) {
     els.samModelSelect.replaceChildren();
@@ -38,7 +39,7 @@
   function ensureWorker() {
     const sam = runtime.sam;
     if (sam.worker) return sam.worker;
-    const worker = new Worker("/static/sam-worker.js?v=hellolabel-v150", { type: "module" });
+    const worker = new Worker(`/static/sam-worker.js?v=${assetVersion}`, { type: "module" });
     sam.worker = worker;
     worker.addEventListener("message", event => {
       const data = event.data || {};
@@ -68,7 +69,7 @@
   function request(type, payload = {}, transfer = []) {
     const sam = runtime.sam;
     const worker = ensureWorker();
-    const id = `sam15-${Date.now()}-${++sam.requestSeq}`;
+    const id = `sam22-${Date.now()}-${++sam.requestSeq}`;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         if (!sam.pending.has(id)) return;
@@ -137,7 +138,7 @@
     return null;
   }
 
-  runSamPrediction = async function() {
+  async function runBrowserSamPrediction() {
     if (!state.imageFile || (state.sam.points.length === 0 && !state.sam.box)) {
       state.sam.preview = null;
       renderSamOverlay();
@@ -215,4 +216,9 @@
   runtime.sam.model = MODEL_ID;
   runtime.sam.request = request;
   runtime.sam.ensureImageEncoded = ensureImageEncoded;
+  window.HelloLabelBrowserSamRuntime = Object.freeze({
+    predict: (...args) => runBrowserSamPrediction(...args),
+    request,
+    ensureImageEncoded,
+  });
 })();

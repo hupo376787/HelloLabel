@@ -1,7 +1,6 @@
 "use strict";
 
 (() => {
-  const originalDeleteCurrentJson = deleteCurrentJson;
   const fold = value => String(value || "").normalize("NFC").toLocaleLowerCase();
   const text = (zh, en) => state?.language === "en" ? en : zh;
 
@@ -36,7 +35,7 @@
     return matches[0] || null;
   }
 
-  siblingJsonHandle = async function(imageName, create = false) {
+  window.HelloLabelFolder.siblingJsonHandle = async function(imageName, create = false) {
     assertUniqueImageStem(imageName);
     const existing = await findExistingJson(imageName);
     if (existing) {
@@ -76,9 +75,5 @@
     }
   }
 
-  deleteCurrentJson = safeDeleteCurrentJson;
-  if (els.deleteJsonBtn) {
-    els.deleteJsonBtn.removeEventListener("click", originalDeleteCurrentJson);
-    els.deleteJsonBtn.addEventListener("click", safeDeleteCurrentJson);
-  }
+  window.HelloLabelJsonStorage.deleteCurrentJson = safeDeleteCurrentJson;
 })();

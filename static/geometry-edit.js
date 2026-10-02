@@ -152,8 +152,8 @@
     return true;
   }
 
-  const originalCommitGeometry = commitGeometry;
-  const originalCancelDrawing = cancelDrawing;
+  const originalCommitGeometry = window.HelloLabelAnnotationCommit.commitGeometry.bind(window.HelloLabelAnnotationCommit);
+  const originalCancelDrawing = window.HelloLabelAnnotationCommit.cancelDrawing.bind(window.HelloLabelAnnotationCommit);
 
   function removeShapeTransient(id) {
     const index = state.runtimeIds.indexOf(id);
@@ -203,7 +203,7 @@
     if (state.dirty && !state.saveTimer) scheduleAutoSave();
   }
 
-  cancelDrawing = function(status = true) {
+  window.HelloLabelAnnotationCommit.cancelDrawing = function(status = true) {
     const hadReopened = !!reopened;
     const result = originalCancelDrawing(status);
     if (hadReopened) restoreReopenedOriginal();
@@ -211,7 +211,7 @@
     return result;
   };
 
-  commitGeometry = async function(type, points, meta = { source: "manual" }) {
+  window.HelloLabelAnnotationCommit.commitGeometry = async function(type, points, meta = { source: "manual" }) {
     if (!reopened) return originalCommitGeometry(type, points, meta);
     if (!state.data || !points?.length) return;
 

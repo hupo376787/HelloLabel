@@ -21,6 +21,9 @@
   }
 
   async function showShortcuts() {
+    if (typeof window.HelloLabelAboutUI?.showShortcuts === "function") {
+      return window.HelloLabelAboutUI.showShortcuts();
+    }
     const { state, showModal, t, escapeHtml } = c;
     const zh = state.language !== "en";
     const rows = zh ? [

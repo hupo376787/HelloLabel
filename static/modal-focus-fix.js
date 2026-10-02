@@ -31,15 +31,15 @@
     });
   };
 
-  const originalShowModal = showModal;
-  showModal = function(options) {
+  const originalShowModal = window.HelloLabelModal.showModal.bind(window.HelloLabelModal);
+  window.HelloLabelModal.showModal = function(options) {
     const promise = originalShowModal(options);
     repairFocus();
     return promise;
   };
 
-  const originalCloseModal = closeModal;
-  closeModal = function(value = null) {
+  const originalCloseModal = window.HelloLabelModal.closeModal.bind(window.HelloLabelModal);
+  window.HelloLabelModal.closeModal = function(value = null) {
     const result = originalCloseModal(value);
     // Re-activate the renderer after a modal closes. Do not force a particular
     // input here; the next user click will select the intended field normally.
@@ -49,72 +49,8 @@
     return result;
   };
 
-  // First-annotation label dialog: OK is disabled until a label has either been
-  // selected or typed. This also prevents the global Enter handler from closing
-  // an empty dialog because HTMLElement.click() does nothing on a disabled button.
-  chooseLabelModal = async function() {
-    const labels = [...document.querySelectorAll("#labelList [data-label]")]
-      .map(row => String(row.dataset.label || "").trim())
-      .filter(Boolean);
-
-    const html = `<div>${escapeHtml(t("chooseOrCreateLabel"))}</div>` +
-      `<div id="modalLabelList" class="modal-label-list">${labels.map(name =>
-        `<div class="modal-label-option" data-label="${escapeHtml(name)}"><span class="dot" style="background:${labelColor(name)}"></span><span>${escapeHtml(name)}</span></div>`
-      ).join("") || `<div class="muted">${escapeHtml(t("noLabelsYet"))}</div>`}</div>` +
-      `<label>${escapeHtml(t("newLabel"))}<input id="modalNewLabel" type="text" placeholder="${escapeHtml(t("newLabelPlaceholder"))}" autocomplete="off" /></label>`;
-
-    let picked = null;
-    const promise = showModal({
-      title: t("chooseLabel"),
-      body: html,
-      buttons: [
-        { label: t("cancel"), value: null },
-        { label: t("ok"), value: "ok", className: "primary" }
-      ]
-    });
-
-    requestAnimationFrame(() => {
-      const list = $("modalLabelList");
-      const input = $("modalNewLabel");
-      const okButton = [...els.modalActions.querySelectorAll("button")].at(-1);
-
-      const updateOkState = () => {
-        const typed = String(input?.value || "").trim();
-        if (okButton) okButton.disabled = !(picked || typed);
-      };
-
-      const selectRow = row => {
-        if (!row) return;
-        picked = String(row.dataset.label || "").trim() || null;
-        list?.querySelectorAll(".modal-label-option").forEach(item => item.classList.toggle("active", item === row));
-        if (input) input.value = "";
-        updateOkState();
-      };
-
-      list?.addEventListener("click", event => selectRow(event.target.closest("[data-label]")));
-      list?.addEventListener("dblclick", event => {
-        const row = event.target.closest("[data-label]");
-        if (!row) return;
-        selectRow(row);
-        event.preventDefault();
-        if (!okButton?.disabled) closeModal("ok");
-      });
-
-      input?.addEventListener("input", () => {
-        picked = null;
-        list?.querySelectorAll(".modal-label-option").forEach(item => item.classList.remove("active"));
-        updateOkState();
-      });
-
-      updateOkState();
-      repairFocus(input);
-    });
-
-    const result = await promise;
-    if (result !== "ok") return null;
-    const typed = String($("modalNewLabel")?.value || "").trim();
-    return typed || picked || null;
-  };
+  // Label chooser behavior is extended by global-labels.js through
+  // HelloLabelModal.chooseLabelModal. Keeping one owner avoids patch-order bugs.
 
   if (typeof I18N !== "undefined") {
     if (I18N.zh) I18N.zh.invalidLabelme = "同名 JSON 不是 HelloLabel shape 格式。";
