@@ -29,12 +29,12 @@
       const permission = await handle.requestPermission({ mode:"readwrite" });
       if (permission !== "granted") throw new Error(t("folderPermissionDenied"));
 
-      resetCurrentState();
+      api.resetCurrentState();
       state.dirHandle = handle;
       state.fileFilter = "";
       els.fileFilterInput.value = "";
       els.folderName.textContent = handle.name;
-      await refreshFolderEntries();
+      await api.refreshFolderEntries();
     } catch (error) {
       if (error?.name !== "AbortError") setStatus(String(error), true);
     }
@@ -224,7 +224,7 @@
 
     setBusy(true, t("readImage"));
     try {
-      resetCurrentState();
+      api.resetCurrentState();
       state.imageHandle = entry.handle;
       state.imageFile = await entry.handle.getFile();
       state.imageName = entry.name;

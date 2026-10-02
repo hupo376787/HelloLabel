@@ -2,6 +2,7 @@
 
 (() => {
   let context = null;
+  let labelColorResolver = null;
 
   function configure(nextContext) {
     context = nextContext || null;
@@ -71,9 +72,17 @@
     return context.state.runtimeMeta?.[id] || {};
   }
 
+  function setLabelColorResolver(resolver) {
+    labelColorResolver = typeof resolver === "function" ? resolver : null;
+  }
+
   function labelColor(label) {
     const { state, stableColor } = context;
-    return state.data?.hellolabel?.labels?.[label]?.color || stableColor(label);
+    const imageColor = state.data?.hellolabel?.labels?.[label]?.color;
+    const fallback = imageColor || stableColor(label);
+    if (!labelColorResolver) return fallback;
+    const resolved = labelColorResolver(label, { state, imageColor, fallback, stableColor });
+    return resolved || fallback;
   }
 
   function shapeAtId(id) {
@@ -227,6 +236,7 @@
     shapeIds,
     shapeMeta,
     labelColor,
+    setLabelColorResolver,
     shapeAtId,
     primaryShape,
     primaryIndex,

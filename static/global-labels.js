@@ -86,28 +86,22 @@
   // Keep Labelme/HelloLabel metadata inside each image JSON independent from the
   // application-level library. Global add/rename/delete/import operations must
   // never rewrite existing annotation JSON files or mutate their shape labels.
-  const originalEnsureHelloLabel = ensureHelloLabel;
-  ensureHelloLabel = function() {
-    return originalEnsureHelloLabel();
-  };
-
-  labelColor = function(label) {
+  window.HelloLabelModel.setLabelColorResolver?.((label, { imageColor, fallback }) => {
     const name = String(label || "");
     const globalColor = globalLabels[name]?.color;
     if (validColor(globalColor)) return globalColor;
-    const imageColor = state.data?.hellolabel?.labels?.[name]?.color;
-    return validColor(imageColor) ? imageColor : stableColor(name);
-  };
+    return validColor(imageColor) ? imageColor : fallback;
+  });
 
-  const originalRefreshFolderEntries = refreshFolderEntries;
-  refreshFolderEntries = async function(...args) {
+  const originalRefreshFolderEntries = window.HelloLabelFolder.refreshFolderEntries.bind(window.HelloLabelFolder);
+  window.HelloLabelFolder.refreshFolderEntries = async function(...args) {
     const result = await originalRefreshFolderEntries(...args);
     await migrateFolderLabelsOnce();
     return result;
   };
 
-  const originalResetCurrentState = resetCurrentState;
-  resetCurrentState = function(...args) {
+  const originalResetCurrentState = window.HelloLabelFolder.resetCurrentState.bind(window.HelloLabelFolder);
+  window.HelloLabelFolder.resetCurrentState = function(...args) {
     const previousActive = state.activeLabel;
     const result = originalResetCurrentState(...args);
     if (previousActive && globalLabels[previousActive]) state.activeLabel = previousActive;
@@ -123,7 +117,7 @@
     return usage;
   }
 
-  renderLabelList = function() {
+  window.HelloLabelLabels.renderLabelList = function() {
     const usage = currentUsage();
     els.labelList.replaceChildren();
     const names = Object.keys(globalLabels);
@@ -182,7 +176,7 @@
     }
   };
 
-  changeLabelColor = function(name, color) {
+  window.HelloLabelLabels.changeLabelColor = function(name, color) {
     if (!globalLabels[name] || !validColor(color)) return;
     globalLabels[name].color = color;
     persistGlobalLabels();
@@ -196,7 +190,7 @@
     setStatus(t("labelColorChanged", { name }));
   };
 
-  chooseLabelModal = async function() {
+  window.HelloLabelModal.chooseLabelModal = async function() {
     const labels = Object.keys(globalLabels);
     const html = `<div>${escapeHtml(t("chooseOrCreateLabel"))}</div><div id="modalLabelList" class="modal-label-list">${labels.map(name => `<div class="modal-label-option" data-label="${escapeHtml(name)}"><span class="dot" style="background:${labelColor(name)}"></span><span>${escapeHtml(name)}</span></div>`).join("") || `<div class="muted">${escapeHtml(t("noLabelsYet"))}</div>`}</div><label>${escapeHtml(t("newLabel"))}<input id="modalNewLabel" type="text" placeholder="${escapeHtml(t("newLabelPlaceholder"))}" /></label>`;
     let picked = null;
@@ -238,12 +232,12 @@
     return typed || picked || null;
   };
 
-  resolveNewShapeLabel = async function() {
+  window.HelloLabelLabels.resolveNewShapeLabel = async function() {
     if (state.activeLabel && globalLabels[state.activeLabel]) return state.activeLabel;
     return chooseLabelModal();
   };
 
-  addLabel = async function() {
+  window.HelloLabelLabels.addLabel = async function() {
     const name = await promptText(t("addLabel"), t("enterNewLabel"), "");
     if (!name) return;
     if (!globalLabels[name]) {
@@ -257,7 +251,7 @@
 
   // Rename only the software-level label definition. Existing shapes in the
   // current image and all historical JSON files keep their original label text.
-  renameLabel = async function(oldName) {
+  window.HelloLabelLabels.renameLabel = async function(oldName) {
     if (!globalLabels[oldName]) return;
     const newName = await promptText(t("renameLabel"), state.language === "en"
       ? "Rename this application label. Existing annotation JSON files and instances will not be changed."
@@ -293,7 +287,7 @@
 
   // Delete only the software-level definition. Do not replace/delete any existing
   // instances, and do not mark the current image dirty.
-  deleteLabel = async function(name) {
+  window.HelloLabelLabels.deleteLabel = async function(name) {
     if (!globalLabels[name]) return;
     const message = state.language === "en"
       ? `Delete application label “${escapeHtml(name)}”? Existing annotation JSON files and instances will not be changed.`
@@ -469,8 +463,8 @@
     }
   });
 
-  const originalApplyLanguage = applyLanguage;
-  applyLanguage = function(...args) {
+  const originalApplyLanguage = window.HelloLabelLanguageTheme.applyLanguage.bind(window.HelloLabelLanguageTheme);
+  window.HelloLabelLanguageTheme.applyLanguage = function(...args) {
     const result = originalApplyLanguage(...args);
     updateImportButtonLanguage();
     return result;
@@ -483,7 +477,7 @@
     event.preventDefault();
     event.stopPropagation();
     event.stopImmediatePropagation();
-    void addLabel();
+    void window.HelloLabelLabels.addLabel();
   }, true);
 
   renderLabelList();

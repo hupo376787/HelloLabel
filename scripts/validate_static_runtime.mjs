@@ -59,6 +59,7 @@ const telemetry = read("static/telemetry.js");
 const browserRuntime = read("static/browser-runtime.js");
 const browserFileGuard = read("static/browser-file-guard.js");
 const mobileFolderCompat = read("static/mobile-folder-compat.js");
+const globalLabels = read("static/global-labels.js");
 const browserSam = read("static/browser-sam-runtime.js");
 const browserYolo = read("static/browser-yolo-runtime.js");
 const browserRuntimeUi = read("static/browser-runtime-ui.js");
@@ -236,6 +237,10 @@ assert(i18nMenuEn.includes("HelloLabelI18nMessages.en"), "English menu messages 
 assert(!appCore.includes("I18N."), "legacy I18N references must not remain in app core");
 assert(coreUtils.includes("HelloLabelUtils"), "core utils must expose HelloLabelUtils");
 assert(labelmeModel.includes("HelloLabelModel"), "Labelme model must expose HelloLabelModel");
+assert(labelmeModel.includes("setLabelColorResolver"), "Labelme model must expose a safe label-color extension point");
+assert(globalLabels.includes("HelloLabelModel.setLabelColorResolver") && globalLabels.includes("HelloLabelLabels.renderLabelList"), "global label library must extend module APIs");
+assert(!/^\s{2}(?:ensureHelloLabel|labelColor|refreshFolderEntries|resetCurrentState|renderLabelList|changeLabelColor|chooseLabelModal|resolveNewShapeLabel|addLabel|renameLabel|deleteLabel|applyLanguage)\s*=/m.test(globalLabels), "global label library must not reassign core global bindings");
+assert(folderController.includes("api.refreshFolderEntries()") && folderController.includes("api.resetCurrentState()"), "folder controller internal flows must honor module extensions");
 assert(labelmeModel.includes("exactPointCounts") && labelmeModel.includes("oriented_rectangle:4"), "Labelme validation must enforce shape point-count semantics");
 assert(labelmeModel.includes("Number.isFinite(value)") && labelmeModel.includes("Number.isInteger(shape.group_id)"), "Labelme validation must enforce finite coordinates and integer group_id");
 assert(labelmeModel.includes('typeof flag !== "boolean"'), "Labelme validation must enforce boolean flag values");
