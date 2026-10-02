@@ -76,6 +76,8 @@ const startSh = read("start_web.sh");
 // Release identity.
 assert(desktopPackage.version === "2.2.0", "desktop/package.json must be version 2.2.0");
 assert(app.includes('const VERSION = "hellolabel-v220'), "app bootstrap cache version must use hellolabel-v220");
+assert(app.includes("const pendingScripts = scripts.map(queueScript)") && app.includes("await Promise.all(pendingScripts)"), "bootstrap modules must be fetched in parallel");
+assert(!app.includes("for (const src of scripts) await loadScript(src)"), "bootstrap must not serialize every module request");
 assert(app.includes('version: "2.2.0"'), "app ready event must report version 2.2.0");
 assert(app.includes("pointer-input.js"), "app bootstrap must load the pointer input layer");
 assert(pointerInput.includes("mouse: Object.freeze") && pointerInput.includes("touch: Object.freeze") && pointerInput.includes("pen: Object.freeze"), "pointer-input.js must define mouse/touch/pen profiles");
@@ -86,6 +88,9 @@ assert(mobileTouchUi.includes("hellolabel-touch-layout"), "touch UI must support
 assert(mobileTouchUi.includes("data-touch-menu"), "touch layout must expose a main menu entry");
 assert(mobileTouchUi.includes("hellolabel-touch-app-menu") && mobileTouchUi.includes("HelloLabelLayout?.toggleAppMenu?.()"), "touch menu must reuse the existing app menu and command routing");
 assert(mobileTouchUi.includes("appMenuAnchor"), "touch menu must restore the original menu DOM when leaving touch layout");
+assert(!mobileTouchUi.includes('dispatchEvent(new Event("resize"))'), "touch UI must not synthesize resize events and create a feedback loop");
+assert(!mobileTouchUi.includes('addEventListener("resize", syncLayout'), "touch UI must rely on the responsive-layout event instead of a duplicate resize listener");
+assert(mobileTouchUi.includes("hellolabel:touch-panel-resized"), "touch drawer may emit a scoped panel-resized event without retriggering responsive layout");
 assert(mobileTouchUi.includes("leftSidebar") && mobileTouchUi.includes("rightSidebar") && mobileTouchUi.includes('querySelector(".ai-row")'), "touch UI must reuse the live image, annotation, and AI panels");
 assert(!mobileTouchUi.includes("mobile-touch-action-bar"), "touch UI must not create a second annotation action bar");
 assert(mobileToolbarState.includes("helloLabelPointerInput?.refreshTouchActions?.()"), "mobile toolbar state must delegate to the pointer-input action bar");

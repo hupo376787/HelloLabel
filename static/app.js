@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v220-t20";
+  const VERSION = "hellolabel-v220-t21";
 
   try {
     let theme = localStorage.getItem("hellolabel-theme") || localStorage.getItem("labelit-theme");
@@ -123,19 +123,24 @@
     document.head.appendChild(link);
   }
 
-  function loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.async = false;
+  function queueScript(src) {
+    const script = document.createElement("script");
+    script.src = src;
+    // Dynamically inserted classic scripts default to async. Setting async=false
+    // keeps execution in insertion order while allowing the browser to fetch
+    // all modules in parallel instead of creating an 80+ request waterfall.
+    script.async = false;
+    const loaded = new Promise((resolve, reject) => {
       script.addEventListener("load", resolve, { once: true });
       script.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
-      document.body.appendChild(script);
     });
+    document.body.appendChild(script);
+    return loaded;
   }
 
   (async () => {
-    for (const src of scripts) await loadScript(src);
+    const pendingScripts = scripts.map(queueScript);
+    await Promise.all(pendingScripts);
     document.documentElement.dataset.hellolabelRuntime = "browser-only";
     window.dispatchEvent(new CustomEvent("hellolabel:ready", { detail: { version: "2.2.0", runtime: "browser-only" } }));
   })().catch(error => {

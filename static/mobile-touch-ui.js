@@ -189,15 +189,18 @@
     }
 
     function closeDrawer() {
+      const hadOpenDrawer = !!activeType || !drawer.hidden;
       if (activeType && sources[activeType]) restoreNode(sources[activeType].node);
       activeType = null;
       drawer.hidden = true;
       mask.hidden = true;
       drawer.setAttribute("aria-hidden", "true");
       document.body.classList.remove("hellolabel-touch-drawer-open");
-      requestAnimationFrame(() => {
-        window.dispatchEvent(new Event("resize"));
-      });
+      if (hadOpenDrawer) {
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new CustomEvent("hellolabel:touch-panel-resized"));
+        });
+      }
     }
 
     function openDrawer(type) {
@@ -213,7 +216,7 @@
       drawer.setAttribute("aria-hidden", "false");
       document.body.classList.add("hellolabel-touch-drawer-open");
       requestAnimationFrame(() => {
-        window.dispatchEvent(new Event("resize"));
+        window.dispatchEvent(new CustomEvent("hellolabel:touch-panel-resized"));
       });
     }
 
@@ -276,7 +279,6 @@
     viewport.addEventListener("pointercancel", hideCrosshair, { passive:true });
 
     window.addEventListener("hellolabel:responsive-layout", syncLayout);
-    window.addEventListener("resize", syncLayout, { passive:true });
 
     window.mobileTouchUI = {
       openDrawer,
