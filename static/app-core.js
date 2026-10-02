@@ -169,7 +169,12 @@ function acceptSam(){return window.HelloLabelSamController.accept();}
 
 function runYolo(){return window.HelloLabelYoloController.run();}
 function updateYoloUi(){return window.HelloLabelYoloController.updateUi();}
-function showModelStatus(){return window.HelloLabelYoloController.showModelStatus();}
+function showModelStatus(){
+  const browserStatus=window.HelloLabelBrowserRuntimeUI?.showModelStatus;
+  return typeof browserStatus==="function"
+    ? browserStatus()
+    : window.HelloLabelYoloController.showModelStatus();
+}
 
 // ---------- View transform, display, modes ----------
 

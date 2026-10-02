@@ -80,57 +80,16 @@
   }
 
   async function installAIFromMenu() {
-    const { state, setStatus, t, confirmModal, escapeHtml, showModal } = c;
-    if (state.aiInstallerLaunching) {
-      setStatus(t("installAIStarted"));
-      return;
+    const { showModal, t, escapeHtml } = c;
+    const browserUi = window.HelloLabelBrowserRuntimeUI;
+    if (typeof browserUi?.installAIFromMenu === "function") {
+      return browserUi.installAIFromMenu();
     }
-
-    const ok = await confirmModal(
-      t("installAIConfirmTitle"),
-      escapeHtml(t("installAIConfirmText")),
-      t("installAI")
-    );
-    if (!ok) return;
-
-    state.aiInstallerLaunching = true;
-    setStatus(t("installAILaunching"));
-
-    try {
-      let result = null;
-      if (window.helloLabelDesktop?.installAI) {
-        result = await window.helloLabelDesktop.installAI();
-      } else {
-        const response = await fetch("/api/system/install-ai", {
-          method:"POST",
-          headers:{"Accept":"application/json"}
-        });
-        let data = {};
-        try { data = await response.json(); } catch {}
-        if (!response.ok) throw new Error(data.detail || data.message || `HTTP ${response.status}`);
-        result = data;
-      }
-
-      if (result && result.ok === false) {
-        throw new Error(result.message || t("installAIUnavailable"));
-      }
-
-      setStatus(t("installAIStarted"));
-      await showModal({
-        title:t("installAIConfirmTitle"),
-        body:`<div>${escapeHtml(t("installAIStarted"))}</div>`,
-        buttons:[{label:t("ok"),value:"ok",className:"primary"}]
-      });
-    } catch (error) {
-      state.aiInstallerLaunching = false;
-      const message = error?.message || String(error);
-      setStatus(t("installAIError", { message }), true);
-      await showModal({
-        title:t("installAIConfirmTitle"),
-        body:`<div class="danger-note">${escapeHtml(t("installAIError",{message}))}</div>`,
-        buttons:[{label:t("close"),value:"ok",className:"primary"}]
-      });
-    }
+    await showModal({
+      title:t("installAIConfirmTitle"),
+      body:`<div class="danger-note">${escapeHtml(t("installAIUnavailable"))}</div>`,
+      buttons:[{label:t("close"),value:"ok",className:"primary"}]
+    });
   }
 
   async function runMenuCommand(command) {

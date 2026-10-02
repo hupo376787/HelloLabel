@@ -134,6 +134,11 @@
     });
   };
 
+  window.HelloLabelBrowserRuntimeUI = Object.freeze({
+    installAIFromMenu: (...args) => installAIFromMenu(...args),
+    showModelStatus: (...args) => showModelStatus(...args),
+  });
+
   if (typeof I18N !== "undefined") {
     if (I18N.zh) {
       I18N.zh.installAI = "下载浏览器 AI";

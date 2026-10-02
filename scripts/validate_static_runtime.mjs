@@ -145,6 +145,9 @@ assert(privacyGuard.includes('"/api/telemetry"'), "privacy guard must explicitly
 assert(privacyGuard.includes('url.pathname === "/api"') && privacyGuard.includes('url.pathname.startsWith("/api/")'), "privacy guard must block other legacy /api calls");
 assert(privacyGuard.includes("XMLHttpRequest") && privacyGuard.includes("sendBeacon"), "privacy guard must block non-fetch legacy API transports too");
 assert(!browserRuntimeUi.includes("/api/system/install-ai"), "browser runtime UI must not call the legacy AI installer API");
+assert(browserRuntimeUi.includes("HelloLabelBrowserRuntimeUI"), "browser runtime UI must expose a stable browser-only menu/status API");
+assert(helpMenu.includes("HelloLabelBrowserRuntimeUI") && !helpMenu.includes("/api/system/install-ai"), "help menu must delegate AI setup to the browser runtime and never call the legacy installer API");
+assert(appCore.includes("HelloLabelBrowserRuntimeUI?.showModelStatus"), "model status callbacks must dynamically use the browser runtime UI");
 assert(browserRuntimeUi.includes('runtime.yolo.loadModel("yolo11-detect")'), "browser AI installer must prepare YOLO11 Detect locally");
 assert(browserRuntimeUi.includes('runtime.yolo.loadModel("yolo11-seg")'), "browser AI installer must prepare YOLO11 Seg locally");
 assert(browserRuntimeUi.includes('runtime.sam.request("warmup")'), "browser AI installer must prepare SAM2.1 Tiny locally");

@@ -93,7 +93,7 @@ window.HelloLabelI18nMessages.en = {
   "yoloTextPlaceholder": "e.g. dog,cat,bird",
   "yoloFilterPlaceholder": "Optional class filter, e.g. dog,cat,bird",
   "yoloWorldPlaceholder": "Text classes, e.g. dog,cat,bird",
-  "modelStatusTitle": "View model installation/loading status",
+  "modelStatusTitle": "View browser AI / WebGPU / model cache status",
   "polygonEn": "Polygon",
   "rectangleEn": "Rectangle",
   "orientedRectangleEn": "Oriented Rectangle",

@@ -93,7 +93,7 @@ window.HelloLabelI18nMessages.zh = {
   "yoloTextPlaceholder": "例如：dog,cat,bird",
   "yoloFilterPlaceholder": "可选类别过滤，例如：dog,cat,bird",
   "yoloWorldPlaceholder": "输入文本类别，例如：dog,cat,bird",
-  "modelStatusTitle": "查看模型安装/加载状态",
+  "modelStatusTitle": "查看浏览器 AI / WebGPU / 模型缓存状态",
   "polygonEn": "多边形",
   "rectangleEn": "矩形",
   "orientedRectangleEn": "有向矩形",
