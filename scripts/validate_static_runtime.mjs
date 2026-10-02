@@ -83,6 +83,9 @@ assert(pointerInput.includes("activePointers = new Map"), "pointer-input.js must
 assert(pointerInput.includes("beginTwoFingerPan") && pointerInput.includes("pointerDistance"), "pointer-input.js must support two-finger pan/pinch");
 assert(pointerInput.includes("hellolabel-touch-actions") && pointerInput.includes("sam-negative"), "pointer-input.js must provide touch completion/context alternatives");
 assert(mobileTouchUi.includes("hellolabel-touch-layout"), "touch UI must support the unified small-screen touch layout");
+assert(mobileTouchUi.includes("data-touch-menu"), "touch layout must expose a main menu entry");
+assert(mobileTouchUi.includes("hellolabel-touch-app-menu") && mobileTouchUi.includes("HelloLabelLayout?.toggleAppMenu?.()"), "touch menu must reuse the existing app menu and command routing");
+assert(mobileTouchUi.includes("appMenuAnchor"), "touch menu must restore the original menu DOM when leaving touch layout");
 assert(mobileTouchUi.includes("leftSidebar") && mobileTouchUi.includes("rightSidebar") && mobileTouchUi.includes('querySelector(".ai-row")'), "touch UI must reuse the live image, annotation, and AI panels");
 assert(!mobileTouchUi.includes("mobile-touch-action-bar"), "touch UI must not create a second annotation action bar");
 assert(mobileToolbarState.includes("helloLabelPointerInput?.refreshTouchActions?.()"), "mobile toolbar state must delegate to the pointer-input action bar");

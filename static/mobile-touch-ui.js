@@ -10,7 +10,8 @@
     const sidebar = document.getElementById("leftSidebar");
     const inspector = document.getElementById("rightSidebar");
     const aiRow = document.querySelector(".ai-row");
-    if (!viewport || !workspace || !sidebar || !inspector || !aiRow) return;
+    const appMenu = document.getElementById("appMenu");
+    if (!viewport || !workspace || !sidebar || !inspector || !aiRow || !appMenu) return;
 
     const style = document.createElement("style");
     style.textContent = `
@@ -27,6 +28,17 @@
       html.hellolabel-touch-layout .hellolabel-touch-launcher button{
         min-width:68px;min-height:44px;padding:7px 11px;border-radius:11px;
         touch-action:manipulation;font-weight:650;
+      }
+
+      html.hellolabel-touch-layout .app-menu.hellolabel-touch-app-menu{
+        position:fixed!important;top:76px!important;right:12px!important;left:auto!important;
+        width:min(300px,calc(100vw - 24px))!important;max-height:calc(100dvh - 88px);
+        overflow:auto;z-index:112!important;
+        border-radius:18px;padding:8px;
+      }
+      html.hellolabel-touch-layout .hellolabel-touch-app-menu .app-submenu{
+        position:static!important;left:auto!important;top:auto!important;width:auto!important;
+        margin:4px 0 6px 12px;box-shadow:none!important;backdrop-filter:none!important;
       }
 
       html.hellolabel-touch-layout .hellolabel-touch-drawer-mask{
@@ -98,6 +110,7 @@
     launcher.setAttribute("role", "toolbar");
     launcher.setAttribute("aria-label", "Touch panels");
     launcher.innerHTML = `
+      <button type="button" data-touch-menu>菜单</button>
       <button type="button" data-touch-panel="images">图片</button>
       <button type="button" data-touch-panel="annotations">标注</button>
       <button type="button" data-touch-panel="ai">AI</button>
@@ -138,6 +151,8 @@
       node.parentNode?.insertBefore(marker, node);
       anchors.set(node, marker);
     }
+    const appMenuAnchor = document.createComment("hellolabel-touch-anchor:appMenu");
+    appMenu.parentNode?.insertBefore(appMenuAnchor, appMenu);
 
     let activeType = null;
 
@@ -154,16 +169,22 @@
 
     function restoreAll() {
       for (const { node } of Object.values(sources)) restoreNode(node);
+      if (appMenuAnchor.parentNode && appMenu.parentNode !== appMenuAnchor.parentNode) {
+        appMenuAnchor.parentNode.insertBefore(appMenu, appMenuAnchor.nextSibling);
+      }
+      appMenu.classList.remove("hellolabel-touch-app-menu");
     }
 
     function updateLauncherText() {
       const en = isEnglish();
       const labels = en
-        ? { images:"Images", annotations:"Labels", ai:"AI" }
-        : { images:"图片", annotations:"标注", ai:"AI" };
+        ? { images:"Images", annotations:"Labels", ai:"AI", menu:"Menu" }
+        : { images:"图片", annotations:"标注", ai:"AI", menu:"菜单" };
       for (const button of launcher.querySelectorAll("[data-touch-panel]")) {
         button.textContent = labels[button.dataset.touchPanel] || button.dataset.touchPanel;
       }
+      const menuButton = launcher.querySelector("[data-touch-menu]");
+      if (menuButton) menuButton.textContent = labels.menu;
       closeButton.setAttribute("aria-label", en ? "Close" : "关闭");
     }
 
@@ -182,6 +203,7 @@
     function openDrawer(type) {
       const source = sources[type];
       if (!source) return;
+      window.HelloLabelLayout?.closeAppMenu?.();
       if (activeType && sources[activeType]) restoreNode(sources[activeType].node);
       activeType = type;
       content.replaceChildren(source.node);
@@ -203,11 +225,25 @@
       updateLauncherText();
       if (!isTouchLayout()) {
         closeDrawer();
+        window.HelloLabelLayout?.closeAppMenu?.();
         restoreAll();
       }
     }
 
+    launcher.addEventListener("pointerdown", event => {
+      if (event.target.closest?.("button")) event.stopPropagation();
+    });
+
     launcher.addEventListener("click", event => {
+      const menuButton = event.target.closest?.("button[data-touch-menu]");
+      if (menuButton) {
+        closeDrawer();
+        if (appMenu.parentNode !== document.body) document.body.appendChild(appMenu);
+        appMenu.classList.add("hellolabel-touch-app-menu");
+        window.HelloLabelLayout?.toggleAppMenu?.();
+        return;
+      }
+
       const button = event.target.closest?.("button[data-touch-panel]");
       if (!button) return;
       openDrawer(button.dataset.touchPanel);
