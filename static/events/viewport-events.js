@@ -4,6 +4,10 @@
   let c=null;
   function configure(context){c=context||null;return api;}
 
+  function isTouchActionEvent(event){
+    return !!event?.target?.closest?.(".hellolabel-touch-actions");
+  }
+
   function bind() {
     const {
       state,els,zoomAt,startPan,samPointerDown,beginPointerEdit,handleDrawPointerDown,
@@ -24,6 +28,7 @@
     });
 
     els.viewport.addEventListener("pointerdown",event=>{
+      if(isTouchActionEvent(event))return;
       if(!state.data)return;
       if(startPan(event))return;
       if(state.mode==="sam"){samPointerDown(event);return;}
@@ -32,6 +37,7 @@
     });
 
     els.viewport.addEventListener("pointermove",event=>{
+      if(isTouchActionEvent(event))return;
       if(state.panning){movePan(event);return;}
       if(state.mode==="sam"){samPointerMove(event);return;}
       if(state.mode==="pointer"){movePointerEdit(event);return;}
@@ -39,6 +45,7 @@
     });
 
     els.viewport.addEventListener("pointerup",event=>{
+      if(isTouchActionEvent(event))return;
       try{
         if(state.panning){endPan();return;}
         if(state.mode==="sam"){samPointerUp(event);return;}
@@ -50,6 +57,7 @@
     });
 
     els.viewport.addEventListener("pointercancel",event=>{
+      if(isTouchActionEvent(event))return;
       endPan();
       if(state.editing)cancelPointerEdit();
       if(state.sam.drag?.pointerId===event.pointerId)state.sam.drag=null;

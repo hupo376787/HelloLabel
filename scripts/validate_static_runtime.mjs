@@ -254,6 +254,8 @@ assert(renderOrchestrator.includes("HelloLabelRenderAll"), "render orchestration
 assert(editCommands.includes("HelloLabelEditCommands"), "annotation edit commands must be extracted");
 assert(uiEvents.includes("HelloLabelUiEvents"), "UI events must be extracted");
 assert(viewportEvents.includes("HelloLabelViewportEvents"), "viewport events must be extracted");
+assert(viewportEvents.includes('closest?.(".hellolabel-touch-actions")'), "viewport drawing events must ignore touch action bar controls");
+assert(viewportEvents.includes("if(isTouchActionEvent(event))return;"), "touch action bar pointer events must not create annotation points");
 assert(keyboardEvents.includes("HelloLabelKeyboardEvents"), "keyboard events must be extracted");
 assert(appInitializer.includes("HelloLabelAppInitializer"), "app initializer must be extracted");
 assert(!appCore.includes('els.openFolderBtn.addEventListener("click",requestFolder);'), "UI event binding must not remain inline in app core");
