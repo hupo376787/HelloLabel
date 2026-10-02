@@ -48,7 +48,9 @@
       overscroll-behavior:none;
     }
 
-    html.hellolabel-touch-mode button.tool {
+    html.hellolabel-touch-mode button.tool,
+    html.hellolabel-touch-mode .main-tools button.icon-only,
+    html.hellolabel-touch-mode .main-tools .settings-icon-btn {
       min-width:48px;
       min-height:44px;
     }
@@ -78,53 +80,97 @@
       white-space:nowrap;
     }
 
-    @media (max-width:768px) {
-      html.hellolabel-mobile .app-grid {
-        grid-template-columns:1fr;
+    html.hellolabel-touch-layout {
+      --header-h:64px!important;
+    }
+
+    html.hellolabel-touch-layout .topbar {
+      height:64px!important;
+      grid-template-columns:1fr!important;
+      grid-template-rows:64px!important;
+    }
+
+    html.hellolabel-touch-layout .brand {
+      display:none!important;
+    }
+
+    html.hellolabel-touch-layout .main-tools {
+      grid-column:1!important;
+      grid-row:1!important;
+      min-width:0;
+      padding:8px max(8px,env(safe-area-inset-left)) 8px max(8px,env(safe-area-inset-right));
+      overflow-x:auto;
+      overflow-y:hidden;
+      flex-wrap:nowrap!important;
+      scrollbar-width:none;
+      border-bottom:1px solid var(--line);
+      background:color-mix(in srgb,var(--panel) 96%,transparent);
+    }
+
+    html.hellolabel-touch-layout .main-tools::-webkit-scrollbar {
+      display:none;
+    }
+
+    html.hellolabel-touch-layout .topbar>.ai-row {
+      display:none!important;
+    }
+
+    html.hellolabel-touch-layout .app-grid {
+      height:calc(100% - 64px)!important;
+      grid-template-columns:minmax(0,1fr)!important;
+    }
+
+    html.hellolabel-touch-layout #appGrid>.sidebar,
+    html.hellolabel-touch-layout #appGrid>.inspector {
+      display:none!important;
+    }
+
+    html.hellolabel-touch-layout .side-collapse-btn {
+      display:none!important;
+    }
+
+    html.hellolabel-touch-layout .main-tools #zoomOutBtn,
+    html.hellolabel-touch-layout .main-tools #zoomInBtn,
+    html.hellolabel-touch-layout .main-tools #zoomLabel,
+    html.hellolabel-touch-layout .main-tools #actualBtn,
+    html.hellolabel-touch-layout .main-tools .show-labels-toggle,
+    html.hellolabel-touch-layout .main-tools .ai-toolbar-toggle {
+      display:none!important;
+    }
+
+    html.hellolabel-touch-layout .workspace-wrap {
+      min-width:0;
+    }
+
+    html.hellolabel-touch-layout .touch-ui-hint {
+      bottom:72px;
+      max-width:calc(100vw - 24px);
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    @media (max-width:700px) {
+      html.hellolabel-touch-layout {
+        --header-h:60px!important;
       }
 
-      html.hellolabel-mobile .sidebar,
-      html.hellolabel-mobile .inspector {
-        display:none;
+      html.hellolabel-touch-layout .topbar {
+        height:60px!important;
+        grid-template-rows:60px!important;
       }
 
-      html.hellolabel-mobile .toolbar-row {
-        overflow-x:auto;
-        scrollbar-width:none;
+      html.hellolabel-touch-layout .app-grid {
+        height:calc(100% - 60px)!important;
       }
 
-      html.hellolabel-mobile .toolbar-row::-webkit-scrollbar {
-        display:none;
-      }
-
-      html.hellolabel-mobile .topbar {
-        height:72px;
-        --header-h:72px;
-        grid-template-columns:1fr;
-        grid-template-rows:72px;
-      }
-
-      html.hellolabel-mobile .brand {
-        display:none;
-      }
-
-      html.hellolabel-mobile .main-tools {
-        position:fixed;
-        left:8px;
-        right:8px;
-        bottom:max(10px,env(safe-area-inset-bottom));
-        height:60px;
-        z-index:50;
-        border:1px solid var(--line);
-        border-radius:18px;
-        box-shadow:var(--shadow);
-        background:color-mix(in srgb,var(--panel) 94%,transparent);
-        backdrop-filter:blur(12px);
+      html.hellolabel-touch-layout .main-tools {
+        padding-top:6px;
+        padding-bottom:6px;
       }
     }
 
     @media (min-width:769px) and (max-width:1200px) {
-      html.hellolabel-compact .app-grid {
+      html.hellolabel-compact:not(.hellolabel-touch-layout) .app-grid {
         grid-template-columns:64px minmax(0,1fr) 280px;
       }
     }
@@ -137,12 +183,23 @@
   viewport.appendChild(hint);
 
   function updateResponsiveMode() {
-    const coarse = window.matchMedia?.("(pointer: coarse)").matches;
-    const noHover = window.matchMedia?.("(hover: none)").matches;
+    const coarse = !!window.matchMedia?.("(pointer: coarse)").matches;
+    const noHover = !!window.matchMedia?.("(hover: none)").matches;
     const width = window.innerWidth;
-    document.documentElement.classList.toggle("hellolabel-touch-mode", !!(coarse || noHover));
-    document.documentElement.classList.toggle("hellolabel-mobile", width < 768);
-    document.documentElement.classList.toggle("hellolabel-compact", width >= 768 && width < 1200);
+    const height = window.innerHeight;
+    const touchMode = coarse || noHover;
+    const touchLayout = touchMode && (width <= 1280 || height <= 800);
+    const root = document.documentElement;
+
+    root.classList.toggle("hellolabel-touch-mode", touchMode);
+    root.classList.toggle("hellolabel-touch-layout", touchLayout);
+    root.classList.toggle("hellolabel-mobile", touchLayout && width < 768);
+    root.classList.toggle("hellolabel-tablet-touch", touchLayout && width >= 768);
+    root.classList.toggle("hellolabel-compact", !touchLayout && width >= 768 && width < 1200);
+
+    window.dispatchEvent(new CustomEvent("hellolabel:responsive-layout", {
+      detail:{ touchMode, touchLayout, width, height }
+    }));
   }
 
   updateResponsiveMode();

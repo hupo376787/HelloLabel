@@ -1,7 +1,8 @@
 "use strict";
 
-// Unified mobile toolbar state controller.
-// Drawing tools report state here; UI decides which buttons are visible.
+// Drawing tools report state here. The pointer-input layer owns the single
+// touch action bar; this controller only translates state changes and asks it
+// to refresh.
 (() => {
   const profiles = {
     idle: { undo:false, finish:false, cancel:false, edit:false, remove:false },
@@ -14,57 +15,28 @@
     selected: () => ({ undo:false, finish:false, cancel:false, edit:true, remove:true }),
   };
 
-  function resolveActions(state){
+  function resolveActions(state) {
     const profile = profiles[state.tool] || profiles.idle;
     return typeof profile === "function" ? profile(state) : profile;
   }
 
-  function updateToolbar(state={}){
-    const actions=resolveActions(state);
-    const ui=window.mobileTouchUI;
-    if(!ui) return actions;
+  let currentState = { tool:"idle" };
 
-    ui.showAction("undo",actions.undo);
-    ui.showAction("finish",actions.finish);
-    ui.showAction("cancel",actions.cancel);
-    ui.showAction("edit",actions.edit);
-    ui.showAction("remove",actions.remove);
-
-    const finish=document.querySelector('[data-touch-action="finish"]');
-    const undo=document.querySelector('[data-touch-action="undo"]');
-    if(finish){
-      finish.textContent=(state.tool==="polygon"||state.tool==="polyline")
-        ? `✓ 完成${state.pointCount?` (${state.pointCount})`:""}`
-        : "✓ 完成";
-      finish.disabled=!actions.finish;
-    }
-    if(undo){
-      undo.textContent=(state.tool==="polygon"||state.tool==="polyline")
-        ? "↶ 撤销一点"
-        : "↶ 撤销";
-    }
-
+  function update(state = {}) {
+    currentState = { ...currentState, ...state };
+    const actions = resolveActions(currentState);
+    window.helloLabelPointerInput?.refreshTouchActions?.();
     return actions;
   }
 
-  let currentState={tool:"idle"};
-
-  function update(state={}){
-    currentState={...currentState,...state};
-    return updateToolbar(currentState);
-  }
-
-  // Drawing modules can now notify without depending on mobile UI.
-  // Example:
-  // window.dispatchEvent(new CustomEvent("hellolabel:drawing-state", {detail:{tool:"polygon",pointCount:3}}));
-  window.addEventListener("hellolabel:drawing-state", e=>{
-    if(e.detail) update(e.detail);
+  window.addEventListener("hellolabel:drawing-state", event => {
+    if (event.detail) update(event.detail);
   });
 
-  window.mobileToolbarState={
+  window.mobileToolbarState = {
     update,
     resolve:resolveActions,
     profiles,
-    getState:()=>({...currentState})
+    getState:() => ({ ...currentState }),
   };
 })();
