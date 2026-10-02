@@ -99,6 +99,9 @@ assert(layoutFixes.includes("width <= 1280 || height <= 800"), "small touch tabl
 assert(layoutFixes.includes('root.classList.toggle("hellolabel-compact", !touchLayout'), "compact desktop layout must not override touch-tablet layout");
 assert(browserRuntime.includes('const RUNTIME_VERSION = "2.2.0"'), "browser runtime must report version 2.2.0");
 assert(aboutUi.includes('const APP_VERSION = "2.2.0"'), "About dialog must report version 2.2.0");
+assert(aboutUi.includes("HelloLabelAboutUI") && aboutUi.includes("about-modal-card"), "v2.2 About dialog must expose the rich About UI module");
+assert(helpMenu.includes("HelloLabelAboutUI?.showAbout"), "About menu command must route to the v2.2 rich About dialog");
+assert(!helpMenu.includes("Version 0.2.14"), "legacy simplified About version must not return");
 assert(telemetry.includes('let appVersion = "2.2.0"'), "telemetry fallback version must report 2.2.0");
 
 // Browser-only architecture and desktop packaging boundaries.

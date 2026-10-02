@@ -98,6 +98,9 @@
     }, "about-modal-card");
   };
 
+  window.HelloLabelAboutUI = window.HelloLabelAboutUI || {};
+  window.HelloLabelAboutUI.showAbout = (...args) => showAbout(...args);
+
   function shortcutSections() {
     const en = isEnglish();
     if (en) return [

@@ -9,10 +9,13 @@
   }
 
   async function showAbout() {
+    if (typeof window.HelloLabelAboutUI?.showAbout === "function") {
+      return window.HelloLabelAboutUI.showAbout();
+    }
     const { showModal, t, escapeHtml } = c;
     await showModal({
       title:t("menuAboutHelloLabel"),
-      body:`<div style="white-space:pre-line">${escapeHtml(t("aboutText"))}</div><div class="muted" style="padding-left:0">Version 0.2.14</div>`,
+      body:`<div style="white-space:pre-line">${escapeHtml(t("aboutText"))}</div><div class="muted" style="padding-left:0">Version 2.2.0</div>`,
       buttons:[{label:t("close"),value:"ok",className:"primary"}]
     });
   }
