@@ -105,7 +105,7 @@ assert(layoutFixes.includes('root.classList.toggle("hellolabel-compact", !touchL
 assert(browserRuntime.includes('const RUNTIME_VERSION = "3.0.0"'), "browser runtime must report version 3.0.0");
 assert(aboutUi.includes('const APP_VERSION = "3.0.0"'), "About dialog must report version 3.0.0");
 assert(aboutUi.includes("HelloLabelAboutUI") && aboutUi.includes("about-modal-card"), "v3.0 About dialog must expose the rich About UI module");
-assert(helpMenu.includes("HelloLabelAboutUI?.showAbout"), "About menu command must route to the v2.2 rich About dialog");
+assert(helpMenu.includes("HelloLabelAboutUI?.showAbout"), "About menu command must route to the v3.0 rich About dialog");
 assert(helpMenu.includes("HelloLabelAboutUI?.showShortcuts"), "Shortcuts menu command must route to the v3.0 rich shortcuts dialog");
 assert(aboutUi.includes("shortcuts-modal-card") && aboutUi.includes("showShortcutsDialog"), "v3.0 rich shortcuts dialog must remain available");
 assert(!/^\s{2}(?:showAbout|showShortcuts)\s*=/m.test(aboutUi), "About UI must not monkey-patch global functions");
@@ -164,7 +164,7 @@ assert(browserRuntimeUi.includes("HelloLabelBrowserRuntimeUI"), "browser runtime
 assert(!/v1\.5|1\.5\.0/.test(browserRuntimeUi + browserYolo + browserSam), "browser AI UI/runtime must not retain stale v1.5 identity");
 assert(browserYolo.includes("HelloLabelBrowserYoloRuntime") && !browserYolo.includes("runYolo = async function"), "browser YOLO must expose a module API instead of replacing globals");
 assert(browserSam.includes("HelloLabelBrowserSamRuntime") && !browserSam.includes("runSamPrediction = async function"), "browser SAM must expose a module API instead of replacing globals");
-assert(!browserSam.includes("hellolabel-v150") && !browserSam.includes("sam15-"), "SAM runtime must use current 2.2 asset/request identity");
+assert(!browserSam.includes("hellolabel-v150") && !browserSam.includes("sam15-"), "SAM runtime must use current 3.0 asset/request identity");
 assert(!browserEventRebind.includes('addEventListener("click"'), "browser AI compatibility shim must not install duplicate click handlers");
 assert(!yoloController.includes("/api/") && yoloController.includes("HelloLabelBrowserYoloRuntime"), "YOLO controller must use browser runtime only");
 assert(!samController.includes("/api/") && samController.includes("HelloLabelBrowserSamRuntime"), "SAM controller must use browser runtime only");
