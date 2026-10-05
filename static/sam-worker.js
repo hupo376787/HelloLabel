@@ -1,5 +1,5 @@
 import { env, Sam2Model, Sam2Processor, RawImage, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
-const assetVersion = new URL(self.location.href).searchParams.get("v") || "2.2.0";
+const assetVersion = new URL(self.location.href).searchParams.get("v") || "3.0.0";
 const maskUtilsPromise = import(`./sam-mask-utils.js?v=${encodeURIComponent(assetVersion)}`);
 
 const MODEL_ID = "onnx-community/sam2.1-hiera-tiny-ONNX";

@@ -79,11 +79,11 @@ const startBat = read("start_web.bat");
 const startSh = read("start_web.sh");
 
 // Release identity.
-assert(desktopPackage.version === "2.2.0", "desktop/package.json must be version 2.2.0");
-assert(app.includes('const VERSION = "hellolabel-v220'), "app bootstrap cache version must use hellolabel-v220");
+assert(desktopPackage.version === "3.0.0", "desktop/package.json must be version 3.0.0");
+assert(app.includes('const VERSION = "hellolabel-v300'), "app bootstrap cache version must use hellolabel-v300");
 assert(app.includes("const pendingScripts = scripts.map(queueScript)") && app.includes("await Promise.all(pendingScripts)"), "bootstrap modules must be fetched in parallel");
 assert(!app.includes("for (const src of scripts) await loadScript(src)"), "bootstrap must not serialize every module request");
-assert(app.includes('version: "2.2.0"'), "app ready event must report version 2.2.0");
+assert(app.includes('version: "3.0.0"'), "app ready event must report version 3.0.0");
 assert(app.includes("pointer-input.js"), "app bootstrap must load the pointer input layer");
 assert(pointerInput.includes("mouse: Object.freeze") && pointerInput.includes("touch: Object.freeze") && pointerInput.includes("pen: Object.freeze"), "pointer-input.js must define mouse/touch/pen profiles");
 assert(pointerInput.includes("activePointers = new Map"), "pointer-input.js must track active pointers");
@@ -102,15 +102,15 @@ assert(mobileToolbarState.includes("helloLabelPointerInput?.refreshTouchActions?
 assert(layoutFixes.includes('root.classList.toggle("hellolabel-touch-layout", touchLayout)'), "responsive layout must expose a touch-layout class");
 assert(layoutFixes.includes("width <= 1280 || height <= 800"), "small touch tablets must use the touch layout by viewport size");
 assert(layoutFixes.includes('root.classList.toggle("hellolabel-compact", !touchLayout'), "compact desktop layout must not override touch-tablet layout");
-assert(browserRuntime.includes('const RUNTIME_VERSION = "2.2.0"'), "browser runtime must report version 2.2.0");
-assert(aboutUi.includes('const APP_VERSION = "2.2.0"'), "About dialog must report version 2.2.0");
-assert(aboutUi.includes("HelloLabelAboutUI") && aboutUi.includes("about-modal-card"), "v2.2 About dialog must expose the rich About UI module");
+assert(browserRuntime.includes('const RUNTIME_VERSION = "3.0.0"'), "browser runtime must report version 3.0.0");
+assert(aboutUi.includes('const APP_VERSION = "3.0.0"'), "About dialog must report version 3.0.0");
+assert(aboutUi.includes("HelloLabelAboutUI") && aboutUi.includes("about-modal-card"), "v3.0 About dialog must expose the rich About UI module");
 assert(helpMenu.includes("HelloLabelAboutUI?.showAbout"), "About menu command must route to the v2.2 rich About dialog");
-assert(helpMenu.includes("HelloLabelAboutUI?.showShortcuts"), "Shortcuts menu command must route to the v2.2 rich shortcuts dialog");
-assert(aboutUi.includes("shortcuts-modal-card") && aboutUi.includes("showShortcutsDialog"), "v2.2 rich shortcuts dialog must remain available");
+assert(helpMenu.includes("HelloLabelAboutUI?.showShortcuts"), "Shortcuts menu command must route to the v3.0 rich shortcuts dialog");
+assert(aboutUi.includes("shortcuts-modal-card") && aboutUi.includes("showShortcutsDialog"), "v3.0 rich shortcuts dialog must remain available");
 assert(!/^\s{2}(?:showAbout|showShortcuts)\s*=/m.test(aboutUi), "About UI must not monkey-patch global functions");
 assert(!helpMenu.includes("Version 0.2.14"), "legacy simplified About version must not return");
-assert(telemetry.includes('let appVersion = "2.2.0"'), "telemetry fallback version must report 2.2.0");
+assert(telemetry.includes('let appVersion = "3.0.0"'), "telemetry fallback version must report 3.0.0");
 assert(annotationTelemetry.includes("HelloLabelAnnotationCommit") && annotationTelemetry.includes("commitApi.commitGeometry = wrapped"), "annotation telemetry must wrap the modular commit API");
 assert(!annotationTelemetry.includes("window.commitGeometry = wrapped"), "annotation telemetry must not patch the retired global commit function");
 
@@ -430,7 +430,7 @@ const required = [
   "build_web.bat",
   "build_web.sh",
 ];
-for (const relative of required) assert(exists(relative), `required v2.2 file is missing: ${relative}`);
+for (const relative of required) assert(exists(relative), `required v3.0 file is missing: ${relative}`);
 
 const byteSize = relative => Buffer.byteLength(read(relative), "utf8");
 
@@ -522,12 +522,12 @@ const forbiddenLegacy = [
   "desktop/prepare_runtime.py", "desktop/desktop_ai_installer.py",
   "desktop/hellolabel-server.spec", "static/version-ui.js",
 ];
-for (const relative of forbiddenLegacy) assert(!exists(relative), `legacy server/runtime file must stay removed in v2.2: ${relative}`);
+for (const relative of forbiddenLegacy) assert(!exists(relative), `legacy server/runtime file must stay removed in v3.0: ${relative}`);
 
 if (errors.length) {
-  console.error("HelloLabel v2.2 static runtime validation failed:\n");
+  console.error("HelloLabel v3.0 static runtime validation failed:\n");
   for (const error of errors) console.error(` - ${error}`);
   process.exit(1);
 }
 
-console.log(`HelloLabel v2.2 static runtime validation passed (${staticReferences.length} bootstrap assets checked).`);
+console.log(`HelloLabel v3.0 static runtime validation passed (${staticReferences.length} bootstrap assets checked).`);

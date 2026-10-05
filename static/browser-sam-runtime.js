@@ -8,7 +8,7 @@
   const MODEL_ID = "onnx-community/sam2.1-hiera-tiny-ONNX";
   const REQUEST_TIMEOUT_MS = 600000;
   const text = (zh, en) => state?.language === "en" ? en : zh;
-  const assetVersion = encodeURIComponent(window.HELLOLABEL_ASSET_VERSION || runtime.version || "2.2.0");
+  const assetVersion = encodeURIComponent(window.HELLOLABEL_ASSET_VERSION || runtime.version || "3.0.0");
 
   if (els.samModelSelect) {
     els.samModelSelect.replaceChildren();

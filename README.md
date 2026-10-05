@@ -6,10 +6,10 @@
 
 HelloLabel is an independent, high-performance image annotation application inspired by Labelme. **Starting with v2.0.0, HelloLabel uses a local-first, pure-static Web architecture**: the server only delivers HTML / CSS / JavaScript, while source images, same-name JSON files, and AI inference stay on the user's device.
 
-## v2.0.0 architecture
+## v3.0.0 architecture
 
 ```text
-                   HelloLabel 2.0
+                   HelloLabel 3.0
                         │
            ┌────────────┴────────────┐
            │                         │
@@ -59,10 +59,12 @@ HelloLabel is an independent, high-performance image annotation application insp
 - Undo/Redo: `Ctrl+Z`, `Ctrl+Y` / `Ctrl+Shift+Z`.
 - ~300 ms debounced same-name JSON autosave plus explicit Save JSON.
 - Chinese/English UI, system/light/dark themes, collapsible panels, persistent AI-toolbar visibility.
+- Small-screen touch workspace: coarse-pointer phones/tablets use large touch targets, pinch/pan, a single touch action bar, and drawer-based Images / Annotations / AI panels.
+- Strict Labelme 7.0.4-compatible JSON validation before save, including shape point counts, finite coordinates, flags, group IDs, and image dimensions.
 
-## Browser-local AI in v2.0
+## Browser-local AI in v3.0
 
-| Capability | v2.0 status | Runs on |
+| Capability | v3.0 status | Runs on |
 |---|---|---|
 | YOLO11 Detect | available | browser WebGPU / CPU-WASM |
 | YOLO11 Seg | available | browser WebGPU / CPU-WASM |
@@ -86,7 +88,7 @@ The same image reuses its SAM image embedding for subsequent prompt updates. Swi
 
 ## Local Web development
 
-HelloLabel v2.0 has no Python application backend, but the page should still be served over HTTP/HTTPS rather than opened directly as `file://`.
+HelloLabel v3.0 has no Python application backend, but the page should still be served over HTTP/HTTPS rather than opened directly as `file://`.
 
 Windows:
 
@@ -148,7 +150,7 @@ HelloLabel.exe
       └─ static/
 ```
 
-The v2.0 desktop package no longer includes CPython, FastAPI, Uvicorn, OpenCV, PyTorch, or a server-side SAM/YOLO runtime.
+The v3.0 desktop package does not include CPython, FastAPI, Uvicorn, OpenCV, PyTorch, or a server-side SAM/YOLO runtime.
 
 Build Windows:
 
@@ -217,7 +219,7 @@ Brush output is saved as a `polygon`.
 
 ## Global Label library
 
-Label definitions are application-level in v2.0:
+Label definitions are application-level in v3.0:
 
 - they persist when switching images/folders;
 - instance counts remain per current image;
@@ -267,7 +269,7 @@ Public sites should use HTTPS. localhost development may use HTTP.
 
 The `master` branch includes a `Static Runtime Check` GitHub Actions workflow that verifies:
 
-- required v2.0 browser-only architecture files;
+- required v3.0 browser-only architecture files;
 - Desktop does not reintroduce a Python backend;
 - JavaScript syntax;
 - browser mask-to-geometry behavior;

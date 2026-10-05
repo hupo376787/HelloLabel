@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const VERSION = "hellolabel-v220-t25";
+  const VERSION = "hellolabel-v300-t1";
   window.HELLOLABEL_ASSET_VERSION = VERSION;
 
   try {
@@ -143,7 +143,7 @@
     const pendingScripts = scripts.map(queueScript);
     await Promise.all(pendingScripts);
     document.documentElement.dataset.hellolabelRuntime = "browser-only";
-    window.dispatchEvent(new CustomEvent("hellolabel:ready", { detail: { version: "2.2.0", runtime: "browser-only" } }));
+    window.dispatchEvent(new CustomEvent("hellolabel:ready", { detail: { version: "3.0.0", runtime: "browser-only" } }));
   })().catch(error => {
     console.error("HelloLabel bootstrap failed", error);
     const pre = document.createElement("pre");

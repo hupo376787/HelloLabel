@@ -1,7 +1,7 @@
 "use strict";
 
 (() => {
-  const APP_VERSION = "2.2.0";
+  const APP_VERSION = "3.0.0";
   const REPOSITORY_URL = "https://github.com/hupo376787/HelloLabel";
 
   if (typeof I18N !== "undefined") {
@@ -62,7 +62,7 @@
       <div class="about-dialog">
         <div class="about-hero">
           <div class="about-logo-wrap">
-            <img class="about-logo" src="/static/hellolabel-icon.png?v=hellolabel-v220" alt="HelloLabel" />
+            <img class="about-logo" src="/static/hellolabel-icon.png?v=${encodeURIComponent(window.HELLOLABEL_ASSET_VERSION || "hellolabel-v300-t1")}" alt="HelloLabel" />
           </div>
           <div class="about-main">
             <div class="about-product-row">
