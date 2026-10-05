@@ -1,5 +1,6 @@
 import { env, Sam2Model, Sam2Processor, RawImage, Tensor } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.2.0";
-import { extractBestMask } from "./sam-mask-utils.js?v=hellolabel-v150";
+const assetVersion = new URL(self.location.href).searchParams.get("v") || "2.2.0";
+const maskUtilsPromise = import(`./sam-mask-utils.js?v=${encodeURIComponent(assetVersion)}`);
 
 const MODEL_ID = "onnx-community/sam2.1-hiera-tiny-ONNX";
 env.allowRemoteModels = true;
@@ -181,6 +182,7 @@ async function decode(prompts, box) {
     outputs = await m({ ...imageEmbeddings, ...promptInputs });
     masks = await p.post_process_masks(outputs.pred_masks, imageInputs.original_sizes, imageInputs.reshaped_input_sizes);
     const scores = outputs.iou_scores?.data || [];
+    const { extractBestMask } = await maskUtilsPromise;
     const selected = extractBestMask(masks, scores);
     return {
       mask: selected.mask,

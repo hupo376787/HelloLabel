@@ -35,15 +35,16 @@
   }
 
   function installCommitGeometryWrapper() {
-    if (typeof window.commitGeometry !== "function") return;
-    if (window.commitGeometry.__helloLabelTelemetryWrapped) return;
+    const commitApi = window.HelloLabelAnnotationCommit;
+    if (typeof commitApi?.commitGeometry !== "function") return;
+    if (commitApi.commitGeometry.__helloLabelTelemetryWrapped) return;
 
-    const original = window.commitGeometry;
+    const original = commitApi.commitGeometry.bind(commitApi);
     const wrapped = async function(type, points, meta = { source: "manual" }) {
       const before = countInstances();
       const source = String(meta?.source || "manual");
       const tool = source !== "manual" ? "sam" : activeManualTool(type);
-      const result = await original.apply(this, arguments);
+      const result = await original(type, points, meta);
       const created = Math.max(0, countInstances() - before);
       if (created > 0) {
         track({
@@ -56,7 +57,7 @@
       return result;
     };
     Object.defineProperty(wrapped, "__helloLabelTelemetryWrapped", { value: true });
-    window.commitGeometry = wrapped;
+    commitApi.commitGeometry = wrapped;
   }
 
   function installYoloObserver() {

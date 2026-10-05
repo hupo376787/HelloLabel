@@ -56,6 +56,7 @@ const layoutFixes = read("static/layout-fixes.js");
 const index = read("static/index.html");
 const aboutUi = read("static/about-ui.js");
 const telemetry = read("static/telemetry.js");
+const annotationTelemetry = read("static/annotation-telemetry.js");
 const browserRuntime = read("static/browser-runtime.js");
 const browserFileGuard = read("static/browser-file-guard.js");
 const mobileFolderCompat = read("static/mobile-folder-compat.js");
@@ -110,6 +111,8 @@ assert(aboutUi.includes("shortcuts-modal-card") && aboutUi.includes("showShortcu
 assert(!/^\s{2}(?:showAbout|showShortcuts)\s*=/m.test(aboutUi), "About UI must not monkey-patch global functions");
 assert(!helpMenu.includes("Version 0.2.14"), "legacy simplified About version must not return");
 assert(telemetry.includes('let appVersion = "2.2.0"'), "telemetry fallback version must report 2.2.0");
+assert(annotationTelemetry.includes("HelloLabelAnnotationCommit") && annotationTelemetry.includes("commitApi.commitGeometry = wrapped"), "annotation telemetry must wrap the modular commit API");
+assert(!annotationTelemetry.includes("window.commitGeometry = wrapped"), "annotation telemetry must not patch the retired global commit function");
 
 // Browser-only architecture and desktop packaging boundaries.
 assert(desktopPackage.build?.extraResources?.some(item => item.from === "../static" && item.to === "static"), "desktop package must bundle ../static as resources/static");
@@ -136,6 +139,8 @@ assert(browserYolo.includes("runtime.yolo.module === promise") && browserYolo.in
 assert(samWorker.includes("Sam2Model") && samWorker.includes("Sam2Processor"), "SAM worker must use Transformers.js SAM2 APIs");
 assert(samWorker.includes("input_boxes"), "SAM2.1 worker must preserve true box prompts");
 assert(samWorker.includes("./sam-mask-utils.js"), "SAM worker must use the tested SAM2.1 mask tensor helper");
+assert(samWorker.includes('new URL(self.location.href).searchParams.get("v")') && samWorker.includes("maskUtilsPromise"), "SAM worker dependency must inherit the current worker cache token");
+assert(!samWorker.includes("hellolabel-v150"), "SAM worker must not retain a v1.5 cache token");
 assert(!samWorker.includes("RawImage.fromTensor"), "SAM worker must not convert a 2D mask Tensor through RawImage.fromTensor");
 assert(samWorker.includes("disposeTensorTree") && samWorker.includes("releaseImageState"), "SAM worker must release temporary tensors and old image embeddings");
 assert(samWorker.includes("requestQueue = requestQueue.then"), "SAM worker requests must be serialized");
